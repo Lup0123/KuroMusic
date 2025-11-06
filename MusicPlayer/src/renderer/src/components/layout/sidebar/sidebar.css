@@ -1,0 +1,46 @@
+/* 左侧边栏样式 */
+.sidebar {
+  background-color: #f5f7fa;
+  border-right: 1px solid #e4e7ed;
+  height: calc(100vh - 60px - 80px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  flex-shrink: 0;
+}
+
+.sidebar-menu {
+  border: none;
+  height: 100%;
+}
+
+/* 侧边栏滚动条样式 */
+.sidebar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.sidebar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sidebar::-webkit-scrollbar-thumb {
+  background: #c0c4cc;
+  border-radius: 4px;
+}
+
+.sidebar::-webkit-scrollbar-thumb:hover {
+  background: #909399;
+}
+
+/* 暗黑模式 - 侧边栏 */
+:root.dark .sidebar {
+  background-color: #1a1a1a;
+  border-right-color: #2c2c2c;
+}
+
+:root.dark .sidebar::-webkit-scrollbar-thumb {
+  background: #4c4c4c;
+}
+
+:root.dark .sidebar::-webkit-scrollbar-thumb:hover {
+  background: #6c6c6c;
+}

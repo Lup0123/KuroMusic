@@ -1,0 +1,92 @@
+/* 布局整体样式 */
+
+.content-container {
+  height: calc(100vh - 60px - 80px);
+  overflow: hidden;
+}
+
+.music-player-layout {
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 主内容区域 */
+.main-content {
+  background-color: #ffffff;
+  padding: 0 !important;
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  flex: 1;
+  width: 100%;
+}
+
+/* 右侧播放列表 */
+.el-aside {
+  background-color: #f5f7fa;
+  border-left: 1px solid #e4e7ed;
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  flex-shrink: 0;
+}
+
+/* 底部播放控制栏 */
+.el-footer {
+  height: 80px !important;
+  padding: 0;
+  background-color: #fff;
+  border-top: 1px solid #e4e7ed;
+  flex-shrink: 0;
+}
+
+/* 暗黑模式 */
+:root.dark .main-content {
+  background-color: #141414;
+}
+
+:root.dark .el-aside {
+  background-color: #1a1a1a;
+  border-left-color: #2c2c2c;
+}
+
+:root.dark .el-footer {
+  background-color: #1a1a1a;
+  border-top-color: #2c2c2c;
+}
+
+/* 主内容区域和播放列表滚动条样式 */
+.main-content::-webkit-scrollbar,
+.el-aside::-webkit-scrollbar {
+  width: 8px;
+}
+
+.main-content::-webkit-scrollbar-track,
+.el-aside::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.main-content::-webkit-scrollbar-thumb,
+.el-aside::-webkit-scrollbar-thumb {
+  background: #c0c4cc;
+  border-radius: 4px;
+}
+
+.main-content::-webkit-scrollbar-thumb:hover,
+.el-aside::-webkit-scrollbar-thumb:hover {
+  background: #909399;
+}
+
+/* 暗黑模式滚动条 */
+:root.dark .main-content::-webkit-scrollbar-thumb,
+:root.dark .el-aside::-webkit-scrollbar-thumb {
+  background: #4c4c4c;
+}
+
+:root.dark .main-content::-webkit-scrollbar-thumb:hover,
+:root.dark .el-aside::-webkit-scrollbar-thumb:hover {
+  background: #6c6c6c;
+}

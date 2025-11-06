@@ -1,0 +1,92 @@
+/* 顶部导航栏样式 */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: #fff;
+  border-bottom: 1px solid #e4e7ed;
+  padding: 0 20px;
+  height: 60px !important;
+  flex-shrink: 0;
+}
+
+/* 拖拽区域 */
+.draggable-area {
+  -webkit-app-region: drag;
+  user-select: none;
+}
+
+/* 不可拖拽元素 */
+.no-drag {
+  -webkit-app-region: no-drag;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.app-title {
+  font-size: 20px;
+  font-weight: bold;
+  color: #303133;
+}
+
+.header-center {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  max-width: 600px;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* 窗口控制按钮样式 */
+.window-controls {
+  display: flex;
+  margin-left: 10px;
+}
+
+.window-btn {
+  width: 46px;
+  height: 32px;
+  padding: 0;
+  margin: 0;
+  border-radius: 0;
+  -webkit-app-region: no-drag;
+}
+
+.window-btn .btn-icon {
+  font-size: 14px;
+  line-height: 1;
+}
+
+.window-btn.close:hover {
+  background-color: #e81123;
+  color: white;
+}
+
+.window-btn.minimize:hover,
+.window-btn.maximize:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+/* 暗黑模式 - 导航栏 */
+:root.dark .header {
+  background-color: #1a1a1a;
+  border-bottom-color: #2c2c2c;
+}
+
+:root.dark .app-title {
+  color: #e5eaf3;
+}
+
+:root.dark .window-btn.minimize:hover,
+:root.dark .window-btn.maximize:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}

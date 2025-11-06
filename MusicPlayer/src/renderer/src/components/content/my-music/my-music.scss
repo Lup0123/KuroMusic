@@ -1,0 +1,120 @@
+.my-music {
+  padding: 24px;
+  height: 100%;
+  overflow-y: auto;
+
+  // 顶部标题栏
+  .music-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+
+    .page-title {
+      font-size: 28px;
+      font-weight: bold;
+      margin: 0;
+      color: var(--el-text-color-primary);
+    }
+
+    .actions {
+      display: flex;
+      gap: 12px;
+    }
+  }
+
+  // 统计卡片
+  .stats-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+
+    .stat-card {
+      transition: all 0.3s ease;
+
+      &:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      }
+
+      .stat-content {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+
+        .stat-icon {
+          color: var(--el-color-primary);
+          flex-shrink: 0;
+        }
+
+        .stat-info {
+          .stat-label {
+            font-size: 14px;
+            color: var(--el-text-color-secondary);
+            margin: 0 0 8px 0;
+          }
+
+          .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: var(--el-text-color-primary);
+            margin: 0;
+          }
+        }
+      }
+    }
+  }
+
+  // 过滤器
+  .filters {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 24px;
+    align-items: center;
+  }
+
+  // 音乐列表
+  .music-list {
+    background: var(--el-bg-color);
+    border-radius: 8px;
+    padding: 16px;
+
+    .song-cover {
+      width: 50px;
+      height: 50px;
+      border-radius: 4px;
+    }
+
+    :deep(.el-table) {
+      background-color: transparent;
+
+      .el-table__row {
+        cursor: pointer;
+        transition: all 0.3s ease;
+
+        &:hover {
+          background-color: var(--el-fill-color-light);
+        }
+      }
+    }
+
+    // 空状态
+    .el-empty {
+      padding: 60px 0;
+    }
+  }
+}
+
+// 暗黑模式适配
+html.dark {
+  .my-music {
+    .stats-cards {
+      .stat-card {
+        &:hover {
+          box-shadow: 0 4px 12px rgba(255, 255, 255, 0.1);
+        }
+      }
+    }
+  }
+}
