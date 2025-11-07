@@ -10,7 +10,8 @@
           size="large"
           clearable
           @keyup.enter="handleSearch"
-          @clear="handleClear">
+          @clear="handleClear"
+        >
           <template #prefix>
             <el-icon><Search /></el-icon>
           </template>
@@ -26,9 +27,7 @@
       <el-radio-group v-model="activeTab" @change="handleTabChange">
         <el-radio-button value="songs">
           单曲
-          <span class="count" v-if="searchResults.songs"
-            >({{ searchResults.songs.length }})</span
-          >
+          <span class="count" v-if="searchResults.songs">({{ searchResults.songs.length }})</span>
         </el-radio-button>
         <el-radio-button value="artists">
           歌手
@@ -38,9 +37,7 @@
         </el-radio-button>
         <el-radio-button value="albums">
           专辑
-          <span class="count" v-if="searchResults.albums"
-            >({{ searchResults.albums.length }})</span
-          >
+          <span class="count" v-if="searchResults.albums">({{ searchResults.albums.length }})</span>
         </el-radio-button>
         <el-radio-button value="playlists">
           歌单
@@ -63,15 +60,15 @@
       <el-empty
         v-else-if="!loading && currentResults.length === 0"
         description="暂无搜索结果"
-        :image-size="200" />
+        :image-size="200"
+      />
 
       <!-- 单曲列表 -->
       <div v-else-if="activeTab === 'songs'" class="songs-list">
-        <el-table
-          :data="currentResults"
-          style="width: 100%"
-          @row-dblclick="playSong">
+        <el-table :data="currentResults" style="width: 100%" @row-dblclick="playSong">
           <el-table-column type="index" width="60" label="#" />
+
+          <!-- 歌曲名称列 -->
           <el-table-column prop="name" label="歌曲" min-width="200">
             <template #default="{ row }">
               <div class="song-info">
@@ -80,21 +77,33 @@
               </div>
             </template>
           </el-table-column>
+
+          <!-- 歌手列 -->
           <el-table-column prop="artist" label="歌手" width="180" />
-          <el-table-column prop="album" label="专辑" width="200" />
-          <el-table-column
-            prop="duration"
-            label="时长"
-            width="100"
-            align="center" />
+
+          <!-- 专辑列 - 添加封面 -->
+          <el-table-column prop="album" label="专辑" width="220">
+            <template #default="{ row }">
+              <div class="album-cell">
+                <el-image
+                  v-if="row.albumCover"
+                  :src="row.albumCover"
+                  fit="cover"
+                  class="album-thumb"
+                />
+                <span class="album-name">{{ row.album }}</span>
+              </div>
+            </template>
+          </el-table-column>
+
+          <!-- 时长列 -->
+          <el-table-column prop="duration" label="时长" width="100" align="center" />
+
+          <!-- 操作列 -->
           <el-table-column label="操作" width="150" align="center">
             <template #default="{ row }">
-              <el-button type="text" :icon="VideoPlay" @click="playSong(row)"
-                >播放</el-button
-              >
-              <el-button type="text" :icon="Plus" @click="addToPlaylist(row)"
-                >添加</el-button
-              >
+              <el-button type="text" :icon="VideoPlay" @click="playSong(row)">播放</el-button>
+              <el-button type="text" :icon="Plus" @click="addToPlaylist(row)">添加</el-button>
             </template>
           </el-table-column>
         </el-table>
@@ -106,7 +115,8 @@
           v-for="artist in currentResults"
           :key="artist.id"
           class="artist-card"
-          @click="goToArtist(artist)">
+          @click="goToArtist(artist)"
+        >
           <el-image :src="artist.avatar" fit="cover" class="artist-avatar">
             <template #error>
               <div class="image-error">
@@ -125,13 +135,14 @@
           v-for="album in currentResults"
           :key="album.id"
           class="album-card"
-          @click="goToAlbum(album)">
+          @click="goToAlbum(album)"
+        >
           <el-image :src="album.cover" fit="cover" class="album-cover">
-            <template #error>
+            <!-- <template #error>
               <div class="image-error">
                 <el-icon><Picture /></el-icon>
               </div>
-            </template>
+            </template> -->
           </el-image>
           <div class="album-info">
             <div class="album-name">{{ album.name }}</div>
@@ -146,7 +157,8 @@
           v-for="playlist in currentResults"
           :key="playlist.id"
           class="playlist-card"
-          @click="goToPlaylist(playlist)">
+          @click="goToPlaylist(playlist)"
+        >
           <el-image :src="playlist.cover" fit="cover" class="playlist-cover">
             <template #error>
               <div class="image-error">
@@ -174,23 +186,14 @@
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import {
-  Search,
-  Loading,
-  VideoPlay,
-  Plus,
-  User,
-  Picture,
-  Folder
-} from '@element-plus/icons-vue'
+import { Search, Loading, VideoPlay, Plus, User, Picture, Folder } from '@element-plus/icons-vue'
 import { useSearchStore } from '@/stores/searchStore'
+import { useSongStore } from '@/stores/songStore'
 import { storeToRefs } from 'pinia'
-import { searchSongs } from '@/API/NetStart/NetStart'
 
 // 使用搜索 store
 const searchStore = useSearchStore()
-const { searchKeyword, searchResults, activeTab, hasSearched, loading } =
-  storeToRefs(searchStore)
+const { searchKeyword, searchResults, activeTab, hasSearched, loading } = storeToRefs(searchStore)
 
 const {
   setSearchKeyword,
@@ -201,6 +204,10 @@ const {
   clearSearch
 } = searchStore
 
+// 使用歌曲 store
+const songStore = useSongStore()
+const { playSong: playSongInStore, addToPlaylist: addToPlaylistInStore } = songStore
+
 // 本地搜索关键词（用于输入框双向绑定）
 const localSearchKeyword = ref('')
 
@@ -208,17 +215,6 @@ const localSearchKeyword = ref('')
 const currentResults = computed(() => {
   return searchResults.value[activeTab.value] || []
 })
-
-// 监听 store 中的搜索关键词变化
-watch(
-  () => searchKeyword.value,
-  (newVal) => {
-    if (newVal && newVal !== localSearchKeyword.value) {
-      localSearchKeyword.value = newVal
-      handleSearch()
-    }
-  }
-)
 
 // 组件挂载时检查是否有搜索关键词
 onMounted(() => {
@@ -242,20 +238,22 @@ const handleSearch = async () => {
   setSearchKeyword(keyword.trim())
 
   try {
-    // 模拟搜索API调用
-    const results = await searchSongs(keyword)
-    setSearchResults(results.body.song)
-    
-    ElMessage.success('搜索完成')
+    const results = await window.api.search(keyword)
+
+    if (results && results.body && results.body.result) {
+      setSearchResults(results.body.result)
+      ElMessage.success(`找到 ${searchResults.value.trackCount} 首歌曲`)
+      console.log('搜索结果:', searchResults.value)
+    } else {
+      ElMessage.warning('未找到相关结果')
+    }
   } catch (error) {
-    ElMessage.error('搜索失败，请重试')
+    ElMessage.error('搜索失败,请重试')
     console.error('搜索错误:', error)
   } finally {
     setLoading(false)
   }
 }
-
-
 
 // 清空搜索
 const handleClear = () => {
@@ -268,16 +266,97 @@ const handleTabChange = (tab) => {
   setActiveTab(tab)
 }
 
-// 播放歌曲
-const playSong = (song) => {
-  ElMessage.success(`开始播放: ${song.name}`)
-  // TODO: 调用播放器播放歌曲
+// 播放歌曲 - 核心逻辑
+const playSong = async (song) => {
+  try {
+    ElMessage({
+      message: `正在加载: ${song.name}`,
+      duration: 2000
+    })
+
+    // 获取歌曲播放链接
+    const response = await window.api.getSongUrl(song.id, 'standard')
+    ElMessage.closeAll()
+    console.log('获取播放链接结果:', response)
+    const result = response.body
+    console.log('播放链接结果体:', result)
+    if (result.code == 200) {
+      // 构建完整的歌曲对象
+      const fullSong = {
+        id: song.id,
+        name: song.name,
+        artist: song.artist,
+        album: song.album,
+        cover: song.albumCover || 'https://via.placeholder.com/50',
+        duration: song.duration,
+        durationMs: song.durationMs,
+        path: result.data[0].url, // 播放链接
+        type: result.data[0].type,
+        size: result.data[0].size,
+        br: result.data[0].br
+      }
+      // 调用播放器播放
+      playSongInStore(fullSong)
+
+      ElMessage.success({
+        message: `开始播放: ${song.name}`,
+        duration: 2000
+      })
+
+      console.log('播放歌曲信息:', fullSong)
+    } else {
+      ElMessage.error(result.error || '无法获取播放链接')
+    }
+  } catch (error) {
+    ElMessage.closeAll()
+    ElMessage.error('获取播放链接失败')
+    console.error('播放错误:', error)
+  }
 }
 
 // 添加到播放列表
-const addToPlaylist = (song) => {
-  ElMessage.success(`已添加到播放列表: ${song.name}`)
-  // TODO: 添加到播放列表
+const addToPlaylist = async (song) => {
+  try {
+    ElMessage.loading({
+      message: '正在添加...',
+      duration: 0
+    })
+
+    // 获取歌曲播放链接
+    const result = await window.api.getSongUrl(song.id, 'standard')
+    ElMessage.closeAll()
+
+    if (result.success && result.url) {
+      // 构建完整的歌曲对象
+      const fullSong = {
+        id: song.id,
+        name: song.name,
+        artist: song.artist,
+        album: song.album,
+        cover: song.albumCover || 'https://via.placeholder.com/50',
+        duration: song.duration,
+        durationMs: song.durationMs,
+        path: result.url,
+        type: result.type,
+        size: result.size,
+        br: result.br
+      }
+
+      // 添加到播放列表
+      addToPlaylistInStore(fullSong)
+
+      ElMessage.success({
+        message: `已添加: ${song.name}`,
+        duration: 2000
+      })
+    } else {
+      ElMessage.error(result.error || '无法获取歌曲信息')
+    }
+  } catch (error) {
+    ElMessage.closeAll()
+    ElMessage.error('添加失败')
+    console.error('添加错误:', error)
+  }
 }
 
 // 跳转到歌手详情
@@ -301,4 +380,25 @@ const goToPlaylist = (playlist) => {
 
 <style scoped lang="scss">
 @import './songsearch.scss';
+
+.album-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  .album-thumb {
+    width: 40px;
+    height: 40px;
+    border-radius: 4px;
+    flex-shrink: 0;
+    object-fit: cover;
+  }
+
+  .album-name {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
 </style>

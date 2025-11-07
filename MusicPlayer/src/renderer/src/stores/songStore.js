@@ -26,7 +26,10 @@ export const useSongStore = defineStore('song', () => {
       album: '未知专辑',
       cover: 'https://via.placeholder.com/50',
       duration: '00:00',
-      path: ''
+      path: '',
+      type: '',
+      size: '',
+      br: '',
     }
   })
 

@@ -1,0 +1,38 @@
+/* 添加全局样式重置 */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden; /* 防止body出现滚动条 */
+}
+
+#app {
+  width: 100%;
+  height: 100%;
+  overflow: hidden; /* 防止app容器出现滚动条 */
+}
+
+/* 移除 Element Plus 容器的默认样式 */
+.el-container {
+  overflow: hidden;
+}
+
+.el-main {
+  overflow: hidden;
+}
+
+/* 确保轮播图不会超出 */
+.el-carousel {
+  overflow: hidden;
+}
+
+/* 确保图片不会超出容器 */
+img {
+  max-width: 100%;
+  height: auto;
+}

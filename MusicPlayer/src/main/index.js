@@ -1,20 +1,42 @@
-import { app, shell, BrowserWindow, ipcMain } from 'electron'
+import { app, shell, BrowserWindow, ipcMain, Menu, dialog } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
+import { cloudsearch, song_url_v1 } from '@neteasecloudmusicapienhanced/api'
 
 function createWindow() {
   // Create the browser window.
   const mainWindow = new BrowserWindow({
-    width: 900,
-    height: 670,
+    width: 1280,
+    height: 720,
     show: false,
     autoHideMenuBar: true,
     ...(process.platform === 'linux' ? { icon } : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
-      sandbox: false
+      sandbox: false,
+      webSecurity: false, // 添加这行,允许跨域加载资源
     }
+  })
+
+  mainWindow.webContents.session.webRequest.onBeforeSendHeaders(
+    { urls: ['https://*.music.126.net/*', 'http://*.music.126.net/*'] },
+    (details, callback) => {
+      details.requestHeaders['Referer'] = 'https://music.163.com/'
+      details.requestHeaders['User-Agent'] =
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+      callback({ requestHeaders: details.requestHeaders })
+    }
+  )
+
+  // 允许跨域
+  mainWindow.webContents.session.webRequest.onHeadersReceived((details, callback) => {
+    callback({
+      responseHeaders: {
+        ...details.responseHeaders,
+        'Access-Control-Allow-Origin': ['*']
+      }
+    })
   })
 
   mainWindow.on('ready-to-show', () => {
@@ -50,7 +72,108 @@ app.whenReady().then(() => {
   })
 
   // IPC test
-  ipcMain.on('ping', () => console.log('pong'))
+  ipcMain.handle('select-music-files', async () => {
+    try {
+      const result = await dialog.showOpenDialog({
+        properties: ['openFile', 'multiSelections'],
+        filters: [
+          {
+            name: '音频文件',
+            extensions: ['mp3', 'wav', 'flac', 'ogg', 'm4a', 'aac', 'wma']
+          },
+          { name: '所有文件', extensions: ['*'] }
+        ]
+      })
+      return result
+    } catch (error) {
+      console.error('选择文件失败:', error)
+      return { canceled: true, filePaths: [] }
+    }
+  })
+
+  ipcMain.handle('get-music-metadata', async (event, filePath) => {
+    try {
+      const metadata = await musicMetadata.parseFile(filePath)
+
+      // 处理封面图片
+      let pictureData = ''
+      if (metadata.common.picture && metadata.common.picture.length > 0) {
+        const picture = metadata.common.picture[0]
+        pictureData = `data:${picture.format};base64,${picture.data.toString('base64')}`
+      }
+
+      return {
+        title: metadata.common.title || '',
+        artist: metadata.common.artist || '',
+        album: metadata.common.album || '',
+        duration: metadata.format.duration || 0,
+        picture: pictureData
+      }
+    } catch (error) {
+      console.error('读取元数据失败:', error)
+      return {
+        title: '',
+        artist: '',
+        album: '',
+        duration: 0,
+        picture: ''
+      }
+    }
+  })
+
+  ipcMain.handle('search', async (event, keyword) => {
+    try {
+      const response = await cloudsearch({
+        keywords: keyword,
+        limit: 50,
+        type: 1
+      })
+
+      return response
+    } catch (error) {
+      console.error('搜索时发生错误：', error)
+      return {
+        success: false,
+        error: error.message
+      }
+    }
+  })
+
+  // 修复重复的 get-song-url,合并为一个
+  ipcMain.handle('get-song-url', async (event, songId, quality = 'standard') => {
+    try {
+      const response = await song_url_v1({
+        id: songId,
+        level: quality // standard, higher, exhigh, lossless, hires
+      })
+
+      return response
+    } catch (error) {
+      console.error('获取歌曲URL时发生错误：', error)
+      return {
+        success: false,
+        error: error.message
+      }
+    }
+  })
+
+  ipcMain.on('window-minimize', () => {
+    if (mainWindow) mainWindow.minimize()
+  })
+
+  ipcMain.on('window-maximize', () => {
+    if (mainWindow) {
+      if (mainWindow.isMaximized()) {
+        mainWindow.restore()
+      } else {
+        mainWindow.maximize()
+      }
+    }
+  })
+
+  ipcMain.on('window-close', () => {
+    if (mainWindow) mainWindow.close()
+  })
 
   createWindow()
 
