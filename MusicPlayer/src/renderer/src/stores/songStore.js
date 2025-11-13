@@ -1,172 +1,147 @@
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
 
-export const useSongStore = defineStore('song', () => {
-  // 状态
-  const playlist = ref([])
-  const currentSongIndex = ref(-1)
-  const isPlaying = ref(false)
-  const showPlaylist = ref(false)
-  const currentTime = ref(0)
-  const duration = ref(0)
-  const volume = ref(70)
+export const useSongStore = defineStore('song', {
+  state: () => ({
+    playlist: [],
+    currentSongIndex: -1,
+    isPlaying: false,
+    showPlaylist: false,
+    showLyric: false, // 新增歌词显示状态
+    currentTime: 0,
+    duration: 0,
+    volume: 70,
+    lyric: '',
+    audioElement: null // 新增：存储 audio 元素引用
+  }),
 
-  // 计算属性
-  const currentSong = computed(() => {
-    if (
-      currentSongIndex.value >= 0 &&
-      currentSongIndex.value < playlist.value.length
-    ) {
-      return playlist.value[currentSongIndex.value]
-    }
-    return {
-      id: '',
-      name: '暂无播放',
-      artist: '未知艺术家',
-      album: '未知专辑',
-      cover: 'https://via.placeholder.com/50',
-      duration: '00:00',
-      path: '',
-      type: '',
-      size: '',
-      br: '',
-    }
-  })
-
-  const progress = computed(() => {
-    if (duration.value === 0) return 0
-    return (currentTime.value / duration.value) * 100
-  })
-
-  const formattedCurrentTime = computed(() => {
-    return formatTime(currentTime.value)
-  })
-
-  const formattedDuration = computed(() => {
-    return formatTime(duration.value)
-  })
-
-  // 方法
-  const playSong = (song) => {
-    // 如果歌曲不在播放列表中,添加到播放列表
-    const index = playlist.value.findIndex((item) => item.id === song.id)
-    if (index === -1) {
-      playlist.value.push(song)
-      currentSongIndex.value = playlist.value.length - 1
-    } else {
-      currentSongIndex.value = index
-    }
-    isPlaying.value = true
-    currentTime.value = 0
-  }
-
-  const addToPlaylist = (song) => {
-    const exists = playlist.value.some((item) => item.id === song.id)
-    if (!exists) {
-      playlist.value.push(song)
-    }
-  }
-
-  const removeFromPlaylist = (index) => {
-    if (index === currentSongIndex.value) {
-      // 如果删除的是当前播放的歌曲
-      if (playlist.value.length > 1) {
-        playNext()
-      } else {
-        currentSongIndex.value = -1
-        isPlaying.value = false
+  getters: {
+    currentSong: (state) => {
+      if (state.currentSongIndex >= 0 && state.currentSongIndex < state.playlist.length) {
+        return state.playlist[state.currentSongIndex]
       }
-    } else if (index < currentSongIndex.value) {
-      currentSongIndex.value--
+      return {
+        id: '',
+        name: '暂无播放',
+        artist: '未知艺术家',
+        album: '未知专辑',
+        cover: 'https://via.placeholder.com/50',
+        duration: '00:00',
+        path: '',
+        type: '',
+        size: '',
+        br: ''
+      }
+    },
+
+    progress: (state) => {
+      if (state.duration === 0) return 0
+      return (state.currentTime / state.duration) * 100
+    },
+
+    formattedCurrentTime: (state) => {
+      return formatTime(state.currentTime)
+    },
+
+    formattedDuration: (state) => {
+      return formatTime(state.duration)
     }
-    playlist.value.splice(index, 1)
-  }
+  },
 
-  const togglePlay = () => {
-    if (playlist.value.length === 0) {
-      return
+  actions: {
+    play(song) {
+      // 如果歌曲不在播放列表中,添加到播放列表
+      const index = this.playlist.findIndex((item) => item.id === song.id)
+      if (index === -1) {
+        this.playlist.push(song)
+        this.currentSongIndex = this.playlist.length - 1
+      } else {
+        this.currentSongIndex = index
+      }
+      this.isPlaying = true
+      this.currentTime = 0
+    },
+
+    addToPlaylist(song) {
+      const exists = this.playlist.some((item) => item.id === song.id)
+      if (!exists) {
+        this.playlist.push(song)
+      }
+    },
+
+    removeFromPlaylist(index) {
+      if (index === this.currentSongIndex) {
+        // 如果删除的是当前播放的歌曲
+        if (this.playlist.length > 1) {
+          this.playNext()
+        } else {
+          this.currentSongIndex = -1
+          this.isPlaying = false
+        }
+      } else if (index < this.currentSongIndex) {
+        this.currentSongIndex--
+      }
+      this.playlist.splice(index, 1)
+    },
+
+    togglePlay() {
+      if (this.playlist.length === 0) {
+        return
+      }
+      if (this.currentSongIndex === -1) {
+        this.currentSongIndex = 0
+      }
+      this.isPlaying = !this.isPlaying
+    },
+
+    playNext() {
+      if (this.playlist.length === 0) return
+      this.currentSongIndex = (this.currentSongIndex + 1) % this.playlist.length
+      this.isPlaying = true
+      this.currentTime = 0
+    },
+
+    playPrevious() {
+      if (this.playlist.length === 0) return
+      this.currentSongIndex = this.currentSongIndex - 1
+      if (this.currentSongIndex < 0) {
+        this.currentSongIndex = this.playlist.length - 1
+      }
+      this.isPlaying = true
+      this.currentTime = 0
+    },
+
+    togglePlaylist() {
+      this.showPlaylist = !this.showPlaylist
+    },
+
+    setCurrentTime(time) {
+      this.currentTime = time
+    },
+
+    setDuration(time) {
+      this.duration = time
+    },
+
+    setVolume(vol) {
+      this.volume = vol
+    },
+
+    setProgress(prog) {
+      if (this.duration > 0) {
+        this.currentTime = (prog / 100) * this.duration
+      }
+    },
+
+    setLyric(ly) {
+      this.lyric = ly
     }
-    if (currentSongIndex.value === -1) {
-      currentSongIndex.value = 0
-    }
-    isPlaying.value = !isPlaying.value
-  }
-
-  const playNext = () => {
-    if (playlist.value.length === 0) return
-    currentSongIndex.value =
-      (currentSongIndex.value + 1) % playlist.value.length
-    isPlaying.value = true
-    currentTime.value = 0
-  }
-
-  const playPrevious = () => {
-    if (playlist.value.length === 0) return
-    currentSongIndex.value = currentSongIndex.value - 1
-    if (currentSongIndex.value < 0) {
-      currentSongIndex.value = playlist.value.length - 1
-    }
-    isPlaying.value = true
-    currentTime.value = 0
-  }
-
-  const togglePlaylist = () => {
-    showPlaylist.value = !showPlaylist.value
-  }
-
-  const setCurrentTime = (time) => {
-    currentTime.value = time
-  }
-
-  const setDuration = (time) => {
-    duration.value = time
-  }
-
-  const setVolume = (vol) => {
-    volume.value = vol
-  }
-
-  const setProgress = (prog) => {
-    if (duration.value > 0) {
-      currentTime.value = (prog / 100) * duration.value
-    }
-  }
-
-  // 工具函数
-  const formatTime = (seconds) => {
-    if (!seconds || isNaN(seconds)) return '00:00'
-    const mins = Math.floor(seconds / 60)
-    const secs = Math.floor(seconds % 60)
-    return `${mins.toString().padStart(2, '0')}:${secs
-      .toString()
-      .padStart(2, '0')}`
-  }
-
-  return {
-    // 状态
-    playlist,
-    currentSongIndex,
-    isPlaying,
-    showPlaylist,
-    currentTime,
-    duration,
-    volume,
-    // 计算属性
-    currentSong,
-    progress,
-    formattedCurrentTime,
-    formattedDuration,
-    // 方法
-    playSong,
-    addToPlaylist,
-    removeFromPlaylist,
-    togglePlay,
-    playNext,
-    playPrevious,
-    togglePlaylist,
-    setCurrentTime,
-    setDuration,
-    setVolume,
-    setProgress
   }
 })
+
+// 工具函数
+function formatTime(seconds) {
+  if (!seconds || isNaN(seconds)) return '00:00'
+  const mins = Math.floor(seconds / 60)
+  const secs = Math.floor(seconds % 60)
+  return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
+}

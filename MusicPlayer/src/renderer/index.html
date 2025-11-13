@@ -2,11 +2,11 @@
 <html>
   <head>
     <meta charset="UTF-8" />
-    <title>Electron</title>
-    <!-- https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP -->
+    <title>Music Player</title>
+    <!-- 开发环境使用更宽松的 CSP -->
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self' https://*.music.126.net/* http://*.music.126.net/*; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src * data:;media-src *;"
+      content="default-src * 'self' 'unsafe-inline' 'unsafe-eval' data: file: blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src * data: file: blob:; media-src * file: data: blob:; connect-src * file:;"
     />
   </head>
 

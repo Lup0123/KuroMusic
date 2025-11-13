@@ -214,8 +214,7 @@ const handleRefresh = () => {
 }
 
 const handlePlayMusic = (row) => {
-  ElMessage.success(`正在播放: ${row.name}`)
-  songStore.playSong(row)
+  songStore.play(row)
 }
 
 const handleAddToPlaylist = (row) => {

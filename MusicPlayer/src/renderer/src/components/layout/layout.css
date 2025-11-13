@@ -90,3 +90,84 @@
 :root.dark .el-aside::-webkit-scrollbar-thumb:hover {
   background: #6c6c6c;
 }
+
+.lyric-drawer-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 80px;
+  background: linear-gradient(180deg, #f5f7fa 0%, #ffffff 100%);
+  z-index: 2000;
+  overflow: hidden;
+}
+
+html.dark .lyric-drawer-container {
+  background: linear-gradient(180deg, #1a1a1a 0%, #0d0d0d 100%);
+}
+
+/* 返回按钮 */
+.lyric-drawer-header {
+  position: absolute;
+  top: 20px;
+  left: 30px;
+  z-index: 1000;
+}
+
+.lyric-drawer-header .el-button {
+  backdrop-filter: blur(10px);
+  background: rgba(255, 255, 255, 0.9);
+  border: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+.lyric-drawer-header .el-button:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+html.dark .lyric-drawer-header .el-button {
+  background: rgba(30, 30, 30, 0.9);
+  color: #e5e5e5;
+}
+
+/* 上拉动画 */
+.slide-up-enter-active {
+  animation: slideUp 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.slide-up-leave-active {
+  animation: slideDown 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideDown {
+  from {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+}
+
+/* 确保底部播放栏始终可见 */
+:deep(.player-footer) {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 2001 !important;
+}

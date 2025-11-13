@@ -2,7 +2,7 @@ import { app, shell, BrowserWindow, ipcMain, Menu, dialog } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
-import { cloudsearch, song_url_v1 } from '@neteasecloudmusicapienhanced/api'
+import { cloudsearch, song_url_v1 ,lyric_new } from '@neteasecloudmusicapienhanced/api'
 
 function createWindow() {
   // Create the browser window.
@@ -156,7 +156,22 @@ app.whenReady().then(() => {
       }
     }
   })
-
+  
+  ipcMain.handle('get-song-lyrics', async (event, songId) => {
+    try {
+      const response = await lyric_new({
+        id: songId
+      })
+      return response
+    } catch (error) {
+      console.error('获取歌词时发生错误：', error)
+      return {
+        success: false,
+        error: error.message
+      }
+    }
+  })
+    
   ipcMain.on('window-minimize', () => {
     if (mainWindow) mainWindow.minimize()
   })

@@ -27,7 +27,9 @@
       <el-radio-group v-model="activeTab" @change="handleTabChange">
         <el-radio-button value="songs">
           单曲
-          <span class="count" v-if="searchResults.songs">({{ searchResults.songs.length }})</span>
+          <span class="count" v-if="searchResults.songs"
+            >({{ searchResults.songs.length }})</span
+          >
         </el-radio-button>
         <el-radio-button value="artists">
           歌手
@@ -37,7 +39,9 @@
         </el-radio-button>
         <el-radio-button value="albums">
           专辑
-          <span class="count" v-if="searchResults.albums">({{ searchResults.albums.length }})</span>
+          <span class="count" v-if="searchResults.albums"
+            >({{ searchResults.albums.length }})</span
+          >
         </el-radio-button>
         <el-radio-button value="playlists">
           歌单
@@ -65,8 +69,8 @@
 
       <!-- 单曲列表 -->
       <div v-else-if="activeTab === 'songs'" class="songs-list">
-        <el-table :data="currentResults" style="width: 100%" @row-dblclick="playSong">
-          <el-table-column type="index" width="60" label="#" />
+        <el-table :data="paginatedResults" style="width: 100%" @row-dblclick="playSong">
+          <el-table-column type="index" width="60" label="#" :index="indexMethod" />
 
           <!-- 歌曲名称列 -->
           <el-table-column prop="name" label="歌曲" min-width="200">
@@ -102,17 +106,34 @@
           <!-- 操作列 -->
           <el-table-column label="操作" width="150" align="center">
             <template #default="{ row }">
-              <el-button type="text" :icon="VideoPlay" @click="playSong(row)">播放</el-button>
-              <el-button type="text" :icon="Plus" @click="addToPlaylist(row)">添加</el-button>
+              <el-button type="text" :icon="VideoPlay" @click="playSong(row)"
+                >播放</el-button
+              >
+              <el-button type="text" :icon="Plus" @click="addToPlaylist(row)"
+                >添加</el-button
+              >
             </template>
           </el-table-column>
         </el-table>
+
+        <!-- 分页组件 -->
+        <div class="pagination-container">
+          <el-pagination
+            v-model:current-page="currentPage"
+            v-model:page-size="pageSize"
+            :page-sizes="[10, 20, 30, 50, 100]"
+            :total="currentResults.length"
+            layout="total, sizes, prev, pager, next, jumper"
+            @size-change="handleSizeChange"
+            @current-change="handleCurrentChange"
+          />
+        </div>
       </div>
 
       <!-- 歌手列表 -->
       <div v-else-if="activeTab === 'artists'" class="artists-grid">
         <div
-          v-for="artist in currentResults"
+          v-for="artist in paginatedResults"
           :key="artist.id"
           class="artist-card"
           @click="goToArtist(artist)"
@@ -127,12 +148,25 @@
           <div class="artist-name">{{ artist.name }}</div>
           <div class="artist-desc">歌手</div>
         </div>
+
+        <!-- 分页组件 -->
+        <div class="pagination-container">
+          <el-pagination
+            v-model:current-page="currentPage"
+            v-model:page-size="pageSize"
+            :page-sizes="[12, 24, 36, 48]"
+            :total="currentResults.length"
+            layout="total, sizes, prev, pager, next, jumper"
+            @size-change="handleSizeChange"
+            @current-change="handleCurrentChange"
+          />
+        </div>
       </div>
 
       <!-- 专辑列表 -->
       <div v-else-if="activeTab === 'albums'" class="albums-grid">
         <div
-          v-for="album in currentResults"
+          v-for="album in paginatedResults"
           :key="album.id"
           class="album-card"
           @click="goToAlbum(album)"
@@ -149,12 +183,25 @@
             <div class="album-artist">{{ album.artist }}</div>
           </div>
         </div>
+
+        <!-- 分页组件 -->
+        <div class="pagination-container">
+          <el-pagination
+            v-model:current-page="currentPage"
+            v-model:page-size="pageSize"
+            :page-sizes="[12, 24, 36, 48]"
+            :total="currentResults.length"
+            layout="total, sizes, prev, pager, next, jumper"
+            @size-change="handleSizeChange"
+            @current-change="handleCurrentChange"
+          />
+        </div>
       </div>
 
       <!-- 歌单列表 -->
       <div v-else-if="activeTab === 'playlists'" class="playlists-grid">
         <div
-          v-for="playlist in currentResults"
+          v-for="playlist in paginatedResults"
           :key="playlist.id"
           class="playlist-card"
           @click="goToPlaylist(playlist)"
@@ -171,6 +218,19 @@
             <div class="playlist-count">{{ playlist.trackCount }} 首歌曲</div>
           </div>
         </div>
+
+        <!-- 分页组件 -->
+        <div class="pagination-container">
+          <el-pagination
+            v-model:current-page="currentPage"
+            v-model:page-size="pageSize"
+            :page-sizes="[12, 24, 36, 48]"
+            :total="currentResults.length"
+            layout="total, sizes, prev, pager, next, jumper"
+            @size-change="handleSizeChange"
+            @current-change="handleCurrentChange"
+          />
+        </div>
       </div>
     </div>
 
@@ -184,16 +244,26 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue'
-import { ElMessage } from 'element-plus'
-import { Search, Loading, VideoPlay, Plus, User, Picture, Folder } from '@element-plus/icons-vue'
-import { useSearchStore } from '@/stores/searchStore'
-import { useSongStore } from '@/stores/songStore'
-import { storeToRefs } from 'pinia'
+import { ref, computed, watch, onMounted } from "vue";
+import { ElMessage } from "element-plus";
+import {
+  Search,
+  Loading,
+  VideoPlay,
+  Plus,
+  User,
+  Picture,
+  Folder,
+} from "@element-plus/icons-vue";
+import { useSearchStore } from "@/stores/searchStore";
+import { useSongStore } from "@/stores/songStore";
+import { storeToRefs } from "pinia";
 
 // 使用搜索 store
-const searchStore = useSearchStore()
-const { searchKeyword, searchResults, activeTab, hasSearched, loading } = storeToRefs(searchStore)
+const searchStore = useSearchStore();
+const { searchKeyword, searchResults, activeTab, hasSearched, loading } = storeToRefs(
+  searchStore
+);
 
 const {
   setSearchKeyword,
@@ -201,85 +271,130 @@ const {
   setActiveTab,
   setHasSearched,
   setLoading,
-  clearSearch
-} = searchStore
+  clearSearch,
+} = searchStore;
 
 // 使用歌曲 store
-const songStore = useSongStore()
-const { playSong: playSongInStore, addToPlaylist: addToPlaylistInStore } = songStore
+const songStore = useSongStore();
+const { play, addToPlaylist: addToPlaylistInStore } = songStore;
 
 // 本地搜索关键词（用于输入框双向绑定）
-const localSearchKeyword = ref('')
+const localSearchKeyword = ref("");
+
+// 分页相关
+const currentPage = ref(1);
+const pageSize = ref(20);
 
 // 计算当前显示的结果
 const currentResults = computed(() => {
-  return searchResults.value[activeTab.value] || []
-})
+  return searchResults.value[activeTab.value] || [];
+});
+
+// 计算分页后的结果
+const paginatedResults = computed(() => {
+  const start = (currentPage.value - 1) * pageSize.value;
+  const end = start + pageSize.value;
+  return currentResults.value.slice(start, end);
+});
+
+// 表格序号计算方法
+const indexMethod = (index) => {
+  return (currentPage.value - 1) * pageSize.value + index + 1;
+};
+
+// 监听标签切换，重置分页
+watch(activeTab, () => {
+  currentPage.value = 1;
+  // 根据不同标签设置不同的默认每页数量
+  if (activeTab.value === "songs") {
+    pageSize.value = 20;
+  } else {
+    pageSize.value = 24;
+  }
+});
+
+// 分页大小改变
+const handleSizeChange = (val) => {
+  pageSize.value = val;
+  currentPage.value = 1;
+};
+
+// 当前页改变
+const handleCurrentChange = (val) => {
+  currentPage.value = val;
+  // 滚动到顶部
+  const container = document.querySelector(".search-results");
+  if (container) {
+    container.scrollTop = 0;
+  }
+};
 
 // 组件挂载时检查是否有搜索关键词
 onMounted(() => {
   if (searchKeyword.value) {
-    localSearchKeyword.value = searchKeyword.value
-    handleSearch()
+    localSearchKeyword.value = searchKeyword.value;
+    handleSearch();
   }
-})
+});
 
 // 搜索处理
 const handleSearch = async () => {
-  const keyword = localSearchKeyword.value || searchKeyword.value
+  const keyword = searchKeyword.value;
 
   if (!keyword.trim()) {
-    ElMessage.warning('请输入搜索关键词')
-    return
+    ElMessage.warning("请输入搜索关键词");
+    return;
   }
 
-  setLoading(true)
-  setHasSearched(true)
-  setSearchKeyword(keyword.trim())
+  setLoading(true);
+  setHasSearched(true);
+  setSearchKeyword(keyword.trim());
+  currentPage.value = 1; // 重置页码
 
   try {
-    const results = await window.api.search(keyword)
+    const results = await window.api.search(keyword);
 
     if (results && results.body && results.body.result) {
-      setSearchResults(results.body.result)
-      ElMessage.success(`找到 ${searchResults.value.trackCount} 首歌曲`)
-      console.log('搜索结果:', searchResults.value)
+      setSearchResults(results.body.result);
+      ElMessage.success(`找到 ${searchResults.value.trackCount} 首歌曲`);
+      console.log("搜索结果:", searchResults.value);
     } else {
-      ElMessage.warning('未找到相关结果')
+      ElMessage.warning("未找到相关结果");
     }
   } catch (error) {
-    ElMessage.error('搜索失败,请重试')
-    console.error('搜索错误:', error)
+    ElMessage.error("搜索失败,请重试");
+    console.error("搜索错误:", error);
   } finally {
-    setLoading(false)
+    setLoading(false);
   }
-}
+};
 
 // 清空搜索
 const handleClear = () => {
-  localSearchKeyword.value = ''
-  clearSearch()
-}
+  localSearchKeyword.value = "";
+  currentPage.value = 1;
+  clearSearch();
+};
 
 // 切换标签
 const handleTabChange = (tab) => {
-  setActiveTab(tab)
-}
+  setActiveTab(tab);
+};
 
 // 播放歌曲 - 核心逻辑
 const playSong = async (song) => {
   try {
     ElMessage({
       message: `正在加载: ${song.name}`,
-      duration: 2000
-    })
+      duration: 2000,
+    });
 
     // 获取歌曲播放链接
-    const response = await window.api.getSongUrl(song.id, 'standard')
-    ElMessage.closeAll()
-    console.log('获取播放链接结果:', response)
-    const result = response.body
-    console.log('播放链接结果体:', result)
+    const response = await window.api.getSongUrl(song.id, "standard");
+    ElMessage.closeAll();
+    console.log("获取播放链接结果:", response);
+    const result = response.body;
+    console.log("播放链接结果体:", result);
     if (result.code == 200) {
       // 构建完整的歌曲对象
       const fullSong = {
@@ -287,44 +402,44 @@ const playSong = async (song) => {
         name: song.name,
         artist: song.artist,
         album: song.album,
-        cover: song.albumCover || 'https://via.placeholder.com/50',
+        cover: song.albumCover || "https://via.placeholder.com/50",
         duration: song.duration,
         durationMs: song.durationMs,
         path: result.data[0].url, // 播放链接
         type: result.data[0].type,
         size: result.data[0].size,
-        br: result.data[0].br
-      }
+        br: result.data[0].br,
+      };
       // 调用播放器播放
-      playSongInStore(fullSong)
+      play(fullSong);
 
       ElMessage.success({
         message: `开始播放: ${song.name}`,
-        duration: 2000
-      })
+        duration: 2000,
+      });
 
-      console.log('播放歌曲信息:', fullSong)
+      console.log("播放歌曲信息:", fullSong);
     } else {
-      ElMessage.error(result.error || '无法获取播放链接')
+      ElMessage.error(result.error || "无法获取播放链接");
     }
   } catch (error) {
-    ElMessage.closeAll()
-    ElMessage.error('获取播放链接失败')
-    console.error('播放错误:', error)
+    ElMessage.closeAll();
+    ElMessage.error("获取播放链接失败");
+    console.error("播放错误:", error);
   }
-}
+};
 
 // 添加到播放列表
 const addToPlaylist = async (song) => {
   try {
     ElMessage.loading({
-      message: '正在添加...',
-      duration: 0
-    })
+      message: "正在添加...",
+      duration: 0,
+    });
 
     // 获取歌曲播放链接
-    const result = await window.api.getSongUrl(song.id, 'standard')
-    ElMessage.closeAll()
+    const result = await window.api.getSongUrl(song.id, "standard");
+    ElMessage.closeAll();
 
     if (result.success && result.url) {
       // 构建完整的歌曲对象
@@ -333,53 +448,53 @@ const addToPlaylist = async (song) => {
         name: song.name,
         artist: song.artist,
         album: song.album,
-        cover: song.albumCover || 'https://via.placeholder.com/50',
+        cover: song.albumCover || "https://via.placeholder.com/50",
         duration: song.duration,
         durationMs: song.durationMs,
         path: result.url,
         type: result.type,
         size: result.size,
-        br: result.br
-      }
+        br: result.br,
+      };
 
       // 添加到播放列表
-      addToPlaylistInStore(fullSong)
+      addToPlaylistInStore(fullSong);
 
       ElMessage.success({
         message: `已添加: ${song.name}`,
-        duration: 2000
-      })
+        duration: 2000,
+      });
     } else {
-      ElMessage.error(result.error || '无法获取歌曲信息')
+      ElMessage.error(result.error || "无法获取歌曲信息");
     }
   } catch (error) {
-    ElMessage.closeAll()
-    ElMessage.error('添加失败')
-    console.error('添加错误:', error)
+    ElMessage.closeAll();
+    ElMessage.error("添加失败");
+    console.error("添加错误:", error);
   }
-}
+};
 
 // 跳转到歌手详情
 const goToArtist = (artist) => {
-  ElMessage.info(`查看歌手: ${artist.name}`)
+  ElMessage.info(`查看歌手: ${artist.name}`);
   // TODO: 跳转到歌手详情页
-}
+};
 
 // 跳转到专辑详情
 const goToAlbum = (album) => {
-  ElMessage.info(`查看专辑: ${album.name}`)
+  ElMessage.info(`查看专辑: ${album.name}`);
   // TODO: 跳转到专辑详情页
-}
+};
 
 // 跳转到歌单详情
 const goToPlaylist = (playlist) => {
-  ElMessage.info(`查看歌单: ${playlist.name}`)
+  ElMessage.info(`查看歌单: ${playlist.name}`);
   // TODO: 跳转到歌单详情页
-}
+};
 </script>
 
 <style scoped lang="scss">
-@import './songsearch.scss';
+@import "./songsearch.scss";
 
 .album-cell {
   display: flex;
@@ -400,5 +515,13 @@ const goToPlaylist = (playlist) => {
     text-overflow: ellipsis;
     white-space: nowrap;
   }
+}
+
+.pagination-container {
+  display: flex;
+  justify-content: center;
+  padding: 20px 0;
+  margin-top: 20px;
+  background-color: var(--el-bg-color);
 }
 </style>

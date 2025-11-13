@@ -87,7 +87,7 @@ import { ElMessage } from 'element-plus'
 import { Search } from '@element-plus/icons-vue'
 
 const songStore = useSongStore()
-const { showPlaylist } = storeToRefs(songStore)
+const { showPlaylist ,currentSong } = storeToRefs(songStore)
 
 const indexStore = useIndexStore()
 const { setCurIndex } = indexStore
@@ -154,7 +154,15 @@ const toggleDarkMode = () => {
 
 // 测试api
 const testapiFUC = async () => {
-  console.log('Testing api?...')
+  try {
+    const songId = currentSong.value.id
+    const lyricsResponse = await window.api.getSongLyrics(songId)
+    console.log('Song Lyrics Response:', lyricsResponse)
+  } catch (error) {
+    console.error('Error calling API:', error)
+  }
+
+
 }
 
 // 初始化暗黑模式

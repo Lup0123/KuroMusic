@@ -7,7 +7,7 @@
  * @returns {Promise<Array>} 导入的音乐文件信息数组
  */
 export const importMusicFromLocal = async () => {
-  if (!window.electronAPI) {
+  if (!window.api) {
     throw new Error('Electron API 不可用')
   }
 
