@@ -3,8 +3,7 @@ import { defineConfig, externalizeDepsPlugin } from 'electron-vite'
 import vue from '@vitejs/plugin-vue'
 import AutoImport from 'unplugin-auto-import/vite'
 import Components from 'unplugin-vue-components/vite'
-
-import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
+import { ArcoResolver } from 'unplugin-vue-components/resolvers'
 
 export default defineConfig({
   main: {
@@ -16,18 +15,22 @@ export default defineConfig({
   renderer: {
     resolve: {
       alias: {
-        '@': resolve('src/renderer/src'), 
+        '@': resolve('src/renderer/src'),
         '@renderer': resolve('src/renderer/src'),
-        '@components': resolve('src/renderer/src/components'),
+        '@components': resolve('src/renderer/src/components')
       }
     },
-    plugins: [vue(),
+    plugins: [
+      vue(),
       AutoImport({
-
-        resolvers: [ElementPlusResolver()],
+        resolvers: [ArcoResolver()]
       }),
       Components({
-        resolvers: [ElementPlusResolver()],
+        resolvers: [
+          ArcoResolver({
+            sideEffect: true
+          })
+        ]
       })
     ]
   }

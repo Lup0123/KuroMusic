@@ -1,80 +1,84 @@
 <template>
-  <el-header class="header draggable-area">
+  <a-layout-header class="header draggable-area">
     <div class="header-left">
-      <el-button type="text" size="large" class="no-drag">
-        <el-icon><Menu /></el-icon>
-      </el-button>
+      <a-button type="text" size="large" class="no-drag">
+        <template #icon>
+          <icon-menu />
+        </template>
+      </a-button>
       <span class="app-title">Music Player</span>
     </div>
 
     <div class="header-center draggable-area">
-      <el-input
+      <a-input-search
         v-model="searchKeyword"
         placeholder="搜索音乐、歌手、专辑..."
-        prefix-icon="Search"
         size="large"
         class="no-drag"
-        clearable
-        @keyup.enter="handleSearch"
+        allow-clear
+        @press-enter="handleSearch"
         @clear="handleClearSearch"
-        style="width: 400px">
-        <template #append>
-          <el-button :icon="Search" @click="handleSearch" />
+        @search="handleSearch"
+        style="width: 400px"
+      >
+        <template #prefix>
+          <icon-search />
         </template>
-      </el-input>
+      </a-input-search>
     </div>
 
     <div class="header-right">
       <!-- 暗黑模式切换按钮 -->
-      <el-button
-        type="text"
-        size="large"
-        @click="toggleDarkMode"
-        class="no-drag">
-        <el-icon v-if="isDarkMode"><Sunny /></el-icon>
-        <el-icon v-else><Moon /></el-icon>
-      </el-button>
-      <el-button type="text" size="large" class="no-drag">
-        <el-icon><Setting /></el-icon>
-      </el-button>
-      <el-button type="text" size="large" class="no-drag">
-        <el-icon><User /></el-icon>
-      </el-button>
+      <a-button type="text" size="large" @click="toggleDarkMode" class="no-drag">
+        <template #icon>
+          <icon-sun v-if="isDarkMode" />
+          <icon-moon v-else />
+        </template>
+      </a-button>
+      <a-button type="text" size="large" class="no-drag">
+        <template #icon>
+          <icon-settings />
+        </template>
+      </a-button>
+      <a-button type="text" size="large" class="no-drag">
+        <template #icon>
+          <icon-user />
+        </template>
+      </a-button>
       <!-- 播放列表按钮 -->
-      <el-button
+      <a-button
         type="text"
         size="large"
         class="no-drag"
         @click="togglePlaylist"
-        :class="{ active: showPlaylist }">
-        <el-icon><List /></el-icon>
-      </el-button>
-      <!-- 添加自定义窗口控制按钮 -->
+        :class="{ active: showPlaylist }"
+      >
+        <template #icon>
+          <icon-list />
+        </template>
+      </a-button>
+
+      <!-- 自定义窗口控制按钮 -->
       <div class="window-controls">
-        <el-button
-          class="window-btn minimize no-drag"
-          type="text"
-          @click="minimizeWindow">
-          <span class="btn-icon">—</span>
-        </el-button>
-        <el-button
-          class="window-btn maximize no-drag"
-          type="text"
-          @click="maximizeWindow">
-          <span class="btn-icon">□</span>
-        </el-button>
-        <el-button
-          class="window-btn close no-drag"
-          type="text"
-          @click="closeWindow">
-          <span class="btn-icon">✕</span>
-        </el-button>
-        <el-button type="text" size="large" class="no-drag" @click="testapiFUC">
-          Testapi
-        </el-button>
+        <a-button class="no-drag" type="text" @click="minimizeWindow" size="large">
+          <template #icon>
+            <icon-minus size="30" />
+          </template>
+        </a-button>
+        <a-button class="no-drag" type="text" @click="maximizeWindow" size="large ">
+          <template #icon>
+            <icon-fullscreen />
+          </template>
+        </a-button>
+        <a-button class="no-drag" type="text" @click="closeWindow" size="large">
+          <template #icon>
+            <icon-close size="30" />
+          </template>
+        </a-button>
+        <a-button type="text" size="large" class="no-drag" @click="testapiFUC"> Testapi </a-button>
       </div>
     </div>
-  </el-header>
+  </a-layout-header>
 </template>
 
 <script setup>
@@ -83,50 +87,57 @@ import { useSongStore } from '@/stores/songStore'
 import { useIndexStore } from '@/stores/indexStore'
 import { useSearchStore } from '@/stores/searchStore'
 import { storeToRefs } from 'pinia'
-import { ElMessage } from 'element-plus'
-import { Search } from '@element-plus/icons-vue'
+import { Message } from '@arco-design/web-vue'
+import {
+  IconSearch,
+  IconSun,
+  IconMoon,
+  IconSettings,
+  IconUser,
+  IconList,
+  IconMenu,
+  IconMinus,
+  IconFullscreen,
+  IconClose
+} from '@arco-design/web-vue/es/icon'
 
 const songStore = useSongStore()
-const { showPlaylist ,currentSong } = storeToRefs(songStore)
+const { showPlaylist, currentSong } = storeToRefs(songStore)
 
 const indexStore = useIndexStore()
 const { setCurIndex } = indexStore
 
 const searchStore = useSearchStore()
-const { setSearchKeyword } = searchStore
+const { setSearchKeyword, setHasSearched, setLoading } = searchStore
 
-// 响应式数据
 const searchKeyword = ref('')
-const isDarkMode = ref(document.documentElement.classList.contains('dark'))
+const isDarkMode = ref(document.body.getAttribute('arco-theme') === 'dark')
 
-// 处理搜索
-const handleSearch = () => {
+const handleSearch = async () => {
   if (!searchKeyword.value.trim()) {
-    ElMessage.warning('请输入搜索关键词')
+    Message.warning('请输入搜索关键词')
     return
   }
 
   console.log('Searching for:', searchKeyword.value)
 
-  // 保存搜索关键词到 store
+  // 设置搜索关键词到 store，触发搜索页面的监听
   setSearchKeyword(searchKeyword.value.trim())
 
-  // 跳转到搜索页
+  // 切换到搜索页面
   setCurIndex('songsearch')
 }
 
-// 清空搜索
 const handleClearSearch = () => {
   searchKeyword.value = ''
   setSearchKeyword('')
+  setHasSearched(false)
 }
 
-// 切换播放列表
 const togglePlaylist = () => {
   showPlaylist.value = !showPlaylist.value
 }
 
-// 窗口控制方法
 const minimizeWindow = () => {
   if (window.api) {
     window.api.minimize()
@@ -145,43 +156,35 @@ const closeWindow = () => {
   }
 }
 
-// 切换暗黑模式
 const toggleDarkMode = () => {
-  document.documentElement.classList.toggle('dark')
+  const newTheme = isDarkMode.value ? 'light' : 'dark'
+  document.body.setAttribute('arco-theme', newTheme)
   isDarkMode.value = !isDarkMode.value
-  localStorage.setItem('darkMode', isDarkMode.value ? 'dark' : 'light')
+  localStorage.setItem('arco-theme', newTheme)
 }
 
-// 测试api
 const testapiFUC = async () => {
   try {
-    const songId = currentSong.value.id
-    const lyricsResponse = await window.api.getSongLyrics(songId)
-    console.log('Song Lyrics Response:', lyricsResponse)
+    const response = await window.api.getTopPlaylists()
+    console.log('Hot Playlists Response:', response)
   } catch (error) {
     console.error('Error calling API:', error)
   }
-
-
 }
 
-// 初始化暗黑模式
 onMounted(() => {
-  const savedMode = localStorage.getItem('darkMode')
-  if (savedMode) {
-    const shouldBeDark = savedMode === 'dark'
-    if (shouldBeDark !== isDarkMode.value) {
-      toggleDarkMode()
-    }
+  const savedTheme = localStorage.getItem('arco-theme')
+  if (savedTheme) {
+    document.body.setAttribute('arco-theme', savedTheme)
+    isDarkMode.value = savedTheme === 'dark'
   }
 })
 </script>
 
 <style scoped>
-/* 导入相关样式 */
 @import './navbar.css';
 
-.header-right .el-button.active {
-  color: #409eff;
+.header-right .a-button.active {
+  color: rgb(var(--primary-6));
 }
 </style>

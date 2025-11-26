@@ -1,45 +1,52 @@
 <template>
-  <el-aside width="240px" class="sidebar">
-    <el-menu :default-active="cur_index" class="sidebar-menu">
-      <el-menu-item index="mainpage" @click="setCurIndex('mainpage')">
-        <el-icon><House /></el-icon>
-        <span>发现</span>
-      </el-menu-item>
-      <el-menu-item index="my-music" @click="setCurIndex('my-music')">
-        <el-icon><Headset /></el-icon>
-        <span>我的音乐</span>
-      </el-menu-item>
-      <el-menu-item
-        index="recently-played"
-        @click="setCurIndex('recently-played')">
-        <el-icon><Clock /></el-icon>
-        <span>最近播放</span>
-      </el-menu-item>
-
-      <el-divider />
-
-      <el-sub-menu index="5">
-        <template #title>
-          <el-icon><Folder /></el-icon>
-          <span>我的歌单</span>
+  <a-layout-sider width="240px" class="sidebar">
+    <a-menu
+      :selected-keys="[cur_index]"
+      class="sidebar-menu"
+      @menu-item-click="handleMenuClick"
+    >
+      <a-menu-item key="mainpage">
+        <template #icon>
+          <icon-home />
         </template>
-        <el-menu-item index="5-1">流行音乐</el-menu-item>
-        <el-menu-item index="5-2">摇滚经典</el-menu-item>
-        <el-menu-item index="5-3">轻音乐</el-menu-item>
-      </el-sub-menu>
-    </el-menu>
-  </el-aside>
+        发现
+      </a-menu-item>
+      <a-menu-item key="my-music">
+        <template #icon>
+          <icon-music />
+        </template>
+        我的音乐
+      </a-menu-item>
+
+      <a-divider />
+
+      <a-sub-menu key="5">
+        <template #icon>
+          <icon-folder />
+        </template>
+        <template #title>我的歌单</template>
+        <a-menu-item key="5-1">流行音乐</a-menu-item>
+        <a-menu-item key="5-2">摇滚经典</a-menu-item>
+        <a-menu-item key="5-3">轻音乐</a-menu-item>
+      </a-sub-menu>
+    </a-menu>
+  </a-layout-sider>
 </template>
 
 <script setup>
-import { useIndexStore } from '@/stores/indexStore'
-import { storeToRefs } from 'pinia'
+import { useIndexStore } from "@/stores/indexStore";
+import { storeToRefs } from "pinia";
+import { IconHome, IconMusic, IconFolder } from "@arco-design/web-vue/es/icon";
 
-const indexStore = useIndexStore()
-const { setCurIndex } = indexStore
-const { cur_index } = storeToRefs(indexStore)
+const indexStore = useIndexStore();
+const { setCurIndex } = indexStore;
+const { cur_index } = storeToRefs(indexStore);
+
+const handleMenuClick = (key) => {
+  setCurIndex(key);
+};
 </script>
 
 <style scoped>
-@import './sidebar.css';
+@import "./sidebar.css";
 </style>

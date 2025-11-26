@@ -1,11 +1,158 @@
 .mainpage {
-  padding: 20px;
+  padding: 30px;
+  max-width: 1400px;
+  margin: 0 auto;
+
+  // 页面标题样式
+  .page-header {
+    text-align: center;
+    margin-bottom: 50px;
+
+    h2 {
+      font-size: 36px;
+      font-weight: 700;
+      margin-bottom: 12px;
+      color: var(--color-text-1);
+    }
+
+    .subtitle {
+      color: var(--color-text-3);
+      font-size: 16px;
+      margin: 0;
+    }
+  }
+
+  // 热门歌单区域
+  .section.hot-playlists {
+    .playlist-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 24px;
+
+      .playlist-card {
+        background: var(--color-bg-2);
+        border-radius: 12px;
+        overflow: hidden;
+        transition: all 0.3s ease;
+        cursor: pointer;
+
+        &:hover {
+          transform: translateY(-8px);
+          box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+
+          .play-overlay {
+            opacity: 1;
+          }
+        }
+
+        .playlist-cover {
+          position: relative;
+          width: 100%;
+          padding-top: 100%; // 1:1 比例
+          overflow: hidden;
+
+          :deep(.arco-image) {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+
+            img {
+              width: 100%;
+              height: 100%;
+              object-fit: cover;
+            }
+          }
+
+          .image-placeholder {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 100%;
+            background: var(--color-fill-3);
+            color: var(--color-text-4);
+            font-size: 48px;
+          }
+
+          .play-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+
+            :deep(.arco-btn) {
+              background: rgba(255, 255, 255, 0.95);
+              border: none;
+              box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+
+              &:hover {
+                background: #fff;
+                transform: scale(1.1);
+              }
+
+              .arco-icon {
+                color: rgb(var(--primary-6));
+              }
+            }
+          }
+        }
+
+        .playlist-info {
+          padding: 16px;
+
+          h4 {
+            font-size: 16px;
+            font-weight: 600;
+            margin: 0 0 8px 0;
+            color: var(--color-text-1);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+          }
+
+          .play-count {
+            font-size: 13px;
+            color: var(--color-text-3);
+            margin: 0 0 8px 0;
+          }
+
+          .description {
+            font-size: 13px;
+            color: var(--color-text-4);
+            margin: 0;
+            line-height: 1.5;
+            max-height: calc(1.5em * 2); // 2行的高度
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            line-clamp: 2;
+            -webkit-box-orient: vertical;
+          }
+        }
+      }
+    }
+  }
 
   // 轮播图区域
   .banner-section {
-    margin-bottom: 40px;
-    border-radius: 8px;
+    margin-bottom: 48px;
+    border-radius: 16px;
     overflow: hidden;
+    box-shadow: 0 4px 20px var(--color-fill-3);
+
+    :deep(.arco-carousel) {
+      border-radius: 16px;
+    }
 
     .banner-item {
       width: 100%;
@@ -24,7 +171,8 @@
         left: 0;
         right: 0;
         bottom: 0;
-        background: rgba(0, 0, 0, 0.3);
+        background: linear-gradient(135deg, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0.2) 100%);
+        backdrop-filter: blur(2px);
       }
 
       .banner-content {
@@ -34,14 +182,17 @@
         color: white;
 
         h2 {
-          font-size: 36px;
-          margin-bottom: 10px;
-          font-weight: bold;
+          font-size: 40px;
+          margin-bottom: 12px;
+          font-weight: 700;
+          text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+          letter-spacing: 1px;
         }
 
         p {
           font-size: 18px;
-          opacity: 0.9;
+          opacity: 0.95;
+          text-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
         }
       }
     }
@@ -49,18 +200,48 @@
 
   // 通用区域样式
   .section {
-    margin-bottom: 40px;
+    margin-bottom: 48px;
 
     .section-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 20px;
+      margin-bottom: 24px;
+      padding-bottom: 12px;
+      border-bottom: 2px solid var(--color-border-2);
 
       h3 {
-        font-size: 22px;
-        font-weight: bold;
+        font-size: 24px;
+        font-weight: 700;
         margin: 0;
+        color: var(--color-text-1);
+        position: relative;
+        padding-left: 16px;
+
+        &::before {
+          content: '';
+          position: absolute;
+          left: 0;
+          top: 50%;
+          transform: translateY(-50%);
+          width: 4px;
+          height: 20px;
+          background: linear-gradient(
+            180deg,
+            var(--color-primary-6) 0%,
+            rgb(var(--arcoblue-6)) 100%
+          );
+          border-radius: 2px;
+        }
+      }
+
+      :deep(.arco-btn) {
+        color: var(--color-text-3);
+        font-weight: 500;
+
+        &:hover {
+          color: var(--color-primary-6);
+        }
       }
     }
   }
@@ -69,30 +250,41 @@
   .recommend-playlists {
     .playlist-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-      gap: 20px;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 24px;
 
       .playlist-card {
         cursor: pointer;
-        transition: transform 0.3s ease;
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        border-radius: 12px;
+        background: var(--color-bg-2);
+        padding: 16px;
+        box-shadow: 0 2px 8px var(--color-fill-2);
 
         &:hover {
-          transform: translateY(-5px);
+          transform: translateY(-10px);
+          box-shadow: 0 8px 24px var(--color-fill-3);
 
           .play-overlay {
             opacity: 1;
+          }
+
+          :deep(.arco-image) {
+            transform: scale(1.05);
           }
         }
 
         .playlist-cover {
           position: relative;
-          border-radius: 8px;
+          border-radius: 10px;
           overflow: hidden;
           aspect-ratio: 1;
+          margin-bottom: 12px;
 
-          .el-image {
+          :deep(.arco-image) {
             width: 100%;
             height: 100%;
+            transition: transform 0.3s ease;
           }
 
           .play-overlay {
@@ -101,21 +293,39 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background: rgba(0, 0, 0, 0.5);
+            background: linear-gradient(135deg, rgba(0, 0, 0, 0.6) 0%, rgba(0, 0, 0, 0.4) 100%);
+            backdrop-filter: blur(4px);
             display: flex;
             align-items: center;
             justify-content: center;
             opacity: 0;
             transition: opacity 0.3s ease;
+
+            :deep(.arco-btn) {
+              transform: scale(1.2);
+              box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            }
+          }
+
+          .image-placeholder {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--color-fill-2);
+            color: var(--color-text-4);
           }
         }
 
         .playlist-info {
-          margin-top: 10px;
+          padding: 4px;
 
           h4 {
             font-size: 14px;
-            margin: 0 0 5px 0;
+            font-weight: 600;
+            color: var(--color-text-1);
+            margin: 0 0 6px 0;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
@@ -123,7 +333,7 @@
 
           p {
             font-size: 12px;
-            color: #909399;
+            color: var(--color-text-3);
             margin: 0;
           }
         }
@@ -134,15 +344,22 @@
   // 新歌推荐
   .new-songs {
     .song-list {
+      background: var(--color-bg-2);
+      border-radius: 12px;
+      padding: 12px;
+      box-shadow: 0 2px 8px var(--color-fill-2);
+
       .song-item {
         display: flex;
         align-items: center;
-        padding: 12px;
-        border-radius: 8px;
-        transition: background-color 0.3s ease;
+        padding: 14px 16px;
+        border-radius: 10px;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        margin-bottom: 4px;
 
         &:hover {
-          background-color: #f5f7fa;
+          background: var(--color-fill-2);
+          transform: translateX(4px);
 
           .song-actions {
             opacity: 1;
@@ -150,18 +367,27 @@
         }
 
         .song-index {
-          width: 40px;
+          width: 48px;
           text-align: center;
-          font-size: 16px;
-          font-weight: bold;
-          color: #909399;
+          font-size: 18px;
+          font-weight: 700;
+          background: linear-gradient(
+            135deg,
+            var(--color-primary-6) 0%,
+            rgb(var(--arcoblue-6)) 100%
+          );
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
         }
 
-        .song-cover {
-          width: 60px;
-          height: 60px;
-          border-radius: 4px;
-          margin-right: 15px;
+        :deep(.song-cover) {
+          width: 64px;
+          height: 64px;
+          border-radius: 8px;
+          margin-right: 16px;
+          box-shadow: 0 2px 8px var(--color-fill-3);
+          flex-shrink: 0;
         }
 
         .song-info {
@@ -170,7 +396,9 @@
 
           .song-name {
             font-size: 14px;
-            margin-bottom: 5px;
+            font-weight: 600;
+            color: var(--color-text-1);
+            margin-bottom: 6px;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
@@ -178,29 +406,31 @@
 
           .song-artist {
             font-size: 12px;
-            color: #909399;
+            color: var(--color-text-3);
           }
         }
 
         .song-album {
           flex: 1;
           font-size: 13px;
-          color: #606266;
+          color: var(--color-text-2);
           overflow: hidden;
           text-overflow: ellipsis;
           white-space: nowrap;
+          margin: 0 16px;
         }
 
         .song-duration {
-          width: 60px;
+          width: 70px;
           text-align: center;
           font-size: 13px;
-          color: #909399;
+          color: var(--color-text-3);
+          font-variant-numeric: tabular-nums;
         }
 
         .song-actions {
           display: flex;
-          gap: 5px;
+          gap: 6px;
           opacity: 0;
           transition: opacity 0.3s ease;
         }
@@ -212,30 +442,50 @@
   .hot-artists {
     .artist-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-      gap: 30px;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 32px;
 
       .artist-card {
         text-align: center;
         cursor: pointer;
-        transition: transform 0.3s ease;
+        padding: 20px;
+        border-radius: 12px;
+        background: var(--color-bg-2);
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 0 2px 8px var(--color-fill-2);
 
         &:hover {
-          transform: translateY(-5px);
+          transform: translateY(-10px);
+          box-shadow: 0 8px 24px var(--color-fill-3);
+          background: linear-gradient(
+            135deg,
+            var(--color-primary-light-1) 0%,
+            var(--color-bg-2) 100%
+          );
+
+          :deep(.arco-avatar) {
+            box-shadow: 0 8px 24px var(--color-primary-light-3);
+            border-color: var(--color-primary-light-4);
+          }
         }
 
-        .el-avatar {
-          margin-bottom: 15px;
+        :deep(.arco-avatar) {
+          margin-bottom: 16px;
+          border: 3px solid var(--color-fill-2);
+          box-shadow: 0 4px 12px var(--color-fill-3);
+          transition: all 0.3s ease;
         }
 
         h4 {
           font-size: 16px;
-          margin: 0 0 5px 0;
+          font-weight: 600;
+          color: var(--color-text-1);
+          margin: 0 0 6px 0;
         }
 
         p {
           font-size: 13px;
-          color: #909399;
+          color: var(--color-text-3);
           margin: 0;
         }
       }
@@ -249,11 +499,11 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background-color: #f5f7fa;
+    background: var(--color-fill-2);
 
-    .el-icon {
-      font-size: 40px;
-      color: #dcdfe6;
+    svg {
+      font-size: 48px;
+      color: var(--color-text-4);
     }
   }
 }
@@ -301,6 +551,29 @@
 
     .image-placeholder {
       background-color: #2c2c2c;
+    }
+  }
+}
+
+// 响应式设计
+@media (max-width: 1200px) {
+  .mainpage .section.hot-playlists .playlist-grid {
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 20px;
+  }
+}
+
+@media (max-width: 768px) {
+  .mainpage {
+    padding: 20px;
+
+    .page-header h2 {
+      font-size: 28px;
+    }
+
+    .section.hot-playlists .playlist-grid {
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 16px;
     }
   }
 }

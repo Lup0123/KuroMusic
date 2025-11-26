@@ -13,11 +13,10 @@ const routes = [
         name: 'Lyric',
         // component: () => import('@/views/LyricplayerView.vue')
         component: () => import('@/views/PlayerView.vue')
-      }
+      },
     ]
   }
 ]
-
 const router = createRouter({
   history: createMemoryHistory(),
   routes

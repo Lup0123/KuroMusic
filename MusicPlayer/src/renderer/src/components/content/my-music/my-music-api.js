@@ -34,7 +34,6 @@ export const importMusicFromLocal = async () => {
           album: metadata.album || '未知专辑',
           duration: formatDuration(metadata.duration),
           cover: metadata.picture || 'https://via.placeholder.com/50',
-          // 修复路径格式 - 直接使用原始路径
           path: filePath,
           addTime: new Date().toISOString()
         })
@@ -55,9 +54,7 @@ const formatDuration = (seconds) => {
   if (!seconds || isNaN(seconds)) return '00:00'
   const mins = Math.floor(seconds / 60)
   const secs = Math.floor(seconds % 60)
-  return `${mins.toString().padStart(2, '0')}:${secs
-    .toString()
-    .padStart(2, '0')}`
+  return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
 }
 
 // 保存音乐列表到本地存储

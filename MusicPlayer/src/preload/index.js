@@ -14,7 +14,11 @@ const api = {
   getMusicMetadata: (filePath) => ipcRenderer.invoke('get-music-metadata', filePath),
   search: (keyword) => ipcRenderer.invoke('search', keyword),
   getSongUrl: (songId, quality) => ipcRenderer.invoke('get-song-url', songId, quality),
-  getSongLyrics: (songId) => ipcRenderer.invoke('get-song-lyrics', songId)
+  getSongLyrics: (songId) => ipcRenderer.invoke('get-song-lyrics', songId),
+  getHotPlaylists: () => ipcRenderer.invoke('get-hot-playlists'),
+  getTopPlaylists: (cat) => ipcRenderer.invoke('get-top-playlists', cat),
+  getPlaylistsDetails: (playlistId) => ipcRenderer.invoke('get-playlist-details', playlistId),
+  getPlaylistsAllSongs: (playlistId) => ipcRenderer.invoke('get-playlist-all-songs', playlistId)
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to

@@ -1,39 +1,51 @@
 <template>
-  <el-footer height="80px" class="player-footer">
+  <a-layout-footer class="player-footer" :style="{ height: '80px' }">
     <div class="player-container">
-      <!-- 当前播放歌曲信息 - 添加点击事件 -->
+      <!-- 当前播放歌曲信息 -->
       <div class="current-song" @click="goToLyric">
-        <el-avatar :size="50" :src="currentSong.cover" shape="square" />
+        <a-image
+          :width="50"
+          :height="50"
+          :src="currentSong.cover"
+          style="border-radius: 4px; pointer-events: none"
+          preview="false"
+        />
         <div class="song-info">
           <div class="song-title">{{ currentSong.name }}</div>
           <div class="song-artist">{{ currentSong.artist }}</div>
         </div>
-        <el-button type="text" size="small" @click.stop>
-          <el-icon><Star /></el-icon>
-        </el-button>
+        <a-button type="text" size="small" @click.stop>
+          <template #icon>
+            <icon-star />
+          </template>
+        </a-button>
       </div>
 
       <!-- 播放控制 -->
       <div class="player-controls">
         <div class="control-buttons">
-          <el-button type="text" size="large" @click="playPrevious">
-            <el-icon><DArrowLeft /></el-icon>
-          </el-button>
-          <el-button type="primary" circle size="large" @click="togglePlay">
-            <el-icon>
-              <VideoPlay v-if="!isPlaying" />
-              <VideoPause v-else />
-            </el-icon>
-          </el-button>
-          <el-button type="text" size="large" @click="playNext">
-            <el-icon><DArrowRight /></el-icon>
-          </el-button>
+          <a-button type="text" size="large" @click="playPrevious">
+            <template #icon>
+              <icon-skip-previous />
+            </template>
+          </a-button>
+          <a-button type="primary" shape="circle" size="large" @click="togglePlay">
+            <template #icon>
+              <icon-play-arrow v-if="!isPlaying" />
+              <icon-pause v-else />
+            </template>
+          </a-button>
+          <a-button type="text" size="large" @click="playNext">
+            <template #icon>
+              <icon-skip-next />
+            </template>
+          </a-button>
         </div>
 
-        <!-- 进度条 - 添加点击事件 -->
+        <!-- 进度条 -->
         <div class="progress-container" @click="goToLyric">
           <span class="time-current">{{ formattedCurrentTime }}</span>
-          <el-slider
+          <a-slider
             :model-value="progress"
             @update:model-value="handleProgressChange"
             @click.stop
@@ -46,19 +58,24 @@
 
       <!-- 右侧功能 -->
       <div class="player-actions">
-        <el-button type="text" size="small">
-          <el-icon><Refresh /></el-icon>
-        </el-button>
-        <el-button type="text" size="small" @click="togglePlaylist">
-          <el-icon><List /></el-icon>
-        </el-button>
-        <!-- 添加歌词按钮 -->
-        <el-button type="text" size="small" @click="goToLyric">
-          <el-icon><Document /></el-icon>
-        </el-button>
+        <a-button type="text" size="large">
+          <template #icon>
+            <icon-refresh size="30" />
+          </template>
+        </a-button>
+        <a-button type="text" size="large" @click="togglePlaylist">
+          <template #icon>
+            <icon-list size="30" />
+          </template>
+        </a-button>
+        <a-button type="text" size="large" @click="goToLyric">
+          <template #icon>
+            <icon-file size="30" />
+          </template>
+        </a-button>
         <div class="volume-control">
-          <el-icon><Volume /></el-icon>
-          <el-slider
+          <icon-sound-fill style="color: #1d4dd2" />
+          <a-slider
             v-model="volume"
             @update:model-value="handleVolumeChange"
             :show-tooltip="false"
@@ -68,7 +85,6 @@
       </div>
     </div>
 
-    <!-- 隐藏的音频元素 -->
     <audio
       ref="audioRef"
       @timeupdate="handleTimeUpdate"
@@ -76,7 +92,7 @@
       @ended="handleEnded"
       @error="handleError"
     />
-  </el-footer>
+  </a-layout-footer>
 </template>
 
 <script setup>
@@ -84,8 +100,18 @@ import { ref, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useSongStore } from '@/stores/songStore'
-import { ElMessage } from 'element-plus'
-import { Document } from '@element-plus/icons-vue'
+import { Message } from '@arco-design/web-vue'
+import {
+  IconStar,
+  IconSkipPrevious,
+  IconPlayArrow,
+  IconPause,
+  IconSkipNext,
+  IconRefresh,
+  IconList,
+  IconFile,
+  IconSoundFill
+} from '@arco-design/web-vue/es/icon'
 
 const router = useRouter()
 const songStore = useSongStore()
@@ -110,13 +136,11 @@ const {
   setProgress
 } = songStore
 
-// 音频元素引用
 const audioRef = ref(null)
 
-// 跳转到歌词页面
 const goToLyric = () => {
   if (!currentSong.value.id) {
-    ElMessage.warning('当前没有播放歌曲')
+    Message.warning('当前没有播放歌曲')
     return
   }
   router.push({ name: 'Lyric' })
@@ -125,26 +149,68 @@ const goToLyric = () => {
 // 监听播放状态变化
 watch(isPlaying, (newVal) => {
   if (!audioRef.value) return
-
   if (newVal) {
-    audioRef.value.play()
+    audioRef.value.play().catch((err) => {
+      console.error('播放失败:', err)
+    })
   } else {
     audioRef.value.pause()
   }
 })
 
-// 监听当前歌曲变化
+// 监听当前歌曲变化,加载新的音频
 watch(
-  () => currentSong.value.path,
-  (newPath) => {
-    if (newPath && audioRef.value) {
-      audioRef.value.src = newPath
-      audioRef.value.load()
-      if (isPlaying.value) {
-        audioRef.value.play()
+  () => currentSong.value.id,
+  async (newId, oldId) => {
+    // 检查 newId 是否为有效值
+    if (!newId || newId === '' || newId === oldId) return
+
+    try {
+      let songUrl = null
+
+      // 判断是否为本地音乐（有 path 或 url 字段且指向本地文件）
+      if (currentSong.value.url) {
+        // 如果已有 url 字段，直接使用（本地音乐）
+        songUrl = currentSong.value.url
+        console.log('使用本地文件路径:', songUrl)
+      } else if (currentSong.value.path) {
+        // 如果有 path 字段，说明是本地音乐
+        songUrl = currentSong.value.path
+        console.log('使用本地文件路径:', songUrl)
+      } else {
+        // 在线音乐，调用 API 获取播放 URL
+        console.log('获取在线歌曲URL:', newId)
+        const response = await window.api.getSongUrl(newId, 'standard')
+
+        // 检查返回的数据结构
+        if (response && response.body && response.body.data && response.body.data[0]) {
+          songUrl = response.body.data[0].url
+          console.log('获取到在线歌曲URL:', songUrl)
+        }
       }
+
+      if (songUrl && audioRef.value) {
+        audioRef.value.src = songUrl
+        audioRef.value.load()
+
+        if (isPlaying.value) {
+          await audioRef.value.play()
+        }
+      } else {
+        console.error('无法获取歌曲URL', {
+          currentSong: currentSong.value,
+          songUrl
+        })
+        Message.error('无法获取歌曲播放地址')
+        songStore.isPlaying = false
+      }
+    } catch (error) {
+      console.error('加载歌曲失败:', error)
+      Message.error('歌曲加载失败')
+      songStore.isPlaying = false
     }
-  }
+  },
+  { immediate: true }
 )
 
 // 监听音量变化
@@ -154,40 +220,53 @@ watch(volume, (newVolume) => {
   }
 })
 
-// 监听 store 中的 currentTime 变化（歌词页面点击跳转时触发）
+// 监听进度变化(拖动进度条时)
 watch(currentTime, (newTime) => {
   if (!audioRef.value) return
-
   const timeDiff = Math.abs(audioRef.value.currentTime - newTime)
-
-  // 如果时间差超过 0.5 秒，说明是外部跳转（比如点击歌词），需要同步
+  // 只有差异大于 0.5 秒时才更新,避免循环更新
   if (timeDiff > 0.5) {
     audioRef.value.currentTime = newTime
   }
 })
 
-// 音频事件处理
+// 音频播放时更新当前时间
 const handleTimeUpdate = () => {
   if (audioRef.value) {
     setCurrentTime(audioRef.value.currentTime)
   }
 }
 
+// 音频元数据加载完成
 const handleLoadedMetadata = () => {
   if (audioRef.value) {
     setDuration(audioRef.value.duration)
   }
 }
 
+// 音频播放结束
 const handleEnded = () => {
   playNext()
 }
 
+// 音频加载错误
 const handleError = (e) => {
   console.error('音频加载错误:', e)
-  ElMessage.error('音频加载失败')
+  console.error('当前音频 src:', audioRef.value?.src)
+  console.error('当前歌曲:', currentSong.value)
+
+  Message.error('音频加载失败,尝试播放下一首')
+
+  // 修改5: 重置播放状态
+  songStore.isPlaying = false
+
+  // 自动播放下一首
+  setTimeout(() => {
+    playNext()
+  }, 1000)
 }
 
+// 拖动进度条
 const handleProgressChange = (value) => {
   setProgress(value)
   if (audioRef.value && audioRef.value.duration) {
@@ -195,15 +274,14 @@ const handleProgressChange = (value) => {
   }
 }
 
+// 调整音量
 const handleVolumeChange = (value) => {
   setVolume(value)
 }
 
-// 初始化音量和注册 audioElement
 onMounted(() => {
   if (audioRef.value) {
     audioRef.value.volume = volume.value / 100
-    // 将 audio 元素注册到 store 中，供歌词页面使用
     songStore.audioElement = audioRef.value
   }
 })
@@ -216,7 +294,6 @@ audio {
   display: none;
 }
 
-// 添加鼠标悬停效果
 .current-song {
   cursor: pointer;
   transition: all 0.3s ease;

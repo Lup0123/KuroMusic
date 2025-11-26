@@ -38,7 +38,7 @@ export const useSearchStore = defineStore('search', () => {
       albumCover: song.al?.picUrl || '', // 专辑封面
       duration: formatDuration(song.dt), // 时长格式化
       durationMs: song.dt, // 原始时长(毫秒)
-      fee: song.fee, // 付费类型
+      fee: song.fee , // 付费类型
       mvId: song.mv, // MV ID
       privilege: song.privilege, // 权限信息
       // 音质信息

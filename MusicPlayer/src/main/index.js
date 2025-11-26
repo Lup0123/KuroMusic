@@ -2,20 +2,34 @@ import { app, shell, BrowserWindow, ipcMain, Menu, dialog } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
-import { cloudsearch, song_url_v1 ,lyric_new } from '@neteasecloudmusicapienhanced/api'
+import * as musicMetadata from 'music-metadata'
+import {
+  cloudsearch,
+  song_url_v1,
+  lyric_new,
+  playlist_hot,
+  top_playlist_highquality,
+  playlist_detail,
+  playlist_track_all
+} from '@neteasecloudmusicapienhanced/api'
+
+let mainWindow = null
 
 function createWindow() {
   // Create the browser window.
-  const mainWindow = new BrowserWindow({
+  mainWindow = new BrowserWindow({
     width: 1280,
     height: 720,
     show: false,
     autoHideMenuBar: true,
+    frame: false,
+    minWidth: 1280,
+    minHeight: 720,
     ...(process.platform === 'linux' ? { icon } : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false,
-      webSecurity: false, // 添加这行,允许跨域加载资源
+      webSecurity: false // 添加这行,允许跨域加载资源
     }
   })
 
@@ -95,6 +109,13 @@ app.whenReady().then(() => {
     try {
       const metadata = await musicMetadata.parseFile(filePath)
 
+      console.log('读取到的原始元数据:', {
+        title: metadata.common.title,
+        artist: metadata.common.artist,
+        album: metadata.common.album,
+        duration: metadata.format.duration
+      })
+
       // 处理封面图片
       let pictureData = ''
       if (metadata.common.picture && metadata.common.picture.length > 0) {
@@ -102,10 +123,22 @@ app.whenReady().then(() => {
         pictureData = `data:${picture.format};base64,${picture.data.toString('base64')}`
       }
 
+      // 标准化艺术家字段（可能是字符串或数组）
+      let artist = metadata.common.artist || ''
+      if (Array.isArray(artist)) {
+        artist = artist.join(', ')
+      }
+
+      // 标准化专辑字段（可能是字符串或数组）
+      let album = metadata.common.album || ''
+      if (Array.isArray(album)) {
+        album = album[0] || ''
+      }
+
       return {
         title: metadata.common.title || '',
-        artist: metadata.common.artist || '',
-        album: metadata.common.album || '',
+        artist: artist,
+        album: album,
         duration: metadata.format.duration || 0,
         picture: pictureData
       }
@@ -156,7 +189,7 @@ app.whenReady().then(() => {
       }
     }
   })
-  
+
   ipcMain.handle('get-song-lyrics', async (event, songId) => {
     try {
       const response = await lyric_new({
@@ -171,7 +204,59 @@ app.whenReady().then(() => {
       }
     }
   })
-    
+
+  ipcMain.handle('get-hot-playlists', async () => {
+    try {
+      const response = await playlist_hot() // 假设你有一个函数可以获取热门歌单
+      return response
+    } catch (error) {
+      console.error('获取热门歌单时发生错误：', error)
+      return {
+        success: false,
+        error: error.message
+      }
+    }
+  })
+
+  ipcMain.handle('get-top-playlists', async (event, cat) => {
+    try {
+      const response = await top_playlist_highquality({ cat }) // 假设你有一个函数可以获取分类歌单
+      return response
+    } catch (error) {
+      console.error('获取精选歌单时发生错误：', error)
+      return {
+        success: false,
+        error: error.message
+      }
+    }
+  })
+
+  ipcMain.handle('get-playlist-details', async (event, playlistId) => {
+    try {
+      const response = await playlist_detail({ id: playlistId }) // 假设你有一个函数可以获取歌单详情
+      return response
+    } catch (error) {
+      console.error('获取歌单详情时发生错误：', error)
+      return {
+        success: false,
+        error: error.message
+      }
+    }
+  })
+
+  ipcMain.handle('get-playlist-all-songs', async (event, playlistId) => {
+    try {
+      const response = await playlist_track_all({ id: playlistId }) // 假设你有一个函数可以获取歌单所有歌曲
+      return response
+    } catch (error) {
+      console.error('获取歌单所有歌曲时发生错误：', error)
+      return {
+        success: false,
+        error: error.message
+      }
+    }
+  })
+
   ipcMain.on('window-minimize', () => {
     if (mainWindow) mainWindow.minimize()
   })
