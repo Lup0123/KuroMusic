@@ -29,58 +29,57 @@
 </template>
 
 <script setup>
-import { computed, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { useIndexStore } from '@/stores/indexStore'
-import { useSongStore } from '@/stores/songStore'
-import { storeToRefs } from 'pinia'
-import { IconArrowDown } from '@arco-design/web-vue/es/icon'
-import SongList from '@/components/content/playlist/songlist.vue'
-import myMusic from '@/components/content/my-music/my-music.vue'
-import PlayerFooter from '@/components/content/player-footer/player-footer.vue'
-import mainpage from '@/components/content/mainpage/mainpage.vue'
-import Navbar from '@/components/layout/navbar/navbar.vue'
-import Sidebar from '@/components/layout/sidebar/sidebar.vue'
-import Search from '@/components/content/songsearch/songsearch.vue'
-import LyricPlayer from '@/views/PlayerView.vue'
-import PlaylistDetail from '@/components/content/Myplaylist/PlaylistDetail.vue'
+import { computed, watch } from "vue";
+import { useRoute, useRouter } from "vue-router";
+import { useIndexStore } from "@/stores/indexStore";
+import { useSongStore } from "@/stores/songStore";
+import { storeToRefs } from "pinia";
+import { IconArrowDown } from "@arco-design/web-vue/es/icon";
+import SongList from "@/components/content/playlist/songlist.vue";
+import myMusic from "@/components/content/my-music/my-music.vue";
+import PlayerFooter from "@/components/content/player-footer/player-footer.vue";
+import mainpage from "@/components/content/mainpage/mainpage.vue";
+import Navbar from "@/components/layout/navbar/navbar.vue";
+import Sidebar from "@/components/layout/sidebar/sidebar.vue";
+import Search from "@/components/content/songsearch/songsearch.vue";
+import LyricPlayer from "@/views/PlayerView.vue";
+import PlaylistDetail from "@/components/content/Myplaylist/PlaylistDetail.vue";
 
+const route = useRoute();
+const router = useRouter();
 
-const route = useRoute()
-const router = useRouter()
+const indexStore = useIndexStore();
+const { cur_index } = storeToRefs(indexStore);
 
-const indexStore = useIndexStore()
-const { cur_index } = storeToRefs(indexStore)
-
-const songStore = useSongStore()
-const { showPlaylist, showLyric } = storeToRefs(songStore)
+const songStore = useSongStore();
+const { showPlaylist, showLyric } = storeToRefs(songStore);
 
 const componentMap = {
   mainpage: mainpage,
-  'my-music': myMusic,
+  "my-music": myMusic,
   favorites: null,
-  'recently-played': null,
+  "recently-played": null,
   songsearch: Search,
-  PlaylistDetail: PlaylistDetail
-}
+  PlaylistDetail: PlaylistDetail,
+};
 
 const currentComponent = computed(() => {
-  return componentMap[cur_index.value] || mainpage
-})
+  return componentMap[cur_index.value] || mainpage;
+});
 
 watch(
   () => route.name,
   (newName) => {
-    showLyric.value = newName === 'Lyric'
+    showLyric.value = newName === "Lyric";
   },
   { immediate: true }
-)
+);
 
 const closeLyric = () => {
-  router.push('/')
-}
+  router.push("/");
+};
 </script>
 
 <style scoped>
-@import './layout.css';
+@import "./layout.css";
 </style>

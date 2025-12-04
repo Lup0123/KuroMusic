@@ -3,6 +3,7 @@ import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import * as musicMetadata from 'music-metadata'
+import { playlistConfig } from './getLocalConfig/config'
 import {
   cloudsearch,
   song_url_v1,
@@ -254,6 +255,118 @@ app.whenReady().then(() => {
         success: false,
         error: error.message
       }
+    }
+  })
+
+  // ========== 本地歌单管理 IPC 处理 ==========
+
+  // 获取所有歌单
+  ipcMain.handle('get-all-playlists', async () => {
+    try {
+      return playlistConfig.getAllPlaylists()
+    } catch (error) {
+      console.error('获取所有歌单失败:', error)
+      return { created: [], favorite: [] }
+    }
+  })
+
+  // 获取创建的歌单
+  ipcMain.handle('get-created-playlists', async () => {
+    try {
+      return playlistConfig.getCreatedPlaylists()
+    } catch (error) {
+      console.error('获取创建的歌单失败:', error)
+      return []
+    }
+  })
+
+  // 获取收藏的歌单
+  ipcMain.handle('get-favorite-playlists', async () => {
+    try {
+      return playlistConfig.getFavoritePlaylists()
+    } catch (error) {
+      console.error('获取收藏的歌单失败:', error)
+      return []
+    }
+  })
+
+  // 创建新歌单
+  ipcMain.handle('create-playlist', async (event, playlist) => {
+    try {
+      return playlistConfig.createPlaylist(playlist)
+    } catch (error) {
+      console.error('创建歌单失败:', error)
+      return null
+    }
+  })
+
+  // 更新歌单信息
+  ipcMain.handle('update-playlist', async (event, playlistId, updates) => {
+    try {
+      return playlistConfig.updatePlaylist(playlistId, updates)
+    } catch (error) {
+      console.error('更新歌单失败:', error)
+      return null
+    }
+  })
+
+  // 删除歌单
+  ipcMain.handle('delete-playlist', async (event, playlistId) => {
+    try {
+      return playlistConfig.deletePlaylist(playlistId)
+    } catch (error) {
+      console.error('删除歌单失败:', error)
+      return false
+    }
+  })
+
+  // 添加歌曲到歌单
+  ipcMain.handle('add-song-to-playlist', async (event, playlistId, song) => {
+    try {
+      return playlistConfig.addSongToPlaylist(playlistId, song)
+    } catch (error) {
+      console.error('添加歌曲到歌单失败:', error)
+      return false
+    }
+  })
+
+  // 从歌单移除歌曲
+  ipcMain.handle('remove-song-from-playlist', async (event, playlistId, songId) => {
+    try {
+      return playlistConfig.removeSongFromPlaylist(playlistId, songId)
+    } catch (error) {
+      console.error('从歌单移除歌曲失败:', error)
+      return false
+    }
+  })
+
+  // 收藏歌单
+  ipcMain.handle('add-favorite-playlist', async (event, playlist) => {
+    try {
+      return playlistConfig.addFavoritePlaylist(playlist)
+    } catch (error) {
+      console.error('收藏歌单失败:', error)
+      return false
+    }
+  })
+
+  // 取消收藏歌单
+  ipcMain.handle('remove-favorite-playlist', async (event, playlistId) => {
+    try {
+      return playlistConfig.removeFavoritePlaylist(playlistId)
+    } catch (error) {
+      console.error('取消收藏歌单失败:', error)
+      return false
+    }
+  })
+
+  // 获取歌单详情
+  ipcMain.handle('get-playlist-by-id', async (event, playlistId) => {
+    try {
+      return playlistConfig.getPlaylistById(playlistId)
+    } catch (error) {
+      console.error('获取歌单详情失败:', error)
+      return null
     }
   })
 

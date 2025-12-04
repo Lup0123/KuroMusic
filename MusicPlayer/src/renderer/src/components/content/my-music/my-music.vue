@@ -92,7 +92,7 @@
           <div class="th th-artist">艺术家</div>
           <div class="th th-album">专辑</div>
           <div class="th th-duration">
-            <icon-clock-circle :size="14" />
+            <icon-clock-circle :size="14" />时长
           </div>
           <div class="th th-actions"></div>
         </div>

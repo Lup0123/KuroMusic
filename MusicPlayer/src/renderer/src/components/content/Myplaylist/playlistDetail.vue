@@ -18,8 +18,11 @@
             <template #icon><icon-download /></template>
             下载
           </a-button>
-          <a-button shape="circle">
-            <template #icon><icon-more /></template>
+          <a-button shape="circle" :disabled="playlist.isLocal" @click="toggleFavorite">
+            <template #icon>
+              <icon-star-fill v-if="isFavorited" />
+              <icon-star v-else />
+            </template>
           </a-button>
         </div>
       </div>
@@ -44,7 +47,9 @@
                 <span class="create-time">{{ playlist.createTime }}创建</span>
               </div>
             </div>
-            <div class="playlist-description">{{ playlist.description || '暂无描述' }}</div>
+            <div class="playlist-description">
+              {{ playlist.description || '暂无描述' }}
+            </div>
             <div class="action-buttons">
               <a-button type="primary" size="large" class="play-all-btn" @click="playAll">
                 <template #icon><icon-play-arrow-fill /></template>
@@ -54,8 +59,17 @@
                 <template #icon><icon-download /></template>
                 下载
               </a-button>
-              <a-button size="large" class="action-btn" @click="testAPI">
-                <template #icon><icon-more /></template>
+              <a-button
+                size="large"
+                class="action-btn"
+                :disabled="playlist.isLocal"
+                @click="toggleFavorite"
+              >
+                <template #icon>
+                  <icon-star-fill v-if="isFavorited" />
+                  <icon-star v-else />
+                </template>
+                {{ isFavorited ? '已收藏' : '收藏' }}
               </a-button>
             </div>
           </div>
@@ -111,7 +125,9 @@
 
             <!-- 操作列 (悬停显示，占据专辑列的位置) -->
             <div class="col-operations">
-              <a-tooltip content="添加到歌单"><icon-folder-add /></a-tooltip>
+              <a-tooltip content="添加到歌单">
+                <icon-folder-add @click.stop="addToPlaylist(song)" />
+              </a-tooltip>
               <a-tooltip content="下载"><icon-download /></a-tooltip>
               <a-tooltip content="评论"><icon-message /></a-tooltip>
               <a-tooltip content="更多"><icon-more /></a-tooltip>
@@ -129,11 +145,51 @@
         </div>
       </div>
     </div>
+
+    <!-- 添加到歌单弹窗 -->
+    <a-modal
+      v-model:visible="addToPlaylistModalVisible"
+      title="添加到歌单"
+      @ok="handleAddToPlaylist"
+      @cancel="handleCancelAddToPlaylist"
+    >
+      <div class="playlist-selection">
+        <div class="create-new-playlist" @click="handleCreateNewPlaylist">
+          <icon-plus-circle :size="20" />
+          <span>创建新歌单</span>
+        </div>
+        <a-divider />
+        <div class="playlist-list">
+          <div
+            v-for="playlist in createdPlaylists"
+            :key="playlist.id"
+            class="playlist-option"
+            :class="{ selected: selectedPlaylistId === playlist.id }"
+            @click="selectPlaylist(playlist.id)"
+          >
+            <div class="playlist-cover">
+              <a-image
+                :src="playlist.cover || 'https://via.placeholder.com/40'"
+                :width="40"
+                :height="40"
+                fit="cover"
+              />
+            </div>
+            <div class="playlist-info">
+              <div class="playlist-name">{{ playlist.name }}</div>
+              <div class="playlist-count">{{ playlist.songs?.length || 0 }} 首歌曲</div>
+            </div>
+            <icon-check-circle-fill v-if="selectedPlaylistId === playlist.id" class="check-icon" />
+          </div>
+        </div>
+        <a-empty v-if="createdPlaylists.length === 0" description="暂无歌单，请先创建" />
+      </div>
+    </a-modal>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, toRaw, watch, watchEffect } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { Message } from '@arco-design/web-vue'
 import {
@@ -144,7 +200,11 @@ import {
   IconHeartFill,
   IconLeft,
   IconFolderAdd,
-  IconMessage
+  IconMessage,
+  IconPlusCircle,
+  IconCheckCircleFill,
+  IconStar,
+  IconStarFill
 } from '@arco-design/web-vue/es/icon'
 import { usePlaylistStore } from '@/stores/playlistStore'
 import { useIndexStore } from '@/stores/indexStore'
@@ -161,20 +221,30 @@ const playlistStore = usePlaylistStore()
 const songStore = useSongStore()
 
 const { setCurIndex } = indexStore
-const { currentPlaylistInfo } = storeToRefs(playlistStore)
+const { currentPlaylistInfo, createdPlaylists } = storeToRefs(playlistStore)
 const { currentSong } = storeToRefs(songStore)
+const { refreshKey } = storeToRefs(indexStore)
 
 // 歌单信息
 const playlist = ref({
   id: currentPlaylistInfo.value.id,
   name: currentPlaylistInfo.value.name,
-  cover: currentPlaylistInfo.value.cover,
+  cover: currentPlaylistInfo.value.cover || 'https://via.placeholder.com/200',
   description: currentPlaylistInfo.value.description,
-  createTime: formatDate(currentPlaylistInfo.value.createTime)
+  createTime: formatDate(currentPlaylistInfo.value.createTime),
+  isLocal: currentPlaylistInfo.value.isLocal || false
 })
 
 // 歌曲列表数据
 const songs = ref([])
+
+// 添加到歌单相关
+const addToPlaylistModalVisible = ref(false)
+const selectedPlaylistId = ref(null)
+const currentSongToAdd = ref(null)
+
+// 收藏状态
+const isFavorited = ref(false)
 
 // 处理滚动 - 监听 scrollContainer
 const handleScroll = (e) => {
@@ -183,7 +253,9 @@ const handleScroll = (e) => {
 }
 
 const goBack = () => {
-  setCurIndex('mainpage')
+  // 返回到上一个页面，如果没有记录则返回主页
+  const previousPage = indexStore.previousIndex || 'mainpage'
+  setCurIndex(previousPage)
 }
 
 const playAll = () => {
@@ -223,20 +295,158 @@ const testAPI = async () => {
   }
 }
 
-onMounted(async () => {
-  if (!playlist.value.id) return
+const addToPlaylist = (song) => {
+  currentSongToAdd.value = song
+  selectedPlaylistId.value = null
+  addToPlaylistModalVisible.value = true
+}
+
+const selectPlaylist = (playlistId) => {
+  selectedPlaylistId.value = playlistId
+}
+
+const handleAddToPlaylist = async () => {
+  if (!selectedPlaylistId.value) {
+    Message.warning('请选择一个歌单')
+    return false
+  }
+
+  if (!currentSongToAdd.value) {
+    Message.error('没有选择要添加的歌曲')
+    return false
+  }
 
   try {
-    const responseSongs = await window.api.getPlaylistsAllSongs(playlist.value.id)
-    if (responseSongs && responseSongs.body.songs) {
-      // 直接通过 store 实例调用 normalizeSong 方法
-      songs.value = responseSongs.body.songs.map((song) => playlistStore.normalizeSong(song))
-      // 同步到 playlistStore
-      playlistStore.setCurrentPlaylistSongs(songs.value)
-      console.log('Loaded playlist songs:', songs.value)
+    // 转换为纯对象，避免响应式代理导致的序列化问题
+    const songToAdd = toRaw(currentSongToAdd.value)
+    const playlistId = selectedPlaylistId.value
+
+    console.log('添加歌曲:', { playlistId, song: songToAdd })
+
+    const success = await playlistStore.addSongToLocalPlaylist(playlistId, songToAdd)
+
+    if (success) {
+      Message.success('添加成功')
+      // 重新加载歌单数据以确保同步
+      await playlistStore.loadLocalPlaylists()
+      currentSongToAdd.value = null
+      selectedPlaylistId.value = null
+      return true
+    } else {
+      console.log(success)
+      Message.warning('歌曲已存在于该歌单中')
+      return false
+    }
+  } catch (error) {
+    console.error('添加歌曲到歌单失败:', error)
+    Message.error('添加失败: ' + error.message)
+    return false
+  }
+}
+
+const handleCancelAddToPlaylist = () => {
+  addToPlaylistModalVisible.value = false
+  currentSongToAdd.value = null
+  selectedPlaylistId.value = null
+}
+
+const handleCreateNewPlaylist = () => {
+  addToPlaylistModalVisible.value = false
+  Message.info('请在侧边栏创建新歌单')
+}
+
+// 切换收藏状态
+const toggleFavorite = async () => {
+  if (playlist.value.isLocal) {
+    Message.warning('本地歌单无需收藏')
+    return
+  }
+
+  try {
+    if (isFavorited.value) {
+      // 取消收藏
+      const success = await playlistStore.removeFromFavoritePlaylist(playlist.value.id)
+      if (success) {
+        isFavorited.value = false
+        Message.success('已取消收藏')
+      } else {
+        Message.error('取消收藏失败')
+      }
+    } else {
+      // 添加收藏
+      const success = await playlistStore.addToFavoritePlaylist({
+        id: playlist.value.id,
+        name: playlist.value.name,
+        cover: playlist.value.cover,
+        description: playlist.value.description,
+        createTime: playlist.value.createTime,
+        isLocal: false
+      })
+      if (success) {
+        isFavorited.value = true
+        Message.success('收藏成功')
+      } else {
+        Message.warning('该歌单已收藏')
+      }
+    }
+  } catch (error) {
+    console.error('收藏操作失败:', error)
+    Message.error('操作失败')
+  }
+}
+
+// 加载歌单数据的独立方法
+const loadPlaylistData = async () => {
+  if (!currentPlaylistInfo.value.id) return
+
+  // 重置歌单信息
+  playlist.value = {
+    id: currentPlaylistInfo.value.id,
+    name: currentPlaylistInfo.value.name,
+    cover: currentPlaylistInfo.value.cover || 'https://via.placeholder.com/200',
+    description: currentPlaylistInfo.value.description,
+    createTime: formatDate(currentPlaylistInfo.value.createTime),
+    isLocal: currentPlaylistInfo.value.isLocal || false
+  }
+
+  try {
+    // 判断是否为本地歌单
+    if (currentPlaylistInfo.value.isLocal) {
+      // 本地歌单：从本地存储加载
+      isFavorited.value = false // 本地歌单不显示收藏状态
+      const localPlaylist = await window.api.getPlaylistById(playlist.value.id)
+      if (localPlaylist && localPlaylist.songs) {
+        songs.value = localPlaylist.songs.map((song) => playlistStore.normalizeSong(song))
+        playlistStore.setCurrentPlaylistSongs(songs.value)
+        console.log('Loaded local playlist songs:', songs.value)
+      }
+    } else {
+      // 网易云歌单：通过 API 加载
+      // 检查是否已收藏
+      isFavorited.value = playlistStore.favoritePlaylists.some((p) => p.id === playlist.value.id)
+      const responseSongs = await window.api.getPlaylistsAllSongs(playlist.value.id)
+      if (responseSongs && responseSongs.body.songs) {
+        songs.value = responseSongs.body.songs.map((song) => playlistStore.normalizeSong(song))
+        playlistStore.setCurrentPlaylistSongs(songs.value)
+        console.log('Loaded online playlist songs:', songs.value)
+      }
     }
   } catch (error) {
     console.error('Failed to load playlist songs:', error)
+  }
+}
+
+onMounted(async () => {
+  await loadPlaylistData()
+})
+
+// 监听 currentPlaylistInfo 和 refreshKey 的变化，重新加载数据
+watch([() => currentPlaylistInfo.value.id, refreshKey], async () => {
+  console.log('歌单信息变化，重新加载')
+  await loadPlaylistData()
+  // 滚动到顶部
+  if (scrollContainerRef.value) {
+    scrollContainerRef.value.scrollTop = 0
   }
 })
 </script>

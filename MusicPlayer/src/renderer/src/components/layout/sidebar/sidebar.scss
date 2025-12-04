@@ -1,0 +1,201 @@
+.sidebar {
+  background-color: var(--color-bg-2);
+  border-right: 1px solid var(--color-border-2);
+  height: calc(100vh - 60px - 80px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  flex-shrink: 0;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: var(--color-fill-3);
+    border-radius: 3px;
+    transition: background 0.3s ease;
+
+    &:hover {
+      background: var(--color-fill-4);
+    }
+  }
+
+  &.collapsed {
+    width: 64px;
+
+    :deep(.arco-menu-item) {
+      justify-content: center;
+      padding: 0 20px;
+    }
+  }
+
+  animation: slideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sidebar-menu {
+  border: none;
+  height: 100%;
+  background: transparent;
+
+  :deep(.arco-menu-item) {
+    margin: 4px 8px;
+    border-radius: 8px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    text-align: left;
+    
+    &:hover {
+      background: var(--color-fill-2);
+      transform: translateX(4px);
+    }
+
+    &.arco-menu-item-selected {
+      background: linear-gradient(
+        90deg,
+        var(--color-primary-light-1) 0%,
+        var(--color-primary-light-2) 100%
+      );
+      color: var(--color-primary-6);
+      font-weight: 600;
+      box-shadow: 0 2px 8px var(--color-primary-light-3);
+
+      &::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 3px;
+        height: 60%;
+        background: var(--color-primary-6);
+        border-radius: 0 2px 2px 0;
+      }
+    }
+  }
+
+  :deep(.arco-menu-item-group) {
+    margin: 16px 0;
+  }
+
+  :deep(.arco-menu-item-group-title) {
+    padding: 8px 16px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--color-text-3);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  // 歌单标题区域样式
+  .playlist-title {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+
+    .arco-btn {
+      opacity: 0;
+      transition: all 0.2s ease;
+      color: var(--color-text-2);
+      width: 24px;
+      height: 24px;
+      border-radius: 4px;
+      margin-left: 20px;
+      padding: 4px;
+
+      &:hover {
+        background-color: var(--color-fill-3);
+        color: var(--color-primary-6);
+      }
+
+      &:active {
+        background-color: var(--color-fill-4);
+        transform: scale(0.95);
+      }
+    }
+  }
+
+  // 悬停在菜单项头部时显示按钮
+  :deep(.arco-menu-inline-header:hover) {
+    .playlist-title .arco-btn {
+      opacity: 1;
+    }
+  }
+
+  // Badge 样式优化
+  :deep(.arco-badge) {
+    margin: 0 auto;
+
+    .arco-badge-number {
+      background-color: var(--color-primary-light-2);
+      color: var(--color-primary-6);
+      font-size: 12px;
+      font-weight: 500;
+      min-width: 12px;
+      width: 20px;
+      height: 20px;
+      line-height: 20px;
+      padding: 0 2px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+  }
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+// 歌单项删除按钮样式
+.playlist-item-with-delete {
+  :deep(.arco-menu-item-inner) {
+    display: flex;
+    align-items: center;
+    width: 100%;
+  }
+
+  .playlist-item-content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    gap: 4px;
+    flex: 1;
+
+    .playlist-name {
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      text-align: left;
+    }
+
+    .delete-icon {
+      opacity: 0;
+      transition:
+        opacity 0.2s ease,
+        color 0.2s ease;
+      color: var(--color-text-3);
+      flex-shrink: 0;
+      cursor: pointer;
+
+      &:hover {
+        color: rgb(var(--danger-6));
+      }
+    }
+  }
+
+  &:hover .delete-icon {
+    opacity: 1;
+  }
+}

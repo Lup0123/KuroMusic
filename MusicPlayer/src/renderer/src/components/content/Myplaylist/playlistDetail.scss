@@ -76,7 +76,7 @@
     .detail-header {
       // 渐变背景：从主色调渐变到背景色
       background: linear-gradient(180deg, rgba(var(--primary-6), 0.15) 0%, var(--color-bg-1) 100%);
-      
+
       .playlist-info-section {
         display: flex;
         padding: 0% 40px 40px;
@@ -464,6 +464,99 @@
             }
           }
         }
+      }
+    }
+  }
+}
+
+// 添加到歌单弹窗样式
+.playlist-selection {
+  .create-new-playlist {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    color: var(--color-text-1);
+    font-weight: 500;
+
+    &:hover {
+      background-color: var(--color-fill-2);
+    }
+  }
+
+  .playlist-list {
+    max-height: 400px;
+    overflow-y: auto;
+    margin-top: 8px;
+
+    .playlist-option {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      position: relative;
+
+      &:hover {
+        background-color: var(--color-fill-2);
+      }
+
+      &.selected {
+        background-color: var(--color-primary-light-1);
+        border: 1px solid var(--color-primary-6);
+      }
+
+      .playlist-cover {
+        flex-shrink: 0;
+        border-radius: 6px;
+        overflow: hidden;
+      }
+
+      .playlist-info {
+        flex: 1;
+        min-width: 0;
+
+        .playlist-name {
+          font-size: 14px;
+          font-weight: 500;
+          color: var(--color-text-1);
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        .playlist-count {
+          font-size: 12px;
+          color: var(--color-text-3);
+          margin-top: 4px;
+        }
+      }
+
+      .check-icon {
+        color: var(--color-primary-6);
+        font-size: 20px;
+      }
+    }
+
+    &::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    &::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    &::-webkit-scrollbar-thumb {
+      background: var(--color-fill-3);
+      border-radius: 3px;
+
+      &:hover {
+        background: var(--color-fill-4);
       }
     }
   }
