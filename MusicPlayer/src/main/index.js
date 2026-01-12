@@ -3,7 +3,8 @@ import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import * as musicMetadata from 'music-metadata'
-import { playlistConfig } from './getLocalConfig/config'
+import { playlistConfig } from './getLocalConfig/playlistconfig'
+import { auth, getCookie } from './auth/login'
 import {
   cloudsearch,
   song_url_v1,
@@ -155,12 +156,12 @@ app.whenReady().then(() => {
     }
   })
 
-  ipcMain.handle('search', async (event, keyword) => {
+  ipcMain.handle('search', async (event, keyword, typeid) => {
     try {
       const response = await cloudsearch({
         keywords: keyword,
-        limit: 50,
-        type: 1
+        type: typeid,
+        cookie: getCookie()
       })
 
       return response
@@ -178,7 +179,8 @@ app.whenReady().then(() => {
     try {
       const response = await song_url_v1({
         id: songId,
-        level: quality // standard, higher, exhigh, lossless, hires
+        level: quality, // standard, higher, exhigh, lossless, hires
+        cookie: getCookie()
       })
 
       return response
@@ -194,7 +196,8 @@ app.whenReady().then(() => {
   ipcMain.handle('get-song-lyrics', async (event, songId) => {
     try {
       const response = await lyric_new({
-        id: songId
+        id: songId,
+        cookie: getCookie()
       })
       return response
     } catch (error) {
@@ -208,7 +211,7 @@ app.whenReady().then(() => {
 
   ipcMain.handle('get-hot-playlists', async () => {
     try {
-      const response = await playlist_hot() // 假设你有一个函数可以获取热门歌单
+      const response = await playlist_hot({ cookie: getCookie() })
       return response
     } catch (error) {
       console.error('获取热门歌单时发生错误：', error)
@@ -221,7 +224,7 @@ app.whenReady().then(() => {
 
   ipcMain.handle('get-top-playlists', async (event, cat) => {
     try {
-      const response = await top_playlist_highquality({ cat }) // 假设你有一个函数可以获取分类歌单
+      const response = await top_playlist_highquality({ cat, cookie: getCookie() })
       return response
     } catch (error) {
       console.error('获取精选歌单时发生错误：', error)
@@ -234,7 +237,7 @@ app.whenReady().then(() => {
 
   ipcMain.handle('get-playlist-details', async (event, playlistId) => {
     try {
-      const response = await playlist_detail({ id: playlistId }) // 假设你有一个函数可以获取歌单详情
+      const response = await playlist_detail({ id: playlistId, cookie: getCookie() })
       return response
     } catch (error) {
       console.error('获取歌单详情时发生错误：', error)
@@ -247,7 +250,7 @@ app.whenReady().then(() => {
 
   ipcMain.handle('get-playlist-all-songs', async (event, playlistId) => {
     try {
-      const response = await playlist_track_all({ id: playlistId }) // 假设你有一个函数可以获取歌单所有歌曲
+      const response = await playlist_track_all({ id: playlistId, cookie: getCookie() })
       return response
     } catch (error) {
       console.error('获取歌单所有歌曲时发生错误：', error)
@@ -367,6 +370,108 @@ app.whenReady().then(() => {
     } catch (error) {
       console.error('获取歌单详情失败:', error)
       return null
+    }
+  })
+
+  // ============ 登录相关 IPC 处理器 ============
+
+  // 获取二维码 key
+  ipcMain.handle('get-qr-key', async () => {
+    try {
+      return await auth.generateQRkey()
+    } catch (error) {
+      console.error('获取二维码 key 失败:', error)
+      return { code: 500, message: error.message }
+    }
+  })
+
+  // 生成二维码图片
+  ipcMain.handle('get-qr-code', async (event, key) => {
+    try {
+      return await auth.generateQRcode(key)
+    } catch (error) {
+      console.error('生成二维码失败:', error)
+      return { code: 500, message: error.message }
+    }
+  })
+
+  // 检查二维码状态
+  ipcMain.handle('check-qr-status', async (event, key) => {
+    try {
+      return await auth.checkQRstatus(key)
+    } catch (error) {
+      console.error('检查二维码状态失败:', error)
+      return { code: 500, message: error.message }
+    }
+  })
+
+  // 手机号密码登录
+  ipcMain.handle('login-by-phone', async (event, phone, password) => {
+    try {
+      return await auth.loginByPhone(phone, password)
+    } catch (error) {
+      console.error('手机号登录失败:', error)
+      return { code: 500, message: error.message }
+    }
+  })
+
+  // 手机号验证码登录
+  ipcMain.handle('login-by-phone-captcha', async (event, phone, captcha) => {
+    try {
+      return await auth.loginByPhoneCaptcha(phone, captcha)
+    } catch (error) {
+      console.error('验证码登录失败:', error)
+      return { code: 500, message: error.message }
+    }
+  })
+
+  // 发送验证码
+  ipcMain.handle('send-captcha', async (event, phone) => {
+    try {
+      return await auth.sendCaptcha(phone)
+    } catch (error) {
+      console.error('发送验证码失败:', error)
+      return { code: 500, message: error.message }
+    }
+  })
+
+  // 邮箱密码登录
+  ipcMain.handle('login-by-email', async (event, email, password) => {
+    try {
+      return await auth.loginByEmail(email, password)
+    } catch (error) {
+      console.error('邮箱登录失败:', error)
+      return { code: 500, message: error.message }
+    }
+  })
+
+  // 获取登录状态
+  ipcMain.handle('get-login-status', async () => {
+    try {
+      return await auth.getLoginStatus()
+    } catch (error) {
+      console.error('获取登录状态失败:', error)
+      return { code: 500, message: error.message }
+    }
+  })
+
+  // 获取用户信息
+  ipcMain.handle('get-user-account', async () => {
+    try {
+      return await auth.getUserAccount()
+    } catch (error) {
+      console.error('获取用户信息失败:', error)
+      return { code: 500, message: error.message }
+    }
+  })
+
+  // 退出登录
+  ipcMain.handle('logout', async () => {
+    try {
+      return await auth.logout()
+    } catch (error) {
+      console.error('退出登录失败:', error)
+      return { code: 500, message: error.message }
     }
   })
 

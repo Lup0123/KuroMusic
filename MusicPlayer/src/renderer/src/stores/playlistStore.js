@@ -191,6 +191,7 @@ export const usePlaylistStore = defineStore('playlist', {
     async addSongToLocalPlaylist(playlistId, song) {
       try {
         const success = await window.api.addSongToPlaylist(playlistId, song)
+        console.log(success)
         if (success) {
           const playlist = this.createdPlaylists.find((p) => p.id === playlistId)
           if (playlist) {

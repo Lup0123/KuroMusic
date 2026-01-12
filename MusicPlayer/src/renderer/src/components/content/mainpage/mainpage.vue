@@ -1,9 +1,20 @@
 <template>
   <div class="mainpage">
+    <!-- 加载中状态 -->
+    <div v-if="loading" class="loading-container">
+      <a-spin :size="40" />
+      <p class="loading-text">正在加载歌单...</p>
+    </div>
+
     <!-- 热门歌单网格 -->
-    <div class="section hot-playlists">
+    <div v-else class="section hot-playlists">
       <div class="playlist-grid">
-        <div class="playlist-card" v-for="playlist in topPlaylists" :key="playlist.id" @click="gotodetail(playlist)">
+        <div
+          class="playlist-card"
+          v-for="playlist in topPlaylists"
+          :key="playlist.id"
+          @click="gotodetail(playlist)"
+        >
           <div class="playlist-cover">
             <a-image :src="playlist.cover" fit="cover">
               <template #error>
@@ -43,17 +54,18 @@ const indexStore = useIndexStore()
 const { setCurIndex } = indexStore
 const playlistStore = usePlaylistStore()
 const { setCurrentPlaylist } = playlistStore
-// 热门歌单数据 
+// 热门歌单数据
 const topPlaylists = ref([])
+const loading = ref(true)
 
 const gotodetail = async (playlist) => {
   setCurIndex('PlaylistDetail')
   setCurrentPlaylist(playlist)
 }
 
-
 onMounted(async () => {
   try {
+    loading.value = true
     const response = await window.api.getTopPlaylists()
     console.log('Hot Playlists Response:', response)
     // 假设 response.data 是歌单数组
@@ -67,6 +79,8 @@ onMounted(async () => {
     }))
   } catch (error) {
     console.error('Error fetching hot playlists:', error)
+  } finally {
+    loading.value = false
   }
 })
 </script>

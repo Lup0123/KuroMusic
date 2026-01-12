@@ -130,6 +130,9 @@
               </a-tooltip>
               <a-tooltip content="下载"><icon-download /></a-tooltip>
               <a-tooltip content="评论"><icon-message /></a-tooltip>
+              <a-tooltip v-if="playlist.isLocal" content="从歌单中删除">
+                <icon-delete class="delete-icon" @click.stop="deleteSongFromPlaylist(song)" />
+              </a-tooltip>
               <a-tooltip content="更多"><icon-more /></a-tooltip>
             </div>
 
@@ -168,12 +171,7 @@
             @click="selectPlaylist(playlist.id)"
           >
             <div class="playlist-cover">
-              <a-image
-                :src="playlist.cover || 'https://via.placeholder.com/40'"
-                :width="40"
-                :height="40"
-                fit="cover"
-              />
+              <a-image :src="getPlaylistCover(playlist)" :width="40" :height="40" fit="cover" />
             </div>
             <div class="playlist-info">
               <div class="playlist-name">{{ playlist.name }}</div>
@@ -191,7 +189,7 @@
 <script setup>
 import { ref, onMounted, toRaw, watch, watchEffect } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { Message } from '@arco-design/web-vue'
+import { Message, Modal } from '@arco-design/web-vue'
 import {
   IconPlayArrowFill,
   IconDownload,
@@ -204,7 +202,8 @@ import {
   IconPlusCircle,
   IconCheckCircleFill,
   IconStar,
-  IconStarFill
+  IconStarFill,
+  IconDelete
 } from '@arco-design/web-vue/es/icon'
 import { usePlaylistStore } from '@/stores/playlistStore'
 import { useIndexStore } from '@/stores/indexStore'
@@ -282,6 +281,38 @@ const toggleLike = (song) => {
   Message.success(song.liked ? '已添加到我喜欢' : '已取消喜欢')
 }
 
+// 从歌单中删除歌曲
+const deleteSongFromPlaylist = async (song) => {
+  Modal.warning({
+    title: '确认删除',
+    content: `确定要从歌单中删除「${song.name}」吗？`,
+    okText: '删除',
+    cancelText: '取消',
+    hideCancel: false,
+    onOk: async () => {
+      try {
+        const success = await playlistStore.removeSongFromLocalPlaylist(playlist.value.id, song.id)
+        if (success) {
+          // 从本地列表中移除
+          songs.value = songs.value.filter((s) => s.id !== song.id)
+          // 更新封面（如果删除的是第一首歌）
+          if (songs.value.length > 0 && songs.value[0].cover) {
+            playlist.value.cover = songs.value[0].cover
+          }
+          Message.success('删除成功')
+          // 重新加载歌单数据
+          await playlistStore.loadLocalPlaylists()
+        } else {
+          Message.error('删除失败')
+        }
+      } catch (error) {
+        console.error('删除歌曲失败:', error)
+        Message.error('删除失败: ' + error.message)
+      }
+    }
+  })
+}
+
 const addSongs = () => Message.info('打开添加歌曲面板')
 
 const testAPI = async () => {
@@ -355,6 +386,19 @@ const handleCreateNewPlaylist = () => {
   Message.info('请在侧边栏创建新歌单')
 }
 
+// 获取歌单封面（本地歌单使用第一首歌的封面）
+const getPlaylistCover = (playlist) => {
+  if (playlist.cover) {
+    return playlist.cover
+  }
+  // 本地歌单：尝试使用第一首歌的封面
+  if (playlist.songs && playlist.songs.length > 0) {
+    const firstSong = playlist.songs[0]
+    return firstSong.al?.picUrl || firstSong.cover || 'https://via.placeholder.com/40'
+  }
+  return 'https://via.placeholder.com/40'
+}
+
 // 切换收藏状态
 const toggleFavorite = async () => {
   if (playlist.value.isLocal) {
@@ -403,7 +447,7 @@ const loadPlaylistData = async () => {
   playlist.value = {
     id: currentPlaylistInfo.value.id,
     name: currentPlaylistInfo.value.name,
-    cover: currentPlaylistInfo.value.cover || 'https://via.placeholder.com/200',
+    cover: currentPlaylistInfo.value.cover || '',
     description: currentPlaylistInfo.value.description,
     createTime: formatDate(currentPlaylistInfo.value.createTime),
     isLocal: currentPlaylistInfo.value.isLocal || false
@@ -418,6 +462,12 @@ const loadPlaylistData = async () => {
       if (localPlaylist && localPlaylist.songs) {
         songs.value = localPlaylist.songs.map((song) => playlistStore.normalizeSong(song))
         playlistStore.setCurrentPlaylistSongs(songs.value)
+        // 本地歌单封面由第一首歌决定
+        if (songs.value.length > 0 && songs.value[0].cover) {
+          playlist.value.cover = songs.value[0].cover
+        } else if (!playlist.value.cover) {
+          playlist.value.cover = 'https://via.placeholder.com/200'
+        }
         console.log('Loaded local playlist songs:', songs.value)
       }
     } else {

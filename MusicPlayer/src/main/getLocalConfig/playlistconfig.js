@@ -1,3 +1,4 @@
+import { send_playlist } from '@neteasecloudmusicapienhanced/api'
 import Store from 'electron-store'
 
 // 兼容处理 ESM/CommonJS 导入
@@ -42,7 +43,7 @@ const playlistConfig = {
       id: Date.now(),
       name: playlist.name,
       description: playlist.description || '',
-      cover: playlist.cover || '',
+      cover: '', // 封面由第一首歌决定
       songs: [],
       isLocal: true, // 标识为本地歌单
       createTime: new Date().toISOString(),
@@ -90,6 +91,10 @@ const playlistConfig = {
       if (!songExists) {
         playlists[index].songs.push(song)
         playlists[index].updateTime = new Date().toISOString()
+        // 如果是第一首歌，更新封面
+        if (playlists[index].songs.length === 1 && song.al?.picUrl) {
+          playlists[index].cover = song.al.picUrl
+        }
         store.set('playlists.created', playlists)
         return true
       }
@@ -103,8 +108,13 @@ const playlistConfig = {
     const playlists = this.getCreatedPlaylists()
     const index = playlists.findIndex((p) => p.id === playlistId)
     if (index > -1) {
+      const removedSongIndex = playlists[index].songs.findIndex((s) => s.id === songId)
       playlists[index].songs = playlists[index].songs.filter((s) => s.id !== songId)
       playlists[index].updateTime = new Date().toISOString()
+      // 如果删除的是第一首歌，更新封面为新的第一首歌
+      if (removedSongIndex === 0) {
+        playlists[index].cover = playlists[index].songs[0]?.al?.picUrl || ''
+      }
       store.set('playlists.created', playlists)
       return true
     }
