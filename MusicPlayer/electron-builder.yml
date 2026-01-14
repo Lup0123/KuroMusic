@@ -1,5 +1,5 @@
 appId: com.electron.app
-productName: musicplayer
+productName: UnderMusic
 directories:
   buildResources: build
 files:
@@ -11,12 +11,13 @@ files:
 asarUnpack:
   - resources/**
 win:
-  executableName: musicplayer
+  executableName: UnderMusic
 nsis:
   artifactName: ${name}-${version}-setup.${ext}
   shortcutName: ${productName}
   uninstallDisplayName: ${productName}
   createDesktopShortcut: always
+  allowToChangeInstallationDirectory: true
 mac:
   entitlementsInherit: build/entitlements.mac.plist
   extendInfo:
