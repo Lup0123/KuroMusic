@@ -27,7 +27,7 @@
         </template>
         <template #title>
           <div class="playlist-title">
-            <span>我的歌单</span>
+            <span>本地歌单</span>
             <a-button type="text" size="large" @click.stop="showCreateModal">
               <template #icon>
                 <icon-plus :size="20" style="margin-left: 14px" />
@@ -92,6 +92,30 @@
           </a-menu-item>
         </a-sub-menu>
       </a-sub-menu>
+
+      <a-divider v-if="userPlaylists.length > 0" />
+
+      <a-sub-menu key="user-playlists" v-if="userPlaylists.length > 0" class="user-playlists-menu">
+        <template #icon>
+          <icon-user />
+        </template>
+        <template #title>
+          在线歌单
+          <a-badge :count="userPlaylists.length" :max-count="99" />
+        </template>
+        <div class="user-playlists-container">
+          <a-menu-item
+            v-for="playlist in userPlaylists"
+            :key="`user-${playlist.id}`"
+            @click="handlePlaylistClick(playlist)"
+          >
+            <template #icon>
+              <icon-list />
+            </template>
+            <span class="playlist-name">{{ playlist.name }}</span>
+          </a-menu-item>
+        </div>
+      </a-sub-menu>
     </a-menu>
 
     <!-- 创建歌单弹窗 -->
@@ -127,12 +151,13 @@
 </template>
 
 <script setup>
-import { ref, onMounted, nextTick, toRaw } from "vue";
-import { useRouter } from "vue-router";
-import { useIndexStore } from "@/stores/indexStore";
-import { usePlaylistStore } from "@/stores/playlistStore";
-import { storeToRefs } from "pinia";
-import { Message, Modal } from "@arco-design/web-vue";
+import { ref, onMounted, nextTick, toRaw, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import { useIndexStore } from '@/stores/indexStore'
+import { usePlaylistStore } from '@/stores/playlistStore'
+import { useUserStore } from '@/stores/userStore'
+import { storeToRefs } from 'pinia'
+import { Message, Modal } from '@arco-design/web-vue'
 import {
   IconHome,
   IconMusic,
@@ -141,148 +166,165 @@ import {
   IconList,
   IconStarFill,
   IconDelete,
-} from "@arco-design/web-vue/es/icon";
+  IconUser
+} from '@arco-design/web-vue/es/icon'
 
-const router = useRouter();
-const indexStore = useIndexStore();
-const playlistStore = usePlaylistStore();
+const router = useRouter()
+const indexStore = useIndexStore()
+const playlistStore = usePlaylistStore()
+const userStore = useUserStore()
 
-const { setCurIndex } = indexStore;
-const { cur_index, selectedPlaylistKey } = storeToRefs(indexStore);
-const { createdPlaylists, favoritePlaylists } = storeToRefs(playlistStore);
+const { setCurIndex } = indexStore
+const { cur_index, selectedPlaylistKey } = storeToRefs(indexStore)
+const { createdPlaylists, favoritePlaylists, userPlaylists } = storeToRefs(playlistStore)
+const { userInfo, isLoggedIn } = storeToRefs(userStore)
 
 // 创建歌单相关
-const nameInputRef = ref(null);
-const createModalVisible = ref(false);
+const nameInputRef = ref(null)
+const createModalVisible = ref(false)
 const newPlaylist = ref({
-  name: "",
-  description: "",
-});
+  name: '',
+  description: ''
+})
 
 const handleMenuClick = (key) => {
-  setCurIndex(key);
-};
+  setCurIndex(key)
+}
 
 const showCreateModal = () => {
-  createModalVisible.value = true;
+  createModalVisible.value = true
   newPlaylist.value = {
-    name: "",
-    description: "",
-  };
+    name: '',
+    description: ''
+  }
   nextTick(() => {
-    nameInputRef.value?.focus();
-  });
-};
+    nameInputRef.value?.focus()
+  })
+}
 
 const handleCreatePlaylist = async () => {
   if (!newPlaylist.value.name.trim()) {
-    Message.warning("请输入歌单名称");
-    return false;
+    Message.warning('请输入歌单名称')
+    return false
   }
 
   try {
-    const result = await playlistStore.createLocalPlaylist(toRaw(newPlaylist.value));
+    const result = await playlistStore.createLocalPlaylist(toRaw(newPlaylist.value))
     if (result) {
-      Message.success("歌单创建成功");
-      newPlaylist.value = { name: "", description: "" };
-      return true;
+      Message.success('歌单创建成功')
+      newPlaylist.value = { name: '', description: '' }
+      return true
     } else {
-      Message.error("歌单创建失败");
-      return false;
+      Message.error('歌单创建失败')
+      return false
     }
   } catch (error) {
-    console.error("创建歌单失败:", error);
-    Message.error("歌单创建失败");
-    return false;
+    console.error('创建歌单失败:', error)
+    Message.error('歌单创建失败')
+    return false
   }
-};
+}
 
 const handleEnter = async () => {
-  const success = await handleCreatePlaylist();
+  const success = await handleCreatePlaylist()
   if (success) {
-    createModalVisible.value = false;
+    createModalVisible.value = false
   }
-};
+}
 
 const handleCancelCreate = () => {
-  createModalVisible.value = false;
-  newPlaylist.value = { name: "", description: "" };
-};
+  createModalVisible.value = false
+  newPlaylist.value = { name: '', description: '' }
+}
 
 const handlePlaylistClick = (playlist) => {
-  const playlistKey = playlist.isLocal
-    ? `created-${playlist.id}`
-    : `favorite-${playlist.id}`;
+  const playlistKey = playlist.isLocal ? `created-${playlist.id}` : `favorite-${playlist.id}`
 
-  indexStore.setSelectedPlaylistKey(playlistKey);
-  playlistStore.setCurrentPlaylist(playlist);
+  indexStore.setSelectedPlaylistKey(playlistKey)
+  playlistStore.setCurrentPlaylist(playlist)
 
   // 如果当前已经在歌单详情页，强制刷新
-  if (cur_index.value === "PlaylistDetail") {
-    indexStore.forceRefresh();
+  if (cur_index.value === 'PlaylistDetail') {
+    indexStore.forceRefresh()
   } else {
-    setCurIndex("PlaylistDetail");
+    setCurIndex('PlaylistDetail')
   }
-};
+}
 
 const handleDeletePlaylist = async (playlist) => {
   Modal.warning({
-    title: "确认删除",
+    title: '确认删除',
     content: `确定要删除歌单 "${playlist.name}" 吗？此操作无法撤销。`,
-    okText: "删除",
-    cancelText: "取消",
+    okText: '删除',
+    cancelText: '取消',
     onOk: async () => {
       try {
-        const success = await playlistStore.deleteLocalPlaylist(playlist.id);
+        const success = await playlistStore.deleteLocalPlaylist(playlist.id)
         if (success) {
-          Message.success("歌单已删除");
+          Message.success('歌单已删除')
           // 如果当前正在查看被删除的歌单，返回主页
           if (playlistStore.currentPlaylistInfo.id === playlist.id) {
-            setCurIndex("mainpage");
+            setCurIndex('mainpage')
           }
         } else {
-          Message.error("删除失败");
+          Message.error('删除失败')
         }
       } catch (error) {
-        console.error("删除歌单失败:", error);
-        Message.error("删除失败");
+        console.error('删除歌单失败:', error)
+        Message.error('删除失败')
       }
-    },
-  });
-};
+    }
+  })
+}
 
 const handleDeleteFavoritePlaylist = async (playlist) => {
   Modal.warning({
-    title: "确认取消收藏",
+    title: '确认取消收藏',
     content: `确定要取消收藏歌单 "${playlist.name}" 吗？`,
-    okText: "取消收藏",
-    cancelText: "保留",
+    okText: '取消收藏',
+    cancelText: '保留',
     onOk: async () => {
       try {
-        const success = await playlistStore.removeFromFavoritePlaylist(playlist.id);
+        const success = await playlistStore.removeFromFavoritePlaylist(playlist.id)
         if (success) {
-          Message.success("已取消收藏");
+          Message.success('已取消收藏')
           // 如果当前正在查看被取消收藏的歌单，返回主页
           if (playlistStore.currentPlaylistInfo.id === playlist.id) {
-            setCurIndex("mainpage");
+            setCurIndex('mainpage')
           }
         } else {
-          Message.error("取消收藏失败");
+          Message.error('取消收藏失败')
         }
       } catch (error) {
-        console.error("取消收藏失败:", error);
-        Message.error("操作失败");
+        console.error('取消收藏失败:', error)
+        Message.error('操作失败')
       }
-    },
-  });
-};
+    }
+  })
+}
 
 // 加载歌单数据
 onMounted(async () => {
-  await playlistStore.loadLocalPlaylists();
-});
+  await playlistStore.loadLocalPlaylists()
+
+  // 如果用户已登录，加载用户歌单
+  if (isLoggedIn.value && userInfo.value?.userId) {
+    await playlistStore.loadUserPlaylists(userInfo.value.userId, 1000)
+  }
+})
+
+// 监听登录状态变化
+watch(isLoggedIn, async (newValue) => {
+  if (newValue && userInfo.value?.userId) {
+    // 用户登录后加载歌单
+    await playlistStore.loadUserPlaylists(userInfo.value.userId, 1000)
+  } else {
+    // 用户登出后清空用户歌单
+    playlistStore.userPlaylists = []
+  }
+})
 </script>
 
 <style scoped>
-@import "./sidebar.scss";
+@import './sidebar.scss';
 </style>

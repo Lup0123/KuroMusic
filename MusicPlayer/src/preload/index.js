@@ -36,6 +36,7 @@ const api = {
   removeFavoritePlaylist: (playlistId) =>
     ipcRenderer.invoke('remove-favorite-playlist', playlistId),
   getPlaylistById: (playlistId) => ipcRenderer.invoke('get-playlist-by-id', playlistId),
+  getUserPlaylists: (userId, limit) => ipcRenderer.invoke('get-user-playlists', userId, limit),
 
   // ============ 登录相关 API ============
   // 二维码登录

@@ -1,4 +1,4 @@
-import { send_playlist } from '@neteasecloudmusicapienhanced/api'
+import { send_playlist ,user_playlist} from '@neteasecloudmusicapienhanced/api'
 import Store from 'electron-store'
 
 // 兼容处理 ESM/CommonJS 导入
@@ -10,7 +10,7 @@ const store = new StoreConstructor({
   defaults: {
     playlists: {
       created: [], // 我创建的歌单
-      favorite: [] // 收藏的歌单
+      favorite: [], // 收藏的歌单
     },
     settings: {
       theme: 'light',
@@ -149,7 +149,8 @@ const playlistConfig = {
     const created = this.getCreatedPlaylists()
     const favorites = this.getFavoritePlaylists()
     return created.find((p) => p.id === playlistId) || favorites.find((p) => p.id === playlistId)
-  }
+  },
+  
 }
 
 export { playlistConfig, store }

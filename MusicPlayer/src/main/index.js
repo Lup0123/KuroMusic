@@ -12,7 +12,8 @@ import {
   playlist_hot,
   top_playlist_highquality,
   playlist_detail,
-  playlist_track_all
+  playlist_track_all,
+  user_playlist
 } from '@neteasecloudmusicapienhanced/api'
 
 let mainWindow = null
@@ -370,6 +371,45 @@ app.whenReady().then(() => {
     } catch (error) {
       console.error('获取歌单详情失败:', error)
       return null
+    }
+  })
+
+  // 获取用户歌单
+  ipcMain.handle('get-user-playlists', async (event, userId, limit) => {
+    try {
+      if (!userId) {
+        console.error('用户ID为空')
+        return []
+      }
+
+      const cookie = getCookie()
+      const response = await user_playlist({
+        uid: userId,
+        limit: limit || 1000,
+        cookie: cookie,
+        timestamp: Date.now(),
+      })
+
+      if (response.body && response.body.playlist) {
+        // 返回用户的歌单列表
+        return response.body.playlist.map((playlist) => ({
+          id: playlist.id,
+          name: playlist.name,
+          description: playlist.description || '',
+          cover: playlist.coverImgUrl || '',
+          playCount: playlist.playCount || 0,
+          trackCount: playlist.trackCount || 0,
+          creator: playlist.creator?.nickname || '',
+          createTime: playlist.createTime,
+          updateTime: playlist.updateTime,
+          isLocal: false
+        }))
+      }
+
+      return []
+    } catch (error) {
+      console.error('获取用户歌单失败:', error)
+      return []
     }
   })
 

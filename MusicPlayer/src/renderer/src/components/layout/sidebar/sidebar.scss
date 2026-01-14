@@ -7,22 +7,12 @@
   flex-shrink: 0;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 
+  // 完全隐藏滚动条但保持滚动功能
+  scrollbar-width: none; // Firefox
+  -ms-overflow-style: none; // IE/Edge
+
   &::-webkit-scrollbar {
-    width: 6px;
-  }
-
-  &::-webkit-scrollbar-track {
-    background: transparent;
-  }
-
-  &::-webkit-scrollbar-thumb {
-    background: var(--color-fill-3);
-    border-radius: 3px;
-    transition: background 0.3s ease;
-
-    &:hover {
-      background: var(--color-fill-4);
-    }
+    display: none; // Chrome/Safari
   }
 
   &.collapsed {
@@ -47,7 +37,7 @@
     border-radius: 8px;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     text-align: left;
-    
+
     &:hover {
       background: var(--color-fill-2);
       transform: translateX(4px);
@@ -141,6 +131,84 @@
       line-height: 20px;
       padding: 0 2px;
       box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+  }
+
+  :deep(.arco-menu-inner) {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
+  }
+
+  // 所有子菜单样式
+  :deep(.arco-menu-inline) {
+    // 隐藏所有子菜单的滚动条
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
+  }
+
+  // 所有子菜单内容区域
+  :deep(.arco-menu-inline-content) {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
+  }
+
+  // 用户歌单容器 - 动态高度，根据内容自适应
+  .user-playlists-container {
+    max-height: calc(100vh - 60px - 80px - 250px); // 根据视口高度动态调整，留出其他菜单空间
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+
+    &::-webkit-scrollbar {
+      display: none !important;
+      width: 0 !important;
+      height: 0 !important;
+    }
+
+    &::-webkit-scrollbar-thumb {
+      display: none !important;
+    }
+
+    &::-webkit-scrollbar-track {
+      display: none !important;
+    }
+  }
+
+  // 用户歌单菜单 - 动态高度
+  .user-playlists-menu {
+    :deep(.arco-menu-inline) {
+      max-height: calc(100vh - 60px - 80px - 250px); // 与容器保持一致
+      overflow-y: auto;
+      overflow-x: hidden;
+      scrollbar-width: none !important;
+      -ms-overflow-style: none !important;
+
+      &::-webkit-scrollbar {
+        display: none !important;
+        width: 0 !important;
+        height: 0 !important;
+      }
+
+      &::-webkit-scrollbar-thumb {
+        display: none !important;
+      }
+
+      &::-webkit-scrollbar-track {
+        display: none !important;
+      }
     }
   }
 }

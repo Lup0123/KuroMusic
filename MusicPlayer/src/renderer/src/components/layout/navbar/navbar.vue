@@ -31,15 +31,15 @@
           <icon-moon v-else />
         </template>
       </a-button>
-      <a-button type="text" size="large" class="no-drag">
+      <a-button type="text" size="large" class="no-drag" @click ="handleuserinfo">
         <template #icon>
           <icon-settings />
         </template>
       </a-button>
 
       <!-- 用户按钮 -->
-      <a-dropdown trigger="click" v-if="isLoggedIn" class="no-drag">
-        <a-avatar :size="32" class="user-avatar" style="cursor: pointer">
+      <a-dropdown trigger="click" v-if="isLoggedIn">
+        <a-avatar :size="32" class="user-avatar no-drag" style="cursor: pointer">
           <img v-if="userInfo?.avatarUrl" :src="userInfo.avatarUrl" alt="avatar" />
           <icon-user v-else />
         </a-avatar>
@@ -52,7 +52,6 @@
               </a-avatar>
               <div class="user-detail">
                 <div class="nickname">{{ userInfo?.nickname || '用户' }}</div>
-                <div class="level">Lv.{{ userInfo?.level || 0 }}</div>
               </div>
             </div>
           </a-doption>
@@ -66,19 +65,6 @@
       <a-button v-else type="text" size="large" class="no-drag" @click="showLoginModal = true">
         <template #icon>
           <icon-user />
-        </template>
-      </a-button>
-
-      <!-- 播放列表按钮 -->
-      <a-button
-        type="text"
-        size="large"
-        class="no-drag"
-        @click="togglePlaylist"
-        :class="{ active: showPlaylist }"
-      >
-        <template #icon>
-          <icon-list />
         </template>
       </a-button>
 
@@ -399,6 +385,10 @@ const handleCloseLoginModal = () => {
   stopQrCodePolling()
   userStore.resetQrCode()
   loginForm.value = { phone: '', email: '', password: '' }
+}
+
+const handleuserinfo = () => {
+  console.log('User Info:', userInfo.value)
 }
 
 onMounted(() => {

@@ -18,6 +18,7 @@ export const usePlaylistStore = defineStore('playlist', {
     // 本地歌单管理
     createdPlaylists: [], // 我创建的歌单
     favoritePlaylists: [], // 收藏的歌单
+    userPlaylists: [], // 用户的歌单
     loading: false
   }),
 
@@ -134,6 +135,25 @@ export const usePlaylistStore = defineStore('playlist', {
         this.favoritePlaylists = await window.api.getFavoritePlaylists()
       } catch (error) {
         console.error('加载收藏的歌单失败:', error)
+      }
+    },
+
+    // 加载用户歌单
+    async loadUserPlaylists(userId) {
+      try {
+        if (!userId) {
+          console.warn('用户ID为空，无法加载用户歌单')
+          this.userPlaylists = []
+          return
+        }
+        this.loading = true
+        const playlists = await window.api.getUserPlaylists(userId)
+        this.userPlaylists = playlists || []
+      } catch (error) {
+        console.error('加载用户歌单失败:', error)
+        this.userPlaylists = []
+      } finally {
+        this.loading = false
       }
     },
 
