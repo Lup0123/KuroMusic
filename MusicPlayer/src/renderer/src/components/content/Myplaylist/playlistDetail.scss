@@ -566,4 +566,37 @@
       }
     }
   }
+
+  // 骨架屏样式
+  .skeleton-item {
+    opacity: 0.6;
+    pointer-events: none;
+
+    .col-index,
+    .col-album,
+    .col-like,
+    .col-duration {
+      display: flex;
+      align-items: center;
+    }
+
+    .col-title {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    // 隐藏骨架屏的hover效果
+    &:hover {
+      background: transparent;
+
+      .col-album {
+        opacity: 1;
+      }
+
+      .col-operations {
+        opacity: 0;
+      }
+    }
+  }
 }

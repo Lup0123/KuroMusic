@@ -240,7 +240,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted ,toRaw } from 'vue'
+import { ref, computed, watch, onMounted, toRaw } from 'vue'
 import { Message } from '@arco-design/web-vue'
 import {
   IconSearch,
@@ -420,9 +420,21 @@ const playSong = async (song) => {
   }
 }
 
-const toggleLike = (song) => {
-  song.liked = !song.liked
-  Message.success(song.liked ? '已添加到我喜欢' : '已取消喜欢')
+const toggleLike = async (song) => {
+  const newLikedState = !song.liked
+
+  try {
+    const success = await playlistStore.toggleLikeSong(song.id, newLikedState)
+    if (success) {
+      song.liked = newLikedState
+      Message.success(newLikedState ? '已添加到我喜欢的音乐' : '已取消喜欢')
+    } else {
+      Message.error('操作失败，请重试')
+    }
+  } catch (error) {
+    console.error('喜欢操作失败:', error)
+    Message.error('操作失败: ' + error.message)
+  }
 }
 
 const playAll = async () => {

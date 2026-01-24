@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
+import { usePlaylistStore } from './playlistStore'
 
 export const useSearchStore = defineStore('search', () => {
   // 搜索关键词
@@ -27,6 +28,7 @@ export const useSearchStore = defineStore('search', () => {
 
   // 设置搜索结果 - 转换API返回格式
   const setSearchResults = (results) => {
+    const playlistStore = usePlaylistStore()
     // 转换歌曲数据格式
     const songs = (results.songs || []).map((song) => ({
       id: song.id,
@@ -38,9 +40,10 @@ export const useSearchStore = defineStore('search', () => {
       albumCover: song.al?.picUrl || '', // 专辑封面
       duration: formatDuration(song.dt), // 时长格式化
       durationMs: song.dt, // 原始时长(毫秒)
-      fee: song.fee , // 付费类型
+      fee: song.fee, // 付费类型
       mvId: song.mv, // MV ID
       privilege: song.privilege, // 权限信息
+      liked: playlistStore.isSongLiked(song.id), // 根据喜欢列表设置状态
       // 音质信息
       quality: {
         h: song.h, // 高音质

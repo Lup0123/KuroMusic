@@ -19,6 +19,7 @@ export const usePlaylistStore = defineStore('playlist', {
     createdPlaylists: [], // 我创建的歌单
     favoritePlaylists: [], // 收藏的歌单
     userPlaylists: [], // 用户的歌单
+    likedSongIds: new Set(), // 喜欢的歌曲ID集合（使用Set优化查找性能）
     loading: false
   }),
 
@@ -70,7 +71,7 @@ export const usePlaylistStore = defineStore('playlist', {
         fee: song.fee || 0,
         mvId: song.mv || song.mvId,
         vip: song.fee === 1 || song.vip,
-        liked: song.liked || false,
+        liked: song.liked || this.likedSongIds.has(song.id), // 使用Set的has方法，O(1)查找
         // 音质信息
         quality: song.quality || {
           h: song.h,
@@ -142,19 +143,75 @@ export const usePlaylistStore = defineStore('playlist', {
     async loadUserPlaylists(userId) {
       try {
         if (!userId) {
-          console.warn('用户ID为空，无法加载用户歌单')
+          console.warn('playlistStore: 用户ID为空，无法加载用户歌单')
           this.userPlaylists = []
           return
         }
         this.loading = true
         const playlists = await window.api.getUserPlaylists(userId)
         this.userPlaylists = playlists || []
+
+        // 异步加载喜欢的歌曲列表，不阻塞歌单显示
+        this.loadLikedSongs(userId).catch((err) => {
+          console.error('异步加载喜欢列表失败:', err)
+        })
       } catch (error) {
         console.error('加载用户歌单失败:', error)
         this.userPlaylists = []
       } finally {
         this.loading = false
       }
+    },
+
+    // 加载喜欢的歌曲列表
+    async loadLikedSongs(userId) {
+      try {
+        if (!userId) {
+          console.warn('playlistStore: 用户ID为空，无法加载喜欢列表')
+          this.likedSongIds = new Set()
+          return
+        }
+        const startTime = performance.now()
+        console.log('playlistStore: 开始加载喜欢列表，用户ID:', userId)
+
+        const ids = await window.api.getLikedSongs(userId)
+        // 将数组转换为Set以优化查找性能
+        this.likedSongIds = new Set(ids || [])
+
+        const loadTime = (performance.now() - startTime).toFixed(2)
+        console.log(
+          `playlistStore: 已加载喜欢的歌曲列表，共 ${this.likedSongIds.size} 首，耗时 ${loadTime}ms`
+        )
+      } catch (error) {
+        console.error('加载喜欢列表失败:', error)
+        this.likedSongIds = new Set()
+      }
+    },
+
+    // 喜欢/取消喜欢音乐
+    async toggleLikeSong(songId, isLike) {
+      try {
+        const response = await window.api.likeMusic(songId, isLike)
+        if (response.code === 200) {
+          if (isLike) {
+            // 添加到喜欢列表
+            this.likedSongIds.add(songId)
+          } else {
+            // 从喜欢列表移除
+            this.likedSongIds.delete(songId)
+          }
+          return true
+        }
+        return false
+      } catch (error) {
+        console.error('喜欢操作失败:', error)
+        return false
+      }
+    },
+
+    // 检查歌曲是否被喜欢
+    isSongLiked(songId) {
+      return this.likedSongIds.has(songId)
     },
 
     // 创建新歌单

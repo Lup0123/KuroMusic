@@ -93,19 +93,34 @@
         </a-sub-menu>
       </a-sub-menu>
 
-      <a-divider v-if="userPlaylists.length > 0" />
+      <a-divider v-if="likedPlaylist || filteredUserPlaylists.length > 0" />
 
-      <a-sub-menu key="user-playlists" v-if="userPlaylists.length > 0" class="user-playlists-menu">
+      <a-menu-item
+        v-if="likedPlaylist"
+        :key="`user-${likedPlaylist.id}`"
+        @click="handlePlaylistClick(likedPlaylist)"
+      >
+        <template #icon>
+          <icon-heart-fill :style="{ color: '#f53f3f' }" />
+        </template>
+        我喜欢的音乐
+      </a-menu-item>
+
+      <a-sub-menu
+        key="user-playlists"
+        v-if="filteredUserPlaylists.length > 0"
+        class="user-playlists-menu"
+      >
         <template #icon>
           <icon-user />
         </template>
         <template #title>
           在线歌单
-          <a-badge :count="userPlaylists.length" :max-count="99" />
+          <a-badge :count="filteredUserPlaylists.length" :max-count="99" />
         </template>
         <div class="user-playlists-container">
           <a-menu-item
-            v-for="playlist in userPlaylists"
+            v-for="playlist in filteredUserPlaylists"
             :key="`user-${playlist.id}`"
             @click="handlePlaylistClick(playlist)"
           >
@@ -151,7 +166,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, nextTick, toRaw, watch } from 'vue'
+import { ref, onMounted, nextTick, toRaw, watch, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useIndexStore } from '@/stores/indexStore'
 import { usePlaylistStore } from '@/stores/playlistStore'
@@ -166,7 +181,8 @@ import {
   IconList,
   IconStarFill,
   IconDelete,
-  IconUser
+  IconUser,
+  IconHeartFill
 } from '@arco-design/web-vue/es/icon'
 
 const router = useRouter()
@@ -178,6 +194,28 @@ const { setCurIndex } = indexStore
 const { cur_index, selectedPlaylistKey } = storeToRefs(indexStore)
 const { createdPlaylists, favoritePlaylists, userPlaylists } = storeToRefs(playlistStore)
 const { userInfo, isLoggedIn } = storeToRefs(userStore)
+
+// 计算属性：分离"我喜欢的音乐"和其他在线歌单
+const likedPlaylist = computed(() => {
+  if (userPlaylists.value.length > 0) {
+    // 即使第一个不是，如果在列表里找到带"喜欢的音乐"且是自己创建的，那也是
+    // 网易云通常把"我喜欢的音乐"放在第一个
+    const first = userPlaylists.value[0]
+    if (first.name.includes('喜欢的音乐')) {
+      return first
+    }
+    // 如果第一个不是，尝试查找
+    return userPlaylists.value.find((p) => p.name.includes('喜欢的音乐')) || null
+  }
+  return null
+})
+
+const filteredUserPlaylists = computed(() => {
+  if (likedPlaylist.value) {
+    return userPlaylists.value.filter((p) => p.id !== likedPlaylist.value.id)
+  }
+  return userPlaylists.value
+})
 
 // 创建歌单相关
 const nameInputRef = ref(null)
@@ -308,19 +346,30 @@ onMounted(async () => {
   await playlistStore.loadLocalPlaylists()
 
   // 如果用户已登录，加载用户歌单
-  if (isLoggedIn.value && userInfo.value?.userId) {
-    await playlistStore.loadUserPlaylists(userInfo.value.userId, 1000)
+  if (isLoggedIn.value && userInfo.value) {
+    console.log('sidebar: 用户信息', userInfo.value)
+    const uid = userInfo.value.userId || userInfo.value.id
+    if (uid) {
+      await playlistStore.loadUserPlaylists(uid, 1000)
+    } else {
+      console.warn('sidebar: 无法获取用户ID')
+    }
   }
 })
 
 // 监听登录状态变化
 watch(isLoggedIn, async (newValue) => {
-  if (newValue && userInfo.value?.userId) {
+  if (newValue && userInfo.value) {
+    console.log('sidebar: 登录状态变化，用户信息', userInfo.value)
     // 用户登录后加载歌单
-    await playlistStore.loadUserPlaylists(userInfo.value.userId, 1000)
+    const uid = userInfo.value.userId || userInfo.value.id
+    if (uid) {
+      await playlistStore.loadUserPlaylists(uid, 1000)
+    }
   } else {
     // 用户登出后清空用户歌单
     playlistStore.userPlaylists = []
+    playlistStore.likedSongIds = new Set()
   }
 })
 </script>

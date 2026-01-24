@@ -89,7 +89,35 @@
           </div>
         </div>
 
-        <div class="list-body">
+        <!-- 加载中状态 -->
+        <div v-if="isLoading" class="list-body">
+          <div v-for="index in 10" :key="'skeleton-' + index" class="song-item skeleton-item">
+            <div class="col-index">
+              <a-skeleton-line :rows="1" :line-height="20" :line-spacing="0" animation />
+            </div>
+            <div class="col-title">
+              <a-skeleton :animation="true">
+                <a-skeleton-shape shape="square" :size="40" />
+                <a-space direction="vertical" :size="4" style="flex: 1; margin-left: 12px">
+                  <a-skeleton-line :rows="1" :line-height="16" :line-spacing="0" />
+                  <a-skeleton-line :rows="1" :line-height="14" :line-spacing="0" />
+                </a-space>
+              </a-skeleton>
+            </div>
+            <div class="col-album">
+              <a-skeleton-line :rows="1" :line-height="16" :line-spacing="0" animation />
+            </div>
+            <div class="col-like">
+              <a-skeleton-line :rows="1" :line-height="20" :line-spacing="0" animation />
+            </div>
+            <div class="col-duration">
+              <a-skeleton-line :rows="1" :line-height="16" :line-spacing="0" animation />
+            </div>
+          </div>
+        </div>
+
+        <!-- 实际歌曲列表 -->
+        <div v-else class="list-body">
           <div
             v-for="(song, index) in songs"
             :key="song.id + index"
@@ -237,6 +265,9 @@ const playlist = ref({
 // 歌曲列表数据
 const songs = ref([])
 
+// 加载状态
+const isLoading = ref(false)
+
 // 添加到歌单相关
 const addToPlaylistModalVisible = ref(false)
 const selectedPlaylistId = ref(null)
@@ -276,9 +307,21 @@ const playSong = (song, index) => {
   playlistStore.playCurrentPlaylistSong(index)
 }
 
-const toggleLike = (song) => {
-  song.liked = !song.liked
-  Message.success(song.liked ? '已添加到我喜欢' : '已取消喜欢')
+const toggleLike = async (song) => {
+  const newLikedState = !song.liked
+
+  try {
+    const success = await playlistStore.toggleLikeSong(song.id, newLikedState)
+    if (success) {
+      song.liked = newLikedState
+      Message.success(newLikedState ? '已添加到我喜欢的音乐' : '已取消喜欢')
+    } else {
+      Message.error('操作失败，请重试')
+    }
+  } catch (error) {
+    console.error('喜欢操作失败:', error)
+    Message.error('操作失败: ' + error.message)
+  }
 }
 
 // 从歌单中删除歌曲
@@ -443,6 +486,10 @@ const toggleFavorite = async () => {
 const loadPlaylistData = async () => {
   if (!currentPlaylistInfo.value.id) return
 
+  isLoading.value = true
+  const loadStartTime = performance.now()
+  console.log('开始加载歌单:', currentPlaylistInfo.value.name)
+
   // 重置歌单信息
   playlist.value = {
     id: currentPlaylistInfo.value.id,
@@ -460,7 +507,11 @@ const loadPlaylistData = async () => {
       isFavorited.value = false // 本地歌单不显示收藏状态
       const localPlaylist = await window.api.getPlaylistById(playlist.value.id)
       if (localPlaylist && localPlaylist.songs) {
+        const normalizeStartTime = performance.now()
         songs.value = localPlaylist.songs.map((song) => playlistStore.normalizeSong(song))
+        const normalizeTime = (performance.now() - normalizeStartTime).toFixed(2)
+        console.log(`标准化${localPlaylist.songs.length}首歌曲耗时: ${normalizeTime}ms`)
+
         playlistStore.setCurrentPlaylistSongs(songs.value)
         // 本地歌单封面由第一首歌决定
         if (songs.value.length > 0 && songs.value[0].cover) {
@@ -468,7 +519,7 @@ const loadPlaylistData = async () => {
         } else if (!playlist.value.cover) {
           playlist.value.cover = 'https://via.placeholder.com/200'
         }
-        console.log('Loaded local playlist songs:', songs.value)
+        console.log('Loaded local playlist songs:', songs.value.length, '首')
       }
     } else {
       // 网易云歌单：通过 API 加载
@@ -476,13 +527,24 @@ const loadPlaylistData = async () => {
       isFavorited.value = playlistStore.favoritePlaylists.some((p) => p.id === playlist.value.id)
       const responseSongs = await window.api.getPlaylistsAllSongs(playlist.value.id)
       if (responseSongs && responseSongs.body.songs) {
+        const normalizeStartTime = performance.now()
+        // 标准化歌曲数据，liked状态会根据likedSongIds自动设置
         songs.value = responseSongs.body.songs.map((song) => playlistStore.normalizeSong(song))
+        const normalizeTime = (performance.now() - normalizeStartTime).toFixed(2)
+        console.log(`标准化${responseSongs.body.songs.length}首歌曲耗时: ${normalizeTime}ms`)
+
         playlistStore.setCurrentPlaylistSongs(songs.value)
-        console.log('Loaded online playlist songs:', songs.value)
+        const likedCount = songs.value.filter((s) => s.liked).length
+        console.log(`在线歌单加载完成: ${songs.value.length}首，其中${likedCount}首喜欢的歌曲`)
       }
     }
+
+    const totalLoadTime = (performance.now() - loadStartTime).toFixed(2)
+    console.log(`歌单"${playlist.value.name}"加载完成，总耗时: ${totalLoadTime}ms`)
   } catch (error) {
     console.error('Failed to load playlist songs:', error)
+  } finally {
+    isLoading.value = false
   }
 }
 

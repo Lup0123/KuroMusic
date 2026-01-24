@@ -54,7 +54,9 @@ export const useUserStore = defineStore('user', () => {
     loginLoading.value = true
     try {
       const response = await window.api.loginByPhone(phone, password)
+      console.log('手机号登录响应:', response)
       if (response.code === 200) {
+        console.log('登录成功，用户信息:', response.profile)
         setUserInfo(response.profile)
         return { success: true }
       }
@@ -130,7 +132,9 @@ export const useUserStore = defineStore('user', () => {
         qrCodeStatus.value = 'confirmed'
         // 获取用户信息
         const userResponse = await window.api.getUserAccount()
+        console.log('二维码登录成功，用户信息:', userResponse)
         if (userResponse.profile) {
+          console.log('保存用户信息:', userResponse.profile)
           setUserInfo(userResponse.profile)
         }
         return { status: 'success' }

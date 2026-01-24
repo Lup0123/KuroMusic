@@ -13,7 +13,9 @@ import {
   top_playlist_highquality,
   playlist_detail,
   playlist_track_all,
-  user_playlist
+  user_playlist,
+  like,
+  likelist
 } from '@neteasecloudmusicapienhanced/api'
 
 let mainWindow = null
@@ -387,7 +389,7 @@ app.whenReady().then(() => {
         uid: userId,
         limit: limit || 1000,
         cookie: cookie,
-        timestamp: Date.now(),
+        timestamp: Date.now()
       })
 
       if (response.body && response.body.playlist) {
@@ -409,6 +411,65 @@ app.whenReady().then(() => {
       return []
     } catch (error) {
       console.error('获取用户歌单失败:', error)
+      return []
+    }
+  })
+
+  // 喜欢/取消喜欢音乐
+  ipcMain.handle('like-music', async (event, songId, isLike) => {
+    try {
+      const cookie = getCookie()
+      if (!cookie) {
+        console.error('未登录，无法操作')
+        return { code: 301, message: '未登录' }
+      }
+
+      const response = await like({
+        id: songId,
+        like: isLike,
+        cookie: cookie,
+        timestamp: Date.now()
+      })
+
+      return response.body
+    } catch (error) {
+      console.error('喜欢音乐操作失败:', error)
+      return { code: 500, message: error.message }
+    }
+  })
+
+  // 获取喜欢的音乐列表
+  ipcMain.handle('get-liked-songs', async (event, userId) => {
+    try {
+      const cookie = getCookie()
+      console.log('获取喜欢列表 - Cookie:', cookie ? '存在' : '不存在', ', 用户ID:', userId)
+
+      if (!cookie) {
+        console.error('未登录：Cookie为空')
+        return []
+      }
+
+      if (!userId) {
+        console.error('用户ID为空')
+        return []
+      }
+
+      const response = await likelist({
+        uid: userId,
+        cookie: cookie,
+        timestamp: Date.now()
+      })
+
+      console.log('喜欢列表API响应:', response.body ? '成功' : '失败')
+
+      if (response.body && response.body.ids) {
+        console.log('获取到喜欢列表，共', response.body.ids.length, '首')
+        return response.body.ids
+      }
+
+      return []
+    } catch (error) {
+      console.error('获取喜欢列表失败:', error)
       return []
     }
   })

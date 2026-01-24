@@ -38,6 +38,10 @@ const api = {
   getPlaylistById: (playlistId) => ipcRenderer.invoke('get-playlist-by-id', playlistId),
   getUserPlaylists: (userId, limit) => ipcRenderer.invoke('get-user-playlists', userId, limit),
 
+  // ============ 喜欢音乐相关 API ============
+  likeMusic: (songId, isLike) => ipcRenderer.invoke('like-music', songId, isLike),
+  getLikedSongs: (userId) => ipcRenderer.invoke('get-liked-songs', userId),
+
   // ============ 登录相关 API ============
   // 二维码登录
   getQRkey: () => ipcRenderer.invoke('get-qr-key'),
