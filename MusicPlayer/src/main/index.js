@@ -15,7 +15,10 @@ import {
   playlist_track_all,
   user_playlist,
   like,
-  likelist
+  likelist,
+  recommend_resource,
+  recommend_songs,
+  personalized
 } from '@neteasecloudmusicapienhanced/api'
 
 let mainWindow = null
@@ -471,6 +474,62 @@ app.whenReady().then(() => {
     } catch (error) {
       console.error('获取喜欢列表失败:', error)
       return []
+    }
+  })
+
+  // ============ 个性化推荐 API ============
+  // 获取每日推荐歌单（需要登录）
+  ipcMain.handle('get-recommend-resource', async () => {
+    try {
+      const cookie = getCookie()
+      if (!cookie) {
+        console.log('未登录，返回空推荐歌单')
+        return { body: { recommend: [] } }
+      }
+
+      const response = await recommend_resource({
+        cookie: cookie,
+        timestamp: Date.now()
+      })
+      return response
+    } catch (error) {
+      console.error('获取每日推荐歌单失败:', error)
+      return { body: { recommend: [] } }
+    }
+  })
+
+  // 获取每日推荐歌曲（需要登录）
+  ipcMain.handle('get-recommend-songs', async () => {
+    try {
+      const cookie = getCookie()
+      if (!cookie) {
+        console.log('未登录，返回空推荐歌曲')
+        return { body: { data: { dailySongs: [] } } }
+      }
+
+      const response = await recommend_songs({
+        cookie: cookie,
+        timestamp: Date.now()
+      })
+      return response
+    } catch (error) {
+      console.error('获取每日推荐歌曲失败:', error)
+      return { body: { data: { dailySongs: [] } } }
+    }
+  })
+
+  // 获取个性化推荐歌单（登录后更个性化）
+  ipcMain.handle('get-personalized-playlists', async (event, limit = 30) => {
+    try {
+      const response = await personalized({
+        limit,
+        cookie: getCookie(),
+        timestamp: Date.now()
+      })
+      return response
+    } catch (error) {
+      console.error('获取个性化推荐歌单失败:', error)
+      return { body: { result: [] } }
     }
   })
 

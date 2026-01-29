@@ -85,19 +85,29 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    width: 100%;
+    width: 75%;
+    gap: 4px;
 
-    .arco-btn {
-      opacity: 0;
+    .create-playlist-btn {
+      opacity: 0.7;
       transition: all 0.2s ease;
-      color: var(--color-text-2);
-      width: 24px;
-      height: 24px;
+      color: var(--color-text-3);
+      flex-shrink: 0;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       border-radius: 4px;
-      margin-left: 20px;
-      padding: 4px;
 
+       :deep(.arco-btn-icon) {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-left: 16px;
+      }
+      
       &:hover {
+        opacity: 1;
         background-color: var(--color-fill-3);
         color: var(--color-primary-6);
       }
@@ -109,28 +119,66 @@
     }
   }
 
-  // 悬停在菜单项头部时显示按钮
+  // 悬停在菜单项头部时完全显示按钮
   :deep(.arco-menu-inline-header:hover) {
-    .playlist-title .arco-btn {
+    .playlist-title .create-playlist-btn {
       opacity: 1;
+      color: var(--color-primary-6);
     }
   }
 
   // Badge 样式优化
-  :deep(.arco-badge) {
-    margin: 0 auto;
 
-    .arco-badge-number {
-      background-color: var(--color-primary-light-2);
-      color: var(--color-primary-6);
-      font-size: 12px;
-      font-weight: 500;
-      min-width: 12px;
-      width: 20px;
+  // 自定义数量标签样式
+  .submenu-title-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    gap: 8px;
+
+    .count-badge {
+      margin: auto;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 30px;
       height: 20px;
-      line-height: 20px;
-      padding: 0 2px;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      padding: 0 6px;
+      font-size: 11px;
+      font-weight: 600;
+      border-radius: 10px;
+      background: linear-gradient(135deg, var(--color-fill-2) 0%, var(--color-fill-3) 100%);
+      color: var(--color-text-2);
+      transition: all 0.3s ease;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+
+      &.primary {
+        background: linear-gradient(
+          135deg,
+          var(--color-primary-light-1) 0%,
+          var(--color-primary-light-2) 100%
+        );
+        color: var(--color-primary-6);
+        box-shadow: 0 2px 6px var(--color-primary-light-3);
+      }
+
+      &:hover {
+        transform: scale(1.05);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+      }
+    }
+  }
+
+  // 子菜单标题对齐
+  :deep(.arco-menu-inline-header) {
+    display: flex;
+    align-items: center;
+
+    .arco-menu-title {
+      flex: 1;
+      display: flex;
+      align-items: center;
     }
   }
 

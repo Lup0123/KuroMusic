@@ -28,9 +28,14 @@
         <template #title>
           <div class="playlist-title">
             <span>本地歌单</span>
-            <a-button type="text" size="large" @click.stop="showCreateModal">
+            <a-button
+              type="text"
+              size="small"
+              class="create-playlist-btn"
+              @click.stop="showCreateModal"
+            >
               <template #icon>
-                <icon-plus :size="20" style="margin-left: 14px" />
+                <icon-plus :size="16" />
               </template>
             </a-button>
           </div>
@@ -38,8 +43,12 @@
 
         <a-sub-menu key="created-playlists">
           <template #title>
-            我创建的歌单
-            <a-badge :count="createdPlaylists.length" :max-count="99" />
+            <span class="submenu-title-wrapper">
+              <span>我创建的歌单</span>
+              <span v-if="createdPlaylists.length > 0" class="count-badge">{{
+                createdPlaylists.length
+              }}</span>
+            </span>
           </template>
           <a-menu-item
             v-for="playlist in createdPlaylists"
@@ -66,8 +75,12 @@
 
         <a-sub-menu key="favorite-playlists">
           <template #title>
-            收藏的歌单
-            <a-badge :count="favoritePlaylists.length" :max-count="99" />
+            <span class="submenu-title-wrapper">
+              <span>收藏的歌单</span>
+              <span v-if="favoritePlaylists.length > 0" class="count-badge">{{
+                favoritePlaylists.length
+              }}</span>
+            </span>
           </template>
           <a-menu-item
             v-for="playlist in favoritePlaylists"
@@ -115,8 +128,12 @@
           <icon-user />
         </template>
         <template #title>
-          在线歌单
-          <a-badge :count="filteredUserPlaylists.length" :max-count="99" />
+          <span class="submenu-title-wrapper">
+            <span>在线歌单</span>
+            <span v-if="filteredUserPlaylists.length > 0" class="count-badge primary">{{
+              filteredUserPlaylists.length
+            }}</span>
+          </span>
         </template>
         <div class="user-playlists-container">
           <a-menu-item

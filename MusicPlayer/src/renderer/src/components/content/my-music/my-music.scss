@@ -608,16 +608,16 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      min-height: 500px;
+      height: 100%;
       padding: 80px 20px;
 
       .empty-content {
         text-align: center;
         animation: fadeInUp 0.6s ease;
-
+        
         .empty-icon-bg {
           width: 160px;
-          height: 160px;
+          height: 120px;
           margin: 0 auto 32px;
           border-radius: 50%;
           background: linear-gradient(

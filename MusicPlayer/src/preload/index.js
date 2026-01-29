@@ -42,6 +42,11 @@ const api = {
   likeMusic: (songId, isLike) => ipcRenderer.invoke('like-music', songId, isLike),
   getLikedSongs: (userId) => ipcRenderer.invoke('get-liked-songs', userId),
 
+  // ============ 个性化推荐 API ============
+  getRecommendResource: () => ipcRenderer.invoke('get-recommend-resource'),
+  getRecommendSongs: () => ipcRenderer.invoke('get-recommend-songs'),
+  getPersonalizedPlaylists: (limit) => ipcRenderer.invoke('get-personalized-playlists', limit),
+
   // ============ 登录相关 API ============
   // 二维码登录
   getQRkey: () => ipcRenderer.invoke('get-qr-key'),
