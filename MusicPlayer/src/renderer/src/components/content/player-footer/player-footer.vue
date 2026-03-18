@@ -68,13 +68,18 @@
             <icon-list size="30" />
           </template>
         </a-button>
+        <a-button type="text" size="large" @click="handleDownload" :loading="isDownloading">
+          <template #icon>
+            <icon-download size="30" />
+          </template>
+        </a-button>
         <a-button type="text" size="large" @click="goToLyric">
           <template #icon>
             <icon-file size="30" />
           </template>
         </a-button>
         <div class="volume-control">
-          <icon-sound-fill style="color: #1d4dd2" />
+          <icon-sound-fill style="color: rgb(var(--primary-6))" />
           <a-slider
             v-model="volume"
             @update:model-value="handleVolumeChange"
@@ -109,9 +114,11 @@ import {
   IconSkipNext,
   IconRefresh,
   IconList,
+  IconDownload,
   IconFile,
   IconSoundFill
 } from '@arco-design/web-vue/es/icon'
+import { downloadSong } from '@/utils/downloadUtils'
 
 const router = useRouter()
 const songStore = useSongStore()
@@ -137,13 +144,33 @@ const {
 } = songStore
 
 const audioRef = ref(null)
+const isDownloading = ref(false)
+
+const handleDownload = async () => {
+  if (!currentSong.value.id) {
+    Message.warning('当前没有播放歌曲')
+    return
+  }
+
+  isDownloading.value = true
+  try {
+    await downloadSong(currentSong.value)
+  } finally {
+    isDownloading.value = false
+  }
+}
 
 const goToLyric = () => {
   if (!currentSong.value.id) {
     Message.warning('当前没有播放歌曲')
     return
   }
-  router.push({ name: 'Lyric' })
+  // 切换歌词页：如果已在歌词页则关闭，否则打开
+  if (router.currentRoute.value.name === 'Lyric') {
+    router.push('/')
+  } else {
+    router.push({ name: 'Lyric' })
+  }
 }
 
 // 监听播放状态变化
@@ -179,8 +206,21 @@ watch(
         console.log('使用本地文件路径:', songUrl)
       } else {
         // 在线音乐，调用 API 获取播放 URL
-        console.log('获取在线歌曲URL:', newId)
-        const response = await window.api.getSongUrl(newId, 'standard')
+        // 从设置中获取音质
+        const settings = JSON.parse(localStorage.getItem('appSettings') || '{}')
+        const settingQuality = settings.quality || 'exhigh'
+        // 映射音质设置到 API 支持的格式
+        const qualityMap = {
+          standard: 'standard', // 标准品质 128kbps
+          higher: 'higher', // 较高品质 192kbps
+          exhigh: 'exhigh', // 极高品质 320kbps
+          lossless: 'lossless', // 无损品质 FLAC
+          hires: 'hires' // Hi-Res 高解析度
+        }
+        const quality = qualityMap[settingQuality] || 'exhigh'
+
+        console.log('获取在线歌曲URL:', newId, '音质:', quality)
+        const response = await window.api.getSongUrl(newId, quality)
 
         // 检查返回的数据结构
         if (response && response.body && response.body.data && response.body.data[0]) {

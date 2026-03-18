@@ -23,7 +23,8 @@ export default [
     files: ['**/*.{js,jsx,vue}'],
     rules: {
       'vue/require-default-prop': 'off',
-      'vue/multi-word-component-names': 'off'
+      'vue/multi-word-component-names': 'off',
+      'prettier/prettier': ['error', { endOfLine: 'auto' }]
     }
   },
   eslintConfigPrettier

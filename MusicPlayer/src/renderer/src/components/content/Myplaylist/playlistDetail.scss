@@ -162,6 +162,14 @@
 
     // 4. 歌曲列表区域
     .song-list-section {
+      --list-side-padding: 32px;
+      --row-horizontal-padding: 10px;
+      --col-index-width: 50px;
+      --col-album-width: 200px;
+      --col-album-min-width: 150px;
+      --col-like-width: 60px;
+      --col-duration-width: 60px;
+
       padding-bottom: 80px;
 
       .list-header {
@@ -169,7 +177,7 @@
         top: 0;
         z-index: 10;
         background: var(--color-bg-1); // 必须与背景一致
-        padding: 0 32px;
+        padding: 0 var(--list-side-padding);
         border-bottom: 1px solid var(--color-border-1);
 
         .header-row {
@@ -182,12 +190,26 @@
       }
 
       .list-body {
-        padding: 0 40px;
+        padding: 0 var(--list-side-padding);
+
+        .songs-render-layer {
+          width: 100%;
+          position: relative;
+        }
+
+        .virtual-row {
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          width: auto;
+          will-change: transform;
+        }
       }
 
       // 通用列宽定义
       .col-index {
-        width: 50px;
+        width: var(--col-index-width);
         text-align: center;
         flex-shrink: 0;
         color: var(--color-text-4);
@@ -217,8 +239,8 @@
         }
       }
       .col-album {
-        width: 200px;
-        min-width: 150px;
+        width: var(--col-album-width);
+        min-width: var(--col-album-min-width);
         color: var(--color-text-3);
         font-size: 13px;
         overflow: hidden;
@@ -227,12 +249,12 @@
         flex-shrink: 0;
       }
       .col-like {
-        width: 60px;
+        width: var(--col-like-width);
         text-align: center;
         flex-shrink: 0;
       }
       .col-duration {
-        width: 60px;
+        width: var(--col-duration-width);
         text-align: right;
         flex-shrink: 0;
         color: var(--color-text-4);
@@ -245,8 +267,8 @@
         align-items: center;
         height: 60px;
         border-radius: 4px;
-        padding: 0 10px;
-        margin: 0 -10px;
+        padding: 0 var(--row-horizontal-padding);
+        margin: 0 calc(-1 * var(--row-horizontal-padding));
         transition: background 0.2s;
 
         &:hover {
@@ -363,6 +385,38 @@
           }
         }
       }
+
+      // 骨架屏与真实行使用同一列宽和行内布局，避免加载前后跳列
+      .skeleton-item {
+        opacity: 0.6;
+        pointer-events: none;
+
+        .col-index,
+        .col-album,
+        .col-like,
+        .col-duration {
+          display: flex;
+          align-items: center;
+        }
+
+        .col-title {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+        }
+
+        &:hover {
+          background: transparent;
+
+          .col-album {
+            opacity: 1;
+          }
+
+          .col-operations {
+            opacity: 0;
+          }
+        }
+      }
     }
 
     // 空状态
@@ -421,11 +475,8 @@
   @media (max-width: 1200px) {
     .playlist-detail {
       .song-list-section {
-        .col-album,
-        .col-operations {
-          width: 150px;
-          min-width: 120px;
-        }
+        --col-album-width: 150px;
+        --col-album-min-width: 120px;
       }
     }
   }
@@ -563,39 +614,6 @@
 
       &:hover {
         background: var(--color-fill-4);
-      }
-    }
-  }
-
-  // 骨架屏样式
-  .skeleton-item {
-    opacity: 0.6;
-    pointer-events: none;
-
-    .col-index,
-    .col-album,
-    .col-like,
-    .col-duration {
-      display: flex;
-      align-items: center;
-    }
-
-    .col-title {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-
-    // 隐藏骨架屏的hover效果
-    &:hover {
-      background: transparent;
-
-      .col-album {
-        opacity: 1;
-      }
-
-      .col-operations {
-        opacity: 0;
       }
     }
   }

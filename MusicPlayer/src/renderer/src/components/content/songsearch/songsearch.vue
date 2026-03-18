@@ -1,7 +1,7 @@
 <template>
   <div class="song-search-container">
     <!-- 搜索结果头部 -->
-    <div class="search-result-header" v-if="hasSearched && !loading">
+    <div v-if="hasSearched && !loading" class="search-result-header">
       <div class="header-content">
         <div class="search-info">
           <h1 class="search-keyword">{{ searchKeyword }}</h1>
@@ -11,7 +11,7 @@
         </div>
 
         <!-- 操作按钮 -->
-        <div class="header-actions" v-if="activeTab === 'songs' && currentResults.length > 0">
+        <div v-if="activeTab === 'songs' && currentResults.length > 0" class="header-actions">
           <a-button type="primary" size="large" @click="playAll">
             <template #icon>
               <icon-play-arrow-fill />
@@ -29,7 +29,7 @@
     </div>
 
     <!-- 搜索标签栏 -->
-    <div class="search-tabs-wrapper" v-if="hasSearched">
+    <div v-if="hasSearched" class="search-tabs-wrapper">
       <div class="tabs-container">
         <div class="tab-list">
           <div
@@ -41,7 +41,7 @@
           >
             <component :is="tab.icon" class="tab-icon" />
             <span class="tab-title">{{ tab.title }}</span>
-            <span class="tab-count" v-if="getTabCount(tab.key)">
+            <span v-if="getTabCount(tab.key)" class="tab-count">
               {{ getTabCount(tab.key) }}
             </span>
           </div>
@@ -50,7 +50,7 @@
     </div>
 
     <!-- 搜索结果内容 -->
-    <div class="search-content" v-if="hasSearched">
+    <div v-if="hasSearched" class="search-content">
       <!-- 加载中 -->
       <div v-if="loading" class="loading-container">
         <a-spin :size="50" />
@@ -110,7 +110,7 @@
                     </div>
                   </template>
                 </a-image>
-                <div class="cover-play-icon" v-if="currentSong?.id === song.id && isPlaying">
+                <div v-if="currentSong?.id === song.id && isPlaying" class="cover-play-icon">
                   <icon-sound-fill />
                 </div>
               </div>
@@ -266,7 +266,7 @@ import { storeToRefs } from 'pinia'
 const searchStore = useSearchStore()
 const { searchKeyword, searchResults, activeTab, hasSearched, loading } = storeToRefs(searchStore)
 
-const { setSearchResults, setActiveTab, setHasSearched, setLoading, clearSearch } = searchStore
+const { setSearchResults, setActiveTab, setHasSearched, setLoading } = searchStore
 
 const songStore = useSongStore()
 const { currentSong, isPlaying } = storeToRefs(songStore)
@@ -396,7 +396,20 @@ const handleTabChange = (tab) => {
 
 const playSong = async (song) => {
   try {
-    const response = await window.api.getSongUrl(song.id, 'standard')
+    // 从设置中获取音质
+    const settings = JSON.parse(localStorage.getItem('appSettings') || '{}')
+    const settingQuality = settings.quality || 'exhigh'
+    // 映射音质设置到 API 支持的格式
+    const qualityMap = {
+      standard: 'standard', // 标准品质 128kbps
+      higher: 'higher', // 较高品质 192kbps
+      exhigh: 'exhigh', // 极高品质 320kbps
+      lossless: 'lossless', // 无损品质 FLAC
+      hires: 'hires' // Hi-Res 高解析度
+    }
+    const quality = qualityMap[settingQuality] || 'exhigh'
+
+    const response = await window.api.getSongUrl(song.id, quality)
     const result = response.body
 
     if (result.code == 200) {

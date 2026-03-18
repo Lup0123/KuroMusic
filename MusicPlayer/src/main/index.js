@@ -1,6 +1,9 @@
-import { app, shell, BrowserWindow, ipcMain, Menu, dialog } from 'electron'
+import { app, shell, BrowserWindow, ipcMain, dialog } from 'electron'
 import { join } from 'path'
+import { writeFileSync, readFileSync, existsSync, unlinkSync } from 'fs'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
+import https from 'https'
+import http from 'http'
 import icon from '../../resources/icon.png?asset'
 import * as musicMetadata from 'music-metadata'
 import { playlistConfig } from './getLocalConfig/playlistconfig'
@@ -8,6 +11,7 @@ import { auth, getCookie } from './auth/login'
 import {
   cloudsearch,
   song_url_v1,
+  song_download_url_v1,
   lyric_new,
   playlist_hot,
   top_playlist_highquality,
@@ -632,6 +636,175 @@ app.whenReady().then(() => {
     } catch (error) {
       console.error('退出登录失败:', error)
       return { code: 500, message: error.message }
+    }
+  })
+
+  // ============ 下载功能 ============
+  // 选择下载目录
+  ipcMain.handle('select-download-directory', async () => {
+    try {
+      const result = await dialog.showOpenDialog(mainWindow, {
+        properties: ['openDirectory', 'createDirectory'],
+        title: '选择下载目录'
+      })
+      if (!result.canceled && result.filePaths.length > 0) {
+        return { success: true, path: result.filePaths[0] }
+      }
+      return { success: false }
+    } catch (error) {
+      console.error('选择目录失败:', error)
+      return { success: false, error: error.message }
+    }
+  })
+
+  // 获取歌曲下载 URL（使用 song_download_url_v1）
+  ipcMain.handle('get-song-download-url', async (event, songId, level) => {
+    try {
+      const response = await song_download_url_v1({
+        id: songId,
+        level: level, // standard, higher, exhigh, lossless, hires, jyeffect, sky, jymaster
+        cookie: getCookie()
+      })
+      return response
+    } catch (error) {
+      console.error('获取下载URL失败:', error)
+      return { success: false, error: error.message }
+    }
+  })
+
+  // 下载歌曲文件
+  ipcMain.handle('download-song', async (event, { url, savePath, fileName }) => {
+    return new Promise((resolve, reject) => {
+      try {
+        const protocol = url.startsWith('https') ? https : http
+        const fullPath = join(savePath, fileName)
+
+        protocol
+          .get(url, (response) => {
+            if (response.statusCode === 302 || response.statusCode === 301) {
+              // 处理重定向
+              const redirectUrl = response.headers.location
+              const redirectProtocol = redirectUrl.startsWith('https') ? https : http
+
+              redirectProtocol.get(redirectUrl, (redirectResponse) => {
+                const chunks = []
+                redirectResponse.on('data', (chunk) => chunks.push(chunk))
+                redirectResponse.on('end', () => {
+                  try {
+                    const buffer = Buffer.concat(chunks)
+                    writeFileSync(fullPath, buffer)
+                    resolve({ success: true, path: fullPath })
+                  } catch (err) {
+                    reject({ success: false, error: err.message })
+                  }
+                })
+                redirectResponse.on('error', (err) => {
+                  reject({ success: false, error: err.message })
+                })
+              })
+            } else {
+              const chunks = []
+              response.on('data', (chunk) => chunks.push(chunk))
+              response.on('end', () => {
+                try {
+                  const buffer = Buffer.concat(chunks)
+                  writeFileSync(fullPath, buffer)
+                  resolve({ success: true, path: fullPath })
+                } catch (err) {
+                  reject({ success: false, error: err.message })
+                }
+              })
+              response.on('error', (err) => {
+                reject({ success: false, error: err.message })
+              })
+            }
+          })
+          .on('error', (err) => {
+            reject({ success: false, error: err.message })
+          })
+      } catch (error) {
+        reject({ success: false, error: error.message })
+      }
+    })
+  })
+
+  // 保存已下载歌曲信息
+  ipcMain.handle('save-downloaded-song', async (event, songInfo) => {
+    try {
+      const userDataPath = app.getPath('userData')
+      const downloadedSongsFile = join(userDataPath, 'downloaded-songs.json')
+
+      let downloadedSongs = []
+      if (existsSync(downloadedSongsFile)) {
+        const data = readFileSync(downloadedSongsFile, 'utf-8')
+        downloadedSongs = JSON.parse(data)
+      }
+
+      // 检查是否已存在
+      const existingIndex = downloadedSongs.findIndex((s) => s.id === songInfo.id)
+      if (existingIndex >= 0) {
+        downloadedSongs[existingIndex] = songInfo
+      } else {
+        downloadedSongs.push(songInfo)
+      }
+
+      writeFileSync(downloadedSongsFile, JSON.stringify(downloadedSongs, null, 2))
+      return { success: true }
+    } catch (error) {
+      console.error('保存下载记录失败:', error)
+      return { success: false, error: error.message }
+    }
+  })
+
+  // 获取已下载歌曲列表
+  ipcMain.handle('get-downloaded-songs', async () => {
+    try {
+      const userDataPath = app.getPath('userData')
+      const downloadedSongsFile = join(userDataPath, 'downloaded-songs.json')
+
+      if (existsSync(downloadedSongsFile)) {
+        const data = readFileSync(downloadedSongsFile, 'utf-8')
+        return { success: true, songs: JSON.parse(data) }
+      }
+      return { success: true, songs: [] }
+    } catch (error) {
+      console.error('获取下载列表失败:', error)
+      return { success: false, error: error.message, songs: [] }
+    }
+  })
+
+  // 删除已下载歌曲记录
+  ipcMain.handle('remove-downloaded-song', async (event, songId) => {
+    try {
+      const userDataPath = app.getPath('userData')
+      const downloadedSongsFile = join(userDataPath, 'downloaded-songs.json')
+
+      if (existsSync(downloadedSongsFile)) {
+        const data = readFileSync(downloadedSongsFile, 'utf-8')
+        let downloadedSongs = JSON.parse(data)
+        downloadedSongs = downloadedSongs.filter((s) => s.id !== songId)
+        writeFileSync(downloadedSongsFile, JSON.stringify(downloadedSongs, null, 2))
+      }
+      return { success: true }
+    } catch (error) {
+      console.error('删除下载记录失败:', error)
+      return { success: false, error: error.message }
+    }
+  })
+
+  // 删除本地文件
+  ipcMain.handle('delete-file', async (event, filePath) => {
+    try {
+      if (!filePath) {
+        return { success: false, error: '文件路径为空' }
+      }
+      if (existsSync(filePath)) {
+        unlinkSync(filePath)
+      }
+      return { success: true }
+    } catch (error) {
+      console.error('删除文件失败:', error)
+      return { success: false, error: error.message }
     }
   })
 

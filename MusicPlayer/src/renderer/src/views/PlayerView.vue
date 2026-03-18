@@ -1,5 +1,5 @@
 <template>
-  <div class="lyrics-view">
+  <div :class="['lyrics-view', `preset-${lyricVisualPreset}`]">
     <!-- 左侧：封面 -->
     <div class="left-section">
       <a-card class="song-cover-card" :bordered="false" :body-style="{ padding: '0' }">
@@ -23,13 +23,9 @@
         <div class="song-info">
           <div class="song-title">{{ currentSong.name }}</div>
           <a-space :size="20" class="song-meta">
-            <a-typography-text type="secondary"
-              >专辑: {{ currentSong.album }}</a-typography-text
-            >
+            <a-typography-text type="secondary">专辑: {{ currentSong.album }}</a-typography-text>
             <a-divider direction="vertical" />
-            <a-typography-text type="secondary"
-              >歌手: {{ currentSong.artist }}</a-typography-text
-            >
+            <a-typography-text type="secondary">歌手: {{ currentSong.artist }}</a-typography-text>
           </a-space>
         </div>
 
@@ -47,11 +43,12 @@
               <a-skeleton-line :rows="10" />
             </a-skeleton>
             <div
-              v-else
               v-for="(line, index) in displayLyrics"
+              v-else
               :key="index"
               ref="lyricLineRefs"
               :class="['lyric-line', { active: currentLineIndex === index }]"
+              tabindex="0"
               @click="seekToTime(line)"
             >
               <div class="lyric-text" :style="{ fontSize: `${fontSize}px` }">
@@ -72,7 +69,7 @@
       <!-- 右侧工具栏 -->
       <div class="side-toolbar">
         <!-- 关闭按钮 -->
-        <a-button shape="circle" size="large" @click="closeLyric" class="close-btn">
+        <a-button shape="circle" size="large" class="close-btn" @click="closeLyric">
           <template #icon>
             <icon-close :size="20" />
           </template>
@@ -109,12 +106,7 @@
 
         <!-- 自动滚动开关 -->
         <a-tooltip content="自动滚动" position="left">
-          <a-switch
-            v-model="autoScroll"
-            type="round"
-            size="small"
-            class="auto-scroll-switch"
-          >
+          <a-switch v-model="autoScroll" type="round" size="small" class="auto-scroll-switch">
             <template #checked>
               <icon-check :size="14" />
             </template>
@@ -123,305 +115,380 @@
             </template>
           </a-switch>
         </a-tooltip>
+
+        <a-divider direction="horizontal" margin="12px" />
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted, onUnmounted, nextTick } from "vue";
-import { useSongStore } from "@/stores/songStore";
-import { storeToRefs } from "pinia";
-import { useRouter } from "vue-router";
-import { Message } from "@arco-design/web-vue";
-import {
-  IconClose,
-  IconPlus,
-  IconMinus,
-  IconImage,
-  IconCheck,
-} from "@arco-design/web-vue/es/icon";
+import { ref, computed, watch, onUnmounted, nextTick } from 'vue'
+import { useSongStore } from '@/stores/songStore'
+import { storeToRefs } from 'pinia'
+import { useRouter } from 'vue-router'
+import { IconClose, IconPlus, IconMinus, IconImage, IconCheck } from '@arco-design/web-vue/es/icon'
 
-const router = useRouter();
-const songStore = useSongStore();
-const { currentSong, isPlaying, currentTime } = storeToRefs(songStore);
+const router = useRouter()
+const songStore = useSongStore()
+const { currentSong, currentTime } = storeToRefs(songStore)
 
-const scrollbarRef = ref(null);
-const lyricLineRefs = ref([]);
+const scrollbarRef = ref(null)
+const lyricLineRefs = ref([])
 
 // 歌词相关状态
-const rawLyrics = ref([]);
-const rawTranslationLyrics = ref([]);
-const currentLineIndex = ref(0);
-const lyricMode = ref("both");
-const loadingLyric = ref(false);
-const autoScroll = ref(true);
-const userScrolling = ref(false);
-const scrollTimer = ref(null);
+const rawLyrics = ref([])
+const rawTranslationLyrics = ref([])
+const currentLineIndex = ref(0)
+const lyricMode = ref('both')
+const loadingLyric = ref(false)
+const autoScroll = ref(true)
+const userScrolling = ref(false)
+const scrollTimer = ref(null)
+const lyricsRequestId = ref(0)
+const isProgrammaticScroll = ref(false)
 
 // 字号控制
-const fontSize = ref(20);
+const fontSize = ref(20)
 
 // 增加字号
 const increaseFontSize = () => {
   if (fontSize.value < 32) {
-    fontSize.value += 2;
-    localStorage.setItem("lyricFontSize", fontSize.value.toString());
+    fontSize.value += 2
+    localStorage.setItem('lyricFontSize', fontSize.value.toString())
   }
-};
+}
 
 // 减小字号
 const decreaseFontSize = () => {
   if (fontSize.value > 14) {
-    fontSize.value -= 2;
-    localStorage.setItem("lyricFontSize", fontSize.value.toString());
+    fontSize.value -= 2
+    localStorage.setItem('lyricFontSize', fontSize.value.toString())
   }
-};
+}
 
 // 计算属性
-const hasLyric = computed(() => rawLyrics.value.length > 0);
-const hasTranslation = computed(() => rawTranslationLyrics.value.length > 0);
+const hasLyric = computed(() => rawLyrics.value.length > 0)
+const hasTranslation = computed(() => rawTranslationLyrics.value.length > 0)
 
 // 解析歌词文本
 const parseLyric = (lyricText) => {
-  if (!lyricText) return [];
+  if (!lyricText) return []
 
-  const lines = lyricText.split("\n");
-  const lyricArray = [];
+  const lines = lyricText.split('\n')
+  const lyricArray = []
 
   lines.forEach((line) => {
-    const timeRegex = /\[(\d{2}):(\d{2})\.(\d{2,3})\]/g;
-    const matches = [...line.matchAll(timeRegex)];
+    const timeRegex = /\[(\d{2}):(\d{2})\.(\d{2,3})\]/g
+    const matches = [...line.matchAll(timeRegex)]
 
     if (matches.length > 0) {
-      const text = line.replace(timeRegex, "").trim();
+      const text = line.replace(timeRegex, '').trim()
       if (text) {
         matches.forEach((match) => {
-          const minutes = parseInt(match[1]);
-          const seconds = parseInt(match[2]);
-          const milliseconds = parseInt(match[3].padEnd(3, "0"));
-          const time = minutes * 60 + seconds + milliseconds / 1000;
+          const minutes = parseInt(match[1])
+          const seconds = parseInt(match[2])
+          const milliseconds = parseInt(match[3].padEnd(3, '0'))
+          const time = minutes * 60 + seconds + milliseconds / 1000
 
-          lyricArray.push({ time, text });
-        });
+          lyricArray.push({ time, text })
+        })
       }
     }
-  });
+  })
 
-  return lyricArray.sort((a, b) => a.time - b.time);
-};
+  return lyricArray.sort((a, b) => a.time - b.time)
+}
 
 // 加载歌词
 const loadLyrics = async (songId) => {
+  const requestId = ++lyricsRequestId.value
+
   if (!songId) {
-    rawLyrics.value = [];
-    rawTranslationLyrics.value = [];
-    return;
+    rawLyrics.value = []
+    rawTranslationLyrics.value = []
+    currentLineIndex.value = 0
+    return
   }
 
-  loadingLyric.value = true;
+  loadingLyric.value = true
 
   try {
-    const response = await window.api.getSongLyrics(songId);
+    const response = await window.api.getSongLyrics(songId)
+
+    if (requestId !== lyricsRequestId.value) {
+      return
+    }
 
     if (response.body && response.body.lrc) {
-      rawLyrics.value = parseLyric(response.body.lrc.lyric);
+      rawLyrics.value = parseLyric(response.body.lrc.lyric)
 
       if (response.body.tlyric && response.body.tlyric.lyric) {
-        rawTranslationLyrics.value = parseLyric(response.body.tlyric.lyric);
+        rawTranslationLyrics.value = parseLyric(response.body.tlyric.lyric)
       } else {
-        rawTranslationLyrics.value = [];
+        rawTranslationLyrics.value = []
       }
     } else {
-      rawLyrics.value = [];
-      rawTranslationLyrics.value = [];
+      rawLyrics.value = []
+      rawTranslationLyrics.value = []
     }
   } catch (error) {
-    console.error("加载歌词失败:", error);
-    rawLyrics.value = [];
-    rawTranslationLyrics.value = [];
+    if (requestId !== lyricsRequestId.value) {
+      return
+    }
+
+    console.error('加载歌词失败:', error)
+    rawLyrics.value = []
+    rawTranslationLyrics.value = []
   } finally {
-    loadingLyric.value = false;
+    if (requestId === lyricsRequestId.value) {
+      loadingLyric.value = false
+    }
   }
-};
+}
+
+const mergedLyrics = computed(() => {
+  if (!rawLyrics.value.length) {
+    return []
+  }
+
+  if (!hasTranslation.value) {
+    return rawLyrics.value
+  }
+
+  const translations = rawTranslationLyrics.value
+  let pointer = 0
+
+  return rawLyrics.value.map((line) => {
+    while (pointer < translations.length - 1 && translations[pointer + 1].time <= line.time) {
+      pointer += 1
+    }
+
+    const current = translations[pointer]
+    const next = translations[pointer + 1]
+    const bestMatch =
+      next && Math.abs(next.time - line.time) < Math.abs(current.time - line.time) ? next : current
+
+    const translation =
+      bestMatch && Math.abs(bestMatch.time - line.time) <= 0.8 ? bestMatch.text : ''
+
+    return {
+      ...line,
+      translation
+    }
+  })
+})
 
 // 根据模式显示歌词
 const displayLyrics = computed(() => {
-  if (lyricMode.value === "translation" && hasTranslation.value) {
-    return rawTranslationLyrics.value;
+  if (lyricMode.value === 'translation' && hasTranslation.value) {
+    return rawTranslationLyrics.value
   }
 
-  if (lyricMode.value === "both" && hasTranslation.value) {
-    return rawLyrics.value.map((line, index) => ({
-      ...line,
-      translation: rawTranslationLyrics.value[index]?.text || "",
-    }));
+  if (lyricMode.value === 'both' && hasTranslation.value) {
+    return mergedLyrics.value
   }
 
-  return rawLyrics.value;
-});
+  return rawLyrics.value
+})
+
+const findCurrentLyricIndex = (lyrics, time) => {
+  let left = 0
+  let right = lyrics.length - 1
+  let index = 0
+
+  while (left <= right) {
+    const middle = Math.floor((left + right) / 2)
+
+    if (lyrics[middle].time <= time) {
+      index = middle
+      left = middle + 1
+    } else {
+      right = middle - 1
+    }
+  }
+
+  return index
+}
 
 // 更新当前歌词行
 const updateCurrentLine = () => {
   const currentLyrics =
-    lyricMode.value === "translation" && hasTranslation.value
+    lyricMode.value === 'translation' && hasTranslation.value
       ? rawTranslationLyrics.value
-      : rawLyrics.value;
+      : rawLyrics.value
 
-  if (!currentLyrics.length) return;
-
-  const time = currentTime.value;
-  let index = 0;
-
-  for (let i = 0; i < currentLyrics.length; i++) {
-    if (time >= currentLyrics[i].time) {
-      index = i;
-    } else {
-      break;
-    }
+  if (!currentLyrics.length) {
+    currentLineIndex.value = 0
+    return
   }
+
+  const time = currentTime.value
+  const index = findCurrentLyricIndex(currentLyrics, time)
 
   if (index !== currentLineIndex.value) {
-    currentLineIndex.value = index;
+    currentLineIndex.value = index
     if (autoScroll.value && !userScrolling.value) {
       nextTick(() => {
-        scrollToCurrentLine();
-      });
+        scrollToCurrentLine()
+      })
     }
   }
-};
+}
 
 // 滚动到当前歌词行
 const scrollToCurrentLine = () => {
-  const currentLine = lyricLineRefs.value[currentLineIndex.value];
-  const container = scrollbarRef.value;
+  const currentLine = lyricLineRefs.value[currentLineIndex.value]
+  const container = scrollbarRef.value
 
-  if (!currentLine || !container) return;
+  if (!currentLine || !container) return
 
   try {
-    const containerHeight = container.clientHeight;
-    const lineOffsetTop = currentLine.offsetTop;
-    const lineHeight = currentLine.clientHeight;
+    const containerHeight = container.clientHeight
+    const lineOffsetTop = currentLine.offsetTop
+    const lineHeight = currentLine.clientHeight
 
     // 计算滚动位置，使当前行在容器中央
-    const targetScrollTop = lineOffsetTop - containerHeight / 1.6 + lineHeight / 2.5;
+    const targetScrollTop = lineOffsetTop - containerHeight / 1.6 + lineHeight / 2.5
 
     // 平滑滚动到目标位置
+    isProgrammaticScroll.value = true
     container.scrollTo({
       top: Math.max(0, targetScrollTop),
-      behavior: "smooth",
-    });
+      behavior: 'smooth'
+    })
+
+    setTimeout(() => {
+      isProgrammaticScroll.value = false
+    }, 400)
   } catch (error) {
-    console.error("滚动失败:", error);
+    isProgrammaticScroll.value = false
+    console.error('滚动失败:', error)
   }
-};
+}
 
 // 处理滚动
 const handleScroll = () => {
-  if (!autoScroll.value) return;
+  if (!autoScroll.value || isProgrammaticScroll.value) return
 
-  userScrolling.value = true;
+  userScrolling.value = true
 
   if (scrollTimer.value) {
-    clearTimeout(scrollTimer.value);
+    clearTimeout(scrollTimer.value)
   }
 
   scrollTimer.value = setTimeout(() => {
-    userScrolling.value = false;
-  }, 2000);
-};
+    userScrolling.value = false
+  }, 2000)
+}
 
 // 关闭歌词页面
 const closeLyric = () => {
-  songStore.showLyric = false;
-  router.push("/");
-};
+  songStore.showLyric = false
+  router.push('/')
+}
 
 // 跳转到指定时间
 const seekToTime = (line) => {
   if (!line || line.time === undefined) {
-    console.error("无效的歌词行:", line);
-    return;
+    console.error('无效的歌词行:', line)
+    return
   }
 
-  const targetTime = line.time;
-  songStore.setCurrentTime(targetTime);
+  const targetTime = line.time
+  songStore.setCurrentTime(targetTime)
 
   if (songStore.audioElement) {
-    songStore.audioElement.currentTime = targetTime;
+    songStore.audioElement.currentTime = targetTime
   }
 
   if (!songStore.isPlaying) {
-    songStore.togglePlay();
+    songStore.togglePlay()
   }
 
-  userScrolling.value = false;
+  userScrolling.value = false
 
   if (scrollTimer.value) {
-    clearTimeout(scrollTimer.value);
-    scrollTimer.value = null;
+    clearTimeout(scrollTimer.value)
+    scrollTimer.value = null
   }
 
   nextTick(() => {
-    updateCurrentLine();
-    scrollToCurrentLine();
-  });
-};
+    updateCurrentLine()
+    scrollToCurrentLine()
+  })
+}
 
 // 监听当前歌曲变化
 watch(
   () => currentSong.value?.id,
   (newId) => {
     if (newId) {
-      loadLyrics(newId);
-      currentLineIndex.value = 0;
-      userScrolling.value = false;
-      lyricMode.value = "both";
-      scrollToCurrentLine();
+      loadLyrics(newId)
+      currentLineIndex.value = 0
+      userScrolling.value = false
+      scrollToCurrentLine()
     }
   },
   { immediate: true }
-);
+)
 
-watch(currentTime, updateCurrentLine);
+watch(currentTime, updateCurrentLine)
 
 watch(lyricMode, () => {
-  currentLineIndex.value = 0;
-  userScrolling.value = false;
+  userScrolling.value = false
   nextTick(() => {
-    updateCurrentLine();
-    scrollToCurrentLine();
-  });
-});
+    updateCurrentLine()
+    scrollToCurrentLine()
+  })
+})
 
 watch(autoScroll, (newValue) => {
   if (newValue) {
-    userScrolling.value = false;
+    userScrolling.value = false
     nextTick(() => {
-      scrollToCurrentLine();
-    });
+      scrollToCurrentLine()
+    })
   }
-});
+})
 
-onMounted(() => {
-  if (currentSong.value?.id) {
-    loadLyrics(currentSong.value.id);
+const clampFontSize = (size) => {
+  if (Number.isNaN(size)) {
+    return 20
   }
-  const savedFontSize = localStorage.getItem("lyricFontSize");
+
+  return Math.min(32, Math.max(14, size))
+}
+
+;(() => {
+  const savedFontSize = localStorage.getItem('lyricFontSize')
   if (savedFontSize) {
-    fontSize.value = parseInt(savedFontSize);
+    fontSize.value = clampFontSize(parseInt(savedFontSize, 10))
   }
-});
+})()
 
 onUnmounted(() => {
   if (scrollTimer.value) {
-    clearTimeout(scrollTimer.value);
+    clearTimeout(scrollTimer.value)
   }
-});
+})
 </script>
 
 <style scoped lang="scss">
 .lyrics-view {
+  --lyric-line-opacity: 0.52;
+  --lyric-line-padding: 14px 20px;
+  --lyric-hover-shift: 3px;
+  --lyric-active-text-scale: 1.05;
+  --lyric-active-translation-scale: 1.02;
+  --lyric-active-font-weight: 650;
+  --lyric-active-glow: 0 0 18px var(--color-primary-light-2);
+  --lyric-active-bg: linear-gradient(
+    90deg,
+    var(--color-primary-light-1) 0%,
+    var(--color-primary-light-2) 100%
+  );
+
   width: 100%;
   height: 100%;
   display: flex;
@@ -434,15 +501,11 @@ onUnmounted(() => {
     align-items: center;
     justify-content: center;
     padding: 60px;
-    background: linear-gradient(
-      135deg,
-      rgba(var(--primary-6), 0.03) 0%,
-      transparent 100%
-    );
+    background: linear-gradient(135deg, rgba(var(--primary-6), 0.03) 0%, transparent 100%);
     position: relative;
 
     &::before {
-      content: "";
+      content: '';
       position: absolute;
       top: 0;
       left: 0;
@@ -462,7 +525,9 @@ onUnmounted(() => {
       aspect-ratio: 1;
       border-radius: 20px;
       overflow: hidden;
-      box-shadow: 0 16px 48px rgba(0, 0, 0, 0.3), 0 0 0 1px var(--color-border-2);
+      box-shadow:
+        0 16px 48px rgba(0, 0, 0, 0.3),
+        0 0 0 1px var(--color-border-2);
       background: var(--color-bg-2);
       transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
       position: relative;
@@ -470,7 +535,9 @@ onUnmounted(() => {
 
       &:hover {
         transform: scale(1.02);
-        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4), 0 0 0 1px var(--color-border-2);
+        box-shadow:
+          0 20px 60px rgba(0, 0, 0, 0.4),
+          0 0 0 1px var(--color-border-2);
       }
 
       .song-cover {
@@ -612,17 +679,19 @@ onUnmounted(() => {
 
           .lyric-line {
             text-align: left;
-            opacity: 0.4;
+            opacity: var(--lyric-line-opacity);
             cursor: pointer;
             transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-            padding: 14px 20px;
+            padding: var(--lyric-line-padding);
             margin: 6px 0;
             border-radius: 8px;
             user-select: none;
             position: relative;
+            max-width: 96%;
+            outline: none;
 
             &::before {
-              content: "";
+              content: '';
               position: absolute;
               left: 0;
               top: 50%;
@@ -636,10 +705,11 @@ onUnmounted(() => {
 
             .lyric-text {
               display: block;
-              line-height: 1.8;
+              line-height: 1.85;
               font-weight: 400;
               color: var(--color-text-1);
               transition: all 0.3s ease;
+              text-wrap: pretty;
             }
 
             .lyric-translation {
@@ -648,37 +718,41 @@ onUnmounted(() => {
               margin-top: 6px;
               color: var(--color-text-3);
               transition: all 0.3s ease;
+              text-wrap: pretty;
             }
 
             &:hover {
-              opacity: 0.7;
+              opacity: 0.8;
               background: var(--color-fill-2);
-              transform: translateX(4px);
+              transform: translateX(var(--lyric-hover-shift));
+            }
+
+            &:focus-visible {
+              opacity: 0.9;
+              background: var(--color-fill-2);
+              box-shadow: 0 0 0 2px var(--color-primary-light-3);
             }
 
             &.active {
               opacity: 1;
-              background: linear-gradient(
-                90deg,
-                var(--color-primary-light-1) 0%,
-                var(--color-primary-light-2) 100%
-              );
+              background: var(--lyric-active-bg);
 
               &::before {
                 height: 60%;
               }
 
               .lyric-text {
-                font-weight: 600;
+                font-weight: var(--lyric-active-font-weight);
                 color: var(--color-primary-6);
-                transform: scale(1.08);
+                transform: scale(var(--lyric-active-text-scale));
                 transform-origin: left center;
+                text-shadow: var(--lyric-active-glow);
               }
 
               .lyric-translation {
                 opacity: 0.9;
                 color: var(--color-text-2);
-                transform: scale(1.05);
+                transform: scale(var(--lyric-active-translation-scale));
                 transform-origin: left center;
               }
             }
@@ -758,6 +832,24 @@ onUnmounted(() => {
           }
         }
       }
+
+      .preset-toggle-btn {
+        width: 28px;
+        height: 28px;
+        min-width: 28px;
+        font-size: 12px;
+        font-weight: 700;
+        border: 1px solid var(--color-border-2);
+        color: var(--color-text-2);
+        background: var(--color-bg-2);
+        transition: all 0.3s ease;
+
+        &:hover {
+          color: var(--color-primary-6);
+          border-color: var(--color-primary-6);
+          background: var(--color-fill-2);
+        }
+      }
     }
   }
 }
@@ -789,6 +881,29 @@ onUnmounted(() => {
       border-top: 1px solid var(--color-border-2);
       flex-direction: column;
 
+      .content-wrapper {
+        padding: 18px 16px;
+
+        .song-info {
+          margin-bottom: 12px;
+
+          .song-title {
+            font-size: 24px;
+          }
+        }
+
+        .lyrics-scrollbar {
+          .lyrics-wrapper {
+            padding: 28% 0;
+
+            .lyric-line {
+              margin: 4px 0;
+              border-radius: 6px;
+            }
+          }
+        }
+      }
+
       .side-toolbar {
         border-left: none;
         border-top: 1px solid var(--color-border-2);
@@ -810,6 +925,52 @@ onUnmounted(() => {
         .font-size-control {
           flex-direction: row;
           gap: 4px;
+        }
+
+        .preset-toggle-btn {
+          width: 26px;
+          height: 26px;
+          min-width: 26px;
+        }
+      }
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lyrics-view {
+    .left-section {
+      .song-cover-card {
+        transition: none;
+
+        &:hover {
+          transform: none;
+        }
+      }
+    }
+
+    .right-section {
+      .content-wrapper {
+        .lyrics-scrollbar {
+          scroll-behavior: auto;
+
+          .lyrics-wrapper {
+            .lyric-line {
+              transition: none;
+
+              &:hover {
+                transform: none;
+              }
+
+              &.active {
+                .lyric-text,
+                .lyric-translation {
+                  transform: none;
+                  text-shadow: none;
+                }
+              }
+            }
+          }
         }
       }
     }

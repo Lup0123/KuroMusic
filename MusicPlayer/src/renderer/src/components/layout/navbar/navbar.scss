@@ -230,12 +230,41 @@
   padding: 12px 4px;
 
   .user-detail {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+
     .nickname {
       font-size: 14px;
       font-weight: 600;
       color: var(--color-text-1);
     }
 
+    .vip-tag {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: fit-content;
+      font-size: 11px;
+      line-height: 1;
+      padding: 3px 8px;
+      border-radius: 999px;
+      font-weight: 700;
+      letter-spacing: 0.2px;
+      border: 1px solid transparent;
+
+      &.vip-tag--black {
+        color: #8a5a00;
+        background: linear-gradient(135deg, #ffeab6 0%, #ffd67e 100%);
+        border-color: #f0c25b;
+      }
+
+      &.vip-tag--svip {
+        color: #6b1d1d;
+        background: linear-gradient(135deg, #ffd1d1 0%, #ff9e9e 100%);
+        border-color: #ff8080;
+      }
+    }
   }
 }
 

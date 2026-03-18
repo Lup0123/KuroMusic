@@ -30,11 +30,10 @@
 
 <script setup>
 import { computed, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute } from 'vue-router'
 import { useIndexStore } from '@/stores/indexStore'
 import { useSongStore } from '@/stores/songStore'
 import { storeToRefs } from 'pinia'
-import { IconArrowDown } from '@arco-design/web-vue/es/icon'
 import SongList from '@/components/content/playlist/songlist.vue'
 import myMusic from '@/components/content/my-music/my-music.vue'
 import PlayerFooter from '@/components/content/player-footer/player-footer.vue'
@@ -46,7 +45,6 @@ import LyricPlayer from '@/views/PlayerView.vue'
 import PlaylistDetail from '@/components/content/Myplaylist/PlaylistDetail.vue'
 
 const route = useRoute()
-const router = useRouter()
 
 const indexStore = useIndexStore()
 const { cur_index } = storeToRefs(indexStore)
@@ -74,10 +72,6 @@ watch(
   },
   { immediate: true }
 )
-
-const closeLyric = () => {
-  router.push('/')
-}
 </script>
 
 <style scoped lang="scss">

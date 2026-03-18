@@ -2,7 +2,7 @@
   <a-layout-header class="header draggable-area">
     <div class="header-left">
       <img class="app-logo" width="50" height="50" :src="appIcon" alt="logo" />
-      <span class="app-title">Music Player</span>
+      <span class="app-title">Kuromusic</span>
     </div>
 
     <div class="header-center draggable-area">
@@ -12,10 +12,10 @@
         size="large"
         class="no-drag"
         allow-clear
+        style="width: 400px"
         @press-enter="handleSearch"
         @clear="handleClearSearch"
         @search="handleSearch"
-        style="width: 400px"
       >
         <template #prefix>
           <icon-search />
@@ -25,20 +25,20 @@
 
     <div class="header-right">
       <!-- 暗黑模式切换按钮 -->
-      <a-button type="text" size="large" @click="toggleDarkMode" class="no-drag">
+      <a-button type="text" size="large" class="no-drag" @click="toggleDarkMode">
         <template #icon>
           <icon-sun v-if="isDarkMode" />
           <icon-moon v-else />
         </template>
       </a-button>
-      <a-button type="text" size="large" class="no-drag" @click ="handleuserinfo">
+      <a-button type="text" size="large" class="no-drag" @click="handleuserinfo">
         <template #icon>
           <icon-settings />
         </template>
       </a-button>
 
       <!-- 用户按钮 -->
-      <a-dropdown trigger="click" v-if="isLoggedIn">
+      <a-dropdown v-if="isLoggedIn" trigger="click">
         <a-avatar :size="32" class="user-avatar no-drag" style="cursor: pointer">
           <img v-if="userInfo?.avatarUrl" :src="userInfo.avatarUrl" alt="avatar" />
           <icon-user v-else />
@@ -52,6 +52,9 @@
               </a-avatar>
               <div class="user-detail">
                 <div class="nickname">{{ userInfo?.nickname || '用户' }}</div>
+                <div v-if="userVipTag" class="vip-tag" :class="userVipClass">
+                  {{ userVipTag }}
+                </div>
               </div>
             </div>
           </a-doption>
@@ -70,17 +73,17 @@
 
       <!-- 自定义窗口控制按钮 -->
       <div class="window-controls">
-        <a-button class="no-drag" type="text" @click="minimizeWindow" size="large">
+        <a-button class="no-drag" type="text" size="large" @click="minimizeWindow">
           <template #icon>
             <icon-minus size="30" />
           </template>
         </a-button>
-        <a-button class="no-drag" type="text" @click="maximizeWindow" size="large ">
+        <a-button class="no-drag" type="text" size="large " @click="maximizeWindow">
           <template #icon>
             <icon-fullscreen />
           </template>
         </a-button>
-        <a-button class="no-drag" type="text" @click="closeWindow" size="large">
+        <a-button class="no-drag" type="text" size="large" @click="closeWindow">
           <template #icon>
             <icon-close size="30" />
           </template>
@@ -184,25 +187,26 @@
         </a-tab-pane>
       </a-tabs>
     </a-modal>
+
+    <!-- 设置抽屉 -->
+    <SettingDrawer v-model:visible="showSettingsDrawer" />
   </a-layout-header>
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
-import { useSongStore } from '@/stores/songStore'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useIndexStore } from '@/stores/indexStore'
 import { useSearchStore } from '@/stores/searchStore'
 import { useUserStore } from '@/stores/userStore'
 import { storeToRefs } from 'pinia'
 import { Message } from '@arco-design/web-vue'
+import SettingDrawer from '@/components/content/setting/setting.vue'
 import {
   IconSearch,
   IconSun,
   IconMoon,
   IconSettings,
   IconUser,
-  IconList,
-  IconMenu,
   IconMinus,
   IconFullscreen,
   IconClose,
@@ -215,17 +219,30 @@ import {
 } from '@arco-design/web-vue/es/icon'
 import appIcon from '@/assets/icon/icon.png'
 
-const songStore = useSongStore()
-const { showPlaylist, currentSong } = storeToRefs(songStore)
-
 const indexStore = useIndexStore()
 const { setCurIndex } = indexStore
 
 const searchStore = useSearchStore()
-const { setSearchKeyword, setHasSearched, setLoading } = searchStore
+const { setSearchKeyword, setHasSearched } = searchStore
 
 const userStore = useUserStore()
 const { userInfo, isLoggedIn, loginLoading, qrCodeImg, qrCodeStatus } = storeToRefs(userStore)
+
+const userVipTag = computed(() => {
+  const info = userInfo.value
+  if (!info) return ''
+
+  const vipType = Number(info.vipType ?? -1)
+
+  const isBlackVip = vipType === 110 || Number(info.redVipLevel ?? 0) > 0
+  return isBlackVip ? '黑胶VIP' : ''
+})
+
+const userVipClass = computed(() => {
+  if (userVipTag.value === 'SVIP') return 'vip-tag--svip'
+  if (userVipTag.value === '黑胶VIP') return 'vip-tag--black'
+  return ''
+})
 
 const searchKeyword = ref('')
 const isDarkMode = ref(document.body.getAttribute('arco-theme') === 'dark')
@@ -240,6 +257,9 @@ const loginForm = ref({
   email: '',
   password: ''
 })
+
+// 设置抽屉状态
+const showSettingsDrawer = ref(false)
 
 // 二维码轮询定时器
 let qrCodeTimer = null
@@ -263,10 +283,6 @@ const handleClearSearch = () => {
   searchKeyword.value = ''
   setSearchKeyword('')
   setHasSearched(false)
-}
-
-const togglePlaylist = () => {
-  showPlaylist.value = !showPlaylist.value
 }
 
 const minimizeWindow = () => {
@@ -305,7 +321,7 @@ const refreshQrCode = async () => {
       startQrCodePolling()
     }
   } catch (error) {
-    Message.error('获取二维码失败')
+    console.error('获取二维码失败:', error)
   } finally {
     qrCodeLoading.value = false
   }
@@ -388,7 +404,7 @@ const handleCloseLoginModal = () => {
 }
 
 const handleuserinfo = () => {
-  console.log('User Info:', userInfo.value)
+  showSettingsDrawer.value = true
 }
 
 onMounted(() => {

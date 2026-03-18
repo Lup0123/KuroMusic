@@ -14,7 +14,7 @@
             <template #icon><icon-play-arrow-fill /></template>
             播放全部
           </a-button>
-          <a-button shape="round" @click="downloadAll">
+          <a-button shape="round" :loading="isDownloading" @click="downloadAll">
             <template #icon><icon-download /></template>
             下载
           </a-button>
@@ -29,10 +29,10 @@
     </div>
 
     <!-- 滚动容器 (包含大头部和列表) -->
-    <div class="scroll-container" @scroll="handleScroll" ref="scrollContainerRef">
+    <div ref="scrollContainerRef" class="scroll-container" @scroll="handleScroll">
       <!-- 完整头部信息区 -->
       <div class="detail-header">
-        <a-page-header @back="goBack" :style="{ background: 'transparent' }">
+        <a-page-header :style="{ background: 'transparent' }" @back="goBack">
           <!-- 这里的标题留空，因为大标题在下面 -->
         </a-page-header>
 
@@ -44,18 +44,25 @@
             <h2 class="playlist-title">{{ playlist.name }}</h2>
             <div class="playlist-meta">
               <div class="creator-info">
-                <span class="create-time">{{ playlist.createTime }}创建</span>
+                <span v-if="playlist.createTime" class="create-time"
+                  >{{ playlist.createTime }}创建</span
+                >
               </div>
             </div>
             <div class="playlist-description">
-              {{ playlist.description || '暂无描述' }}
+              {{ playlist.description || '' }}
             </div>
             <div class="action-buttons">
               <a-button type="primary" size="large" class="play-all-btn" @click="playAll">
                 <template #icon><icon-play-arrow-fill /></template>
                 播放全部
               </a-button>
-              <a-button size="large" class="action-btn" @click="downloadAll">
+              <a-button
+                size="large"
+                class="action-btn"
+                :loading="isDownloading"
+                @click="downloadAll"
+              >
                 <template #icon><icon-download /></template>
                 下载
               </a-button>
@@ -117,61 +124,78 @@
         </div>
 
         <!-- 实际歌曲列表 -->
-        <div v-else class="list-body">
-          <div
-            v-for="(song, index) in songs"
-            :key="song.id + index"
-            class="song-item"
-            :class="{ active: currentSong?.id === song.id }"
-            @dblclick="playSong(song, index)"
-          >
-            <div class="col-index">
-              <span class="index-number">{{ String(index + 1).padStart(2, '0') }}</span>
-              <div class="play-icon-wrapper" @click.stop="playSong(song, index)">
-                <icon-play-arrow-fill />
-              </div>
-              <icon-play-arrow-fill v-if="currentSong?.id === song.id" class="playing-indicator" />
-            </div>
-
-            <div class="col-title">
-              <div class="song-cover">
-                <a-image :src="song.cover" :width="40" :height="40" fit="cover" />
-              </div>
-              <div class="song-info">
-                <div class="song-name">
-                  <span v-if="song.vip" class="vip-badge">VIP</span>
-                  {{ song.name }}
+        <div v-else ref="listBodyRef" class="list-body">
+          <div class="songs-render-layer" :style="{ height: `${virtualizerTotalSize}px` }">
+            <div
+              v-for="item in virtualRowItems"
+              :key="item.row.key"
+              class="song-item virtual-row"
+              :class="{ active: currentSong?.id === item.song.id }"
+              :style="{ transform: `translateY(${item.row.start - listScrollMargin}px)` }"
+              @dblclick="playSong(item.song, item.row.index)"
+            >
+              <div class="col-index">
+                <span class="index-number">
+                  {{ String(item.row.index + 1).padStart(2, '0') }}
+                </span>
+                <div class="play-icon-wrapper" @click.stop="playSong(item.song, item.row.index)">
+                  <icon-play-arrow-fill />
                 </div>
-                <div class="song-artist">{{ song.artist }}</div>
+                <icon-play-arrow-fill
+                  v-if="currentSong?.id === item.song.id"
+                  class="playing-indicator"
+                />
               </div>
-            </div>
 
-            <!-- 专辑列 (默认显示) -->
-            <div class="col-album">
-              <span class="album-name">{{ song.album }}</span>
-            </div>
-
-            <!-- 操作列 (悬停显示，占据专辑列的位置) -->
-            <div class="col-operations">
-              <a-tooltip content="添加到歌单">
-                <icon-folder-add @click.stop="addToPlaylist(song)" />
-              </a-tooltip>
-              <a-tooltip content="下载"><icon-download /></a-tooltip>
-              <a-tooltip content="评论"><icon-message /></a-tooltip>
-              <a-tooltip v-if="playlist.isLocal" content="从歌单中删除">
-                <icon-delete class="delete-icon" @click.stop="deleteSongFromPlaylist(song)" />
-              </a-tooltip>
-              <a-tooltip content="更多"><icon-more /></a-tooltip>
-            </div>
-
-            <div class="col-like">
-              <div class="like-btn" :class="{ liked: song.liked }" @click.stop="toggleLike(song)">
-                <icon-heart-fill v-if="song.liked" />
-                <icon-heart v-else />
+              <div class="col-title">
+                <div class="song-cover">
+                  <a-image :src="item.song.cover" :width="40" :height="40" fit="cover" />
+                </div>
+                <div class="song-info">
+                  <div class="song-name">
+                    <span v-if="item.song.vip" class="vip-badge">VIP</span>
+                    {{ item.song.name }}
+                  </div>
+                  <div class="song-artist">{{ item.song.artist }}</div>
+                </div>
               </div>
-            </div>
 
-            <div class="col-duration">{{ song.duration }}</div>
+              <!-- 专辑列 (默认显示) -->
+              <div class="col-album">
+                <span class="album-name">{{ item.song.album }}</span>
+              </div>
+
+              <!-- 操作列 (悬停显示，占据专辑列的位置) -->
+              <div class="col-operations">
+                <a-tooltip content="添加到歌单">
+                  <icon-folder-add @click.stop="addToPlaylist(item.song)" />
+                </a-tooltip>
+                <a-tooltip content="下载">
+                  <icon-download @click.stop="handleDownloadSong(item.song)" />
+                </a-tooltip>
+                <a-tooltip content="评论"><icon-message /></a-tooltip>
+                <a-tooltip v-if="playlist.isLocal" content="从歌单中删除">
+                  <icon-delete
+                    class="delete-icon"
+                    @click.stop="deleteSongFromPlaylist(item.song)"
+                  />
+                </a-tooltip>
+                <a-tooltip content="更多"><icon-more /></a-tooltip>
+              </div>
+
+              <div class="col-like">
+                <div
+                  class="like-btn"
+                  :class="{ liked: item.song.liked }"
+                  @click.stop="toggleLike(item.song)"
+                >
+                  <icon-heart-fill v-if="item.song.liked" />
+                  <icon-heart v-else />
+                </div>
+              </div>
+
+              <div class="col-duration">{{ item.song.duration }}</div>
+            </div>
           </div>
         </div>
       </div>
@@ -192,20 +216,20 @@
         <a-divider />
         <div class="playlist-list">
           <div
-            v-for="playlist in createdPlaylists"
-            :key="playlist.id"
+            v-for="item in createdPlaylists"
+            :key="item.id"
             class="playlist-option"
-            :class="{ selected: selectedPlaylistId === playlist.id }"
-            @click="selectPlaylist(playlist.id)"
+            :class="{ selected: selectedPlaylistId === item.id }"
+            @click="selectPlaylist(item.id)"
           >
             <div class="playlist-cover">
-              <a-image :src="getPlaylistCover(playlist)" :width="40" :height="40" fit="cover" />
+              <a-image :src="getPlaylistCover(item)" :width="40" :height="40" fit="cover" />
             </div>
             <div class="playlist-info">
-              <div class="playlist-name">{{ playlist.name }}</div>
-              <div class="playlist-count">{{ playlist.songs?.length || 0 }} 首歌曲</div>
+              <div class="playlist-name">{{ item.name }}</div>
+              <div class="playlist-count">{{ item.songs?.length || 0 }} 首歌曲</div>
             </div>
-            <icon-check-circle-fill v-if="selectedPlaylistId === playlist.id" class="check-icon" />
+            <icon-check-circle-fill v-if="selectedPlaylistId === item.id" class="check-icon" />
           </div>
         </div>
         <a-empty v-if="createdPlaylists.length === 0" description="暂无歌单，请先创建" />
@@ -215,8 +239,8 @@
 </template>
 
 <script setup>
-import { ref, onMounted, toRaw, watch, watchEffect } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
+import { ref, onMounted, onBeforeUnmount, toRaw, watch, computed, nextTick } from 'vue'
+import { useVirtualizer } from '@tanstack/vue-virtual'
 import { Message, Modal } from '@arco-design/web-vue'
 import {
   IconPlayArrowFill,
@@ -237,12 +261,12 @@ import { usePlaylistStore } from '@/stores/playlistStore'
 import { useIndexStore } from '@/stores/indexStore'
 import { useSongStore } from '@/stores/songStore'
 import { storeToRefs } from 'pinia'
-import { formatDate, formatTime } from '@/utils/utils'
+import { formatDate } from '@/utils/utils'
+import { downloadSong, downloadSongs } from '@/utils/downloadUtils'
 
-const router = useRouter()
-const route = useRoute()
 const isScrolled = ref(false)
 const scrollContainerRef = ref(null)
+const listBodyRef = ref(null)
 const indexStore = useIndexStore()
 const playlistStore = usePlaylistStore()
 const songStore = useSongStore()
@@ -276,6 +300,42 @@ const currentSongToAdd = ref(null)
 // 收藏状态
 const isFavorited = ref(false)
 
+// 下载状态
+const isDownloading = ref(false)
+
+// 虚拟滚动（TanStack）
+const VIRTUAL_OVERSCAN = 8
+const listScrollMargin = ref(0)
+
+const updateListScrollMargin = () => {
+  const container = scrollContainerRef.value
+  const listBody = listBodyRef.value
+  if (!container || !listBody) return
+
+  const containerRect = container.getBoundingClientRect()
+  const listRect = listBody.getBoundingClientRect()
+  listScrollMargin.value = listRect.top - containerRect.top + container.scrollTop
+}
+
+const rowVirtualizer = useVirtualizer(
+  computed(() => ({
+    count: songs.value.length,
+    getScrollElement: () => scrollContainerRef.value,
+    estimateSize: () => 60,
+    overscan: VIRTUAL_OVERSCAN,
+    enabled: !isLoading.value,
+    scrollMargin: listScrollMargin.value
+  }))
+)
+
+const virtualRows = computed(() => rowVirtualizer.value.getVirtualItems())
+const virtualizerTotalSize = computed(() => rowVirtualizer.value.getTotalSize())
+const virtualRowItems = computed(() =>
+  virtualRows.value
+    .map((row) => ({ row, song: songs.value[row.index] }))
+    .filter((item) => Boolean(item.song))
+)
+
 // 处理滚动 - 监听 scrollContainer
 const handleScroll = (e) => {
   const scrollTop = e.target.scrollTop
@@ -299,7 +359,30 @@ const playAll = () => {
   }
 }
 
-const downloadAll = () => Message.info('开始下载全部歌曲')
+const downloadAll = async () => {
+  if (songs.value.length === 0) {
+    Message.warning('歌单为空')
+    return
+  }
+
+  // 过滤掉本地音乐
+  const onlineSongs = songs.value.filter((song) => !song.url && !song.path)
+  if (onlineSongs.length === 0) {
+    Message.warning('没有可下载的在线歌曲')
+    return
+  }
+
+  isDownloading.value = true
+  try {
+    await downloadSongs(onlineSongs)
+  } finally {
+    isDownloading.value = false
+  }
+}
+
+const handleDownloadSong = async (song) => {
+  await downloadSong(song)
+}
 
 const playSong = (song, index) => {
   // 使用 playlistStore 的方法播放指定歌曲
@@ -354,19 +437,6 @@ const deleteSongFromPlaylist = async (song) => {
       }
     }
   })
-}
-
-const addSongs = () => Message.info('打开添加歌曲面板')
-
-const testAPI = async () => {
-  try {
-    const responseSongs = await window.api.getPlaylistsAllSongs(playlist.value.id)
-    const responsePlaylist = await window.api.getPlaylistsDetails(playlist.value.id)
-    console.log('Test API Response:', responseSongs)
-    console.log('Test API Playlist Response:', responsePlaylist)
-  } catch (error) {
-    console.error('Error calling testAPI:', error)
-  }
 }
 
 const addToPlaylist = (song) => {
@@ -550,12 +620,33 @@ const loadPlaylistData = async () => {
 
 onMounted(async () => {
   await loadPlaylistData()
+  await nextTick()
+  updateListScrollMargin()
+  rowVirtualizer.value.measure()
+  window.addEventListener('resize', updateListScrollMargin)
+  console.log(currentPlaylistInfo.value)
 })
+
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', updateListScrollMargin)
+})
+
+watch(
+  () => songs.value.length,
+  async () => {
+    await nextTick()
+    updateListScrollMargin()
+    rowVirtualizer.value.measure()
+  }
+)
 
 // 监听 currentPlaylistInfo 和 refreshKey 的变化，重新加载数据
 watch([() => currentPlaylistInfo.value.id, refreshKey], async () => {
   console.log('歌单信息变化，重新加载')
   await loadPlaylistData()
+  await nextTick()
+  updateListScrollMargin()
+  rowVirtualizer.value.measure()
   // 滚动到顶部
   if (scrollContainerRef.value) {
     scrollContainerRef.value.scrollTop = 0

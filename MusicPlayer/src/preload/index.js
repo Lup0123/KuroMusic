@@ -65,7 +65,17 @@ const api = {
   // 用户信息
   getLoginStatus: () => ipcRenderer.invoke('get-login-status'),
   getUserAccount: () => ipcRenderer.invoke('get-user-account'),
-  logout: () => ipcRenderer.invoke('logout')
+  logout: () => ipcRenderer.invoke('logout'),
+
+  // ============ 下载相关 API ============
+  selectDownloadDirectory: () => ipcRenderer.invoke('select-download-directory'),
+  getSongDownloadUrl: (songId, level) => ipcRenderer.invoke('get-song-download-url', songId, level),
+  downloadSong: (url, savePath, fileName) =>
+    ipcRenderer.invoke('download-song', { url, savePath, fileName }),
+  saveDownloadedSong: (songInfo) => ipcRenderer.invoke('save-downloaded-song', songInfo),
+  getDownloadedSongs: () => ipcRenderer.invoke('get-downloaded-songs'),
+  removeDownloadedSong: (songId) => ipcRenderer.invoke('remove-downloaded-song', songId),
+  deleteFile: (filePath) => ipcRenderer.invoke('delete-file', filePath)
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to

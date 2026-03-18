@@ -185,6 +185,7 @@ const loadRecommendResource = async () => {
         cover: playlist.picUrl,
         playCount: playlist.playcount || 0,
         description: playlist.copywriter || '',
+        createTime: playlist.createTime,
         isRecommend: true
       }))
     }
@@ -205,7 +206,8 @@ const loadPersonalizedPlaylists = async () => {
         name: playlist.name,
         cover: playlist.picUrl,
         playCount: playlist.playCount || 0,
-        description: playlist.copywriter || ''
+        description: playlist.copywriter || '',
+        createTime: playlist.createTime
       }))
     }
   } catch (error) {
