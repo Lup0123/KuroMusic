@@ -57,7 +57,7 @@ pnpm build:linux
 pnpm build:unpack
 ```
 
-打包配置见 `electron-builder.yml`，当前产品名为 `UnderMusic`。
+打包配置见 `electron-builder.yml`，当前产品名为 `KuroMusic`。
 
 ## 核心功能
 
