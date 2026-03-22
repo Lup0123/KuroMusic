@@ -47,10 +47,10 @@
           <span class="time-current">{{ formattedCurrentTime }}</span>
           <a-slider
             :model-value="progress"
-            @update:model-value="handleProgressChange"
-            @click.stop
             :show-tooltip="false"
             class="progress-slider"
+            @update:model-value="handleProgressChange"
+            @click.stop
           />
           <span class="time-total">{{ formattedDuration }}</span>
         </div>
@@ -68,7 +68,7 @@
             <icon-list size="30" />
           </template>
         </a-button>
-        <a-button type="text" size="large" @click="handleDownload" :loading="isDownloading">
+        <a-button type="text" size="large" :loading="isDownloading" @click="handleDownload">
           <template #icon>
             <icon-download size="30" />
           </template>
@@ -82,9 +82,9 @@
           <icon-sound-fill style="color: rgb(var(--primary-6))" />
           <a-slider
             v-model="volume"
-            @update:model-value="handleVolumeChange"
             :show-tooltip="false"
             style="width: 80px; margin-left: 8px"
+            @update:model-value="handleVolumeChange"
           />
         </div>
       </div>
@@ -165,12 +165,21 @@ const goToLyric = () => {
     Message.warning('当前没有播放歌曲')
     return
   }
-  // 切换歌词页：如果已在歌词页则关闭，否则打开
-  if (router.currentRoute.value.name === 'Lyric') {
-    router.push('/')
+
+  const currentRoute = router.currentRoute.value
+  const nextQuery = { ...currentRoute.query }
+
+  if (nextQuery.lyric === '1') {
+    delete nextQuery.lyric
   } else {
-    router.push({ name: 'Lyric' })
+    nextQuery.lyric = '1'
   }
+
+  router.push({
+    name: currentRoute.name,
+    params: currentRoute.params,
+    query: nextQuery
+  })
 }
 
 // 监听播放状态变化

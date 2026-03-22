@@ -126,10 +126,11 @@
 import { ref, computed, watch, onUnmounted, nextTick } from 'vue'
 import { useSongStore } from '@/stores/songStore'
 import { storeToRefs } from 'pinia'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { IconClose, IconPlus, IconMinus, IconImage, IconCheck } from '@arco-design/web-vue/es/icon'
 
 const router = useRouter()
+const route = useRoute()
 const songStore = useSongStore()
 const { currentSong, currentTime } = storeToRefs(songStore)
 
@@ -385,7 +386,14 @@ const handleScroll = () => {
 // 关闭歌词页面
 const closeLyric = () => {
   songStore.showLyric = false
-  router.push('/')
+  const nextQuery = { ...route.query }
+  delete nextQuery.lyric
+
+  router.push({
+    name: route.name,
+    params: route.params,
+    query: nextQuery
+  })
 }
 
 // 跳转到指定时间

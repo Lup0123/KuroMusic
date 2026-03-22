@@ -1,7 +1,11 @@
 <template>
   <div class="song-search-container">
     <!-- 搜索结果头部 -->
-    <div v-if="hasSearched && !loading" class="search-result-header">
+    <div
+      v-if="hasSearched && !loading"
+      class="search-result-header"
+      :class="{ hidden: isScrolled }"
+    >
       <div class="header-content">
         <div class="search-info">
           <h1 class="search-keyword">{{ searchKeyword }}</h1>
@@ -12,13 +16,13 @@
 
         <!-- 操作按钮 -->
         <div v-if="activeTab === 'songs' && currentResults.length > 0" class="header-actions">
-          <a-button type="primary" size="large" @click="playAll">
+          <a-button type="primary" @click="playAll">
             <template #icon>
               <icon-play-arrow-fill />
             </template>
             播放全部
           </a-button>
-          <a-button size="large" @click="collectAll">
+          <a-button @click="collectAll">
             <template #icon>
               <icon-folder-add />
             </template>
@@ -29,7 +33,7 @@
     </div>
 
     <!-- 搜索标签栏 -->
-    <div v-if="hasSearched" class="search-tabs-wrapper">
+    <div v-if="hasSearched" class="search-tabs-wrapper" :class="{ hidden: isScrolled }">
       <div class="tabs-container">
         <div class="tab-list">
           <div
@@ -50,7 +54,12 @@
     </div>
 
     <!-- 搜索结果内容 -->
-    <div v-if="hasSearched" class="search-content">
+    <div
+      v-if="hasSearched"
+      ref="searchContentRef"
+      class="search-content"
+      @scroll="handleContentScroll"
+    >
       <!-- 加载中 -->
       <div v-if="loading" class="loading-container">
         <a-spin :size="50" />
@@ -78,7 +87,7 @@
         <!-- 歌曲列表 -->
         <div class="songs-list">
           <div
-            v-for="(song, index) in paginatedResults"
+            v-for="(song, index) in currentResults"
             :key="song.id"
             class="song-row"
             :class="{
@@ -103,7 +112,7 @@
             <!-- 歌曲信息 -->
             <div class="col-title">
               <div class="song-cover">
-                <a-image :src="song.albumCover" fit="cover" :width="48" :height="48">
+                <a-image :src="song.albumCover" fit="cover" :width="40" :height="40">
                   <template #error>
                     <div class="cover-placeholder">
                       <icon-music />
@@ -175,14 +184,11 @@
         <div class="pagination-wrapper">
           <a-pagination
             v-model:current="currentPage"
-            v-model:page-size="pageSize"
-            :total="currentResults.length"
-            :page-size-options="[30, 50, 100]"
+            :page-size="pageSize"
+            :total="totalCount"
             show-total
             show-jumper
-            show-page-size
             @change="handleCurrentChange"
-            @page-size-change="handleSizeChange"
           />
         </div>
       </div>
@@ -280,6 +286,8 @@ const addToPlaylistModalVisible = ref(false)
 const selectedPlaylistId = ref(null)
 const currentSongToAdd = ref(null)
 const isCollectAll = ref(false) // 标记是否为收藏全部
+const searchContentRef = ref(null)
+const isScrolled = ref(false)
 
 // 标签页配置
 const tabs = [
@@ -294,10 +302,15 @@ const tabs = [
 
 // 分页相关
 const currentPage = ref(1)
-const pageSize = ref(30)
+const pageSize = 50
+
+const handleContentScroll = (event) => {
+  const scrollTop = event.target.scrollTop
+  isScrolled.value = scrollTop > 220
+}
 
 // 执行搜索
-const performSearch = async (keyword) => {
+const performSearch = async (keyword, page = 1) => {
   if (!keyword || !keyword.trim()) {
     return
   }
@@ -306,12 +319,12 @@ const performSearch = async (keyword) => {
   setHasSearched(true)
 
   try {
-    const response = await window.api.search(keyword.trim(), 1)
+    const offset = (page - 1) * pageSize
+    const response = await window.api.search(keyword.trim(), 1, pageSize, offset)
     console.log('搜索结果:', response)
     const results = response.body.result
     if (results && response) {
       setSearchResults(results)
-      Message.success(`找到 ${results.songCount || 0} 首相关歌曲`)
     } else {
       Message.error('搜索失败，请重试')
       setSearchResults({ songs: [], songCount: 0 })
@@ -330,8 +343,8 @@ watch(
   searchKeyword,
   (newKeyword) => {
     if (newKeyword && newKeyword.trim()) {
-      performSearch(newKeyword)
       currentPage.value = 1
+      performSearch(newKeyword, 1)
     }
   },
   { immediate: false }
@@ -340,7 +353,7 @@ watch(
 // 组件挂载时检查是否有搜索关键词
 onMounted(() => {
   if (searchKeyword.value && searchKeyword.value.trim()) {
-    performSearch(searchKeyword.value)
+    performSearch(searchKeyword.value, currentPage.value)
   }
 })
 
@@ -355,14 +368,8 @@ const currentResults = computed(() => {
   return searchResults.value[activeTab.value] || []
 })
 
-const paginatedResults = computed(() => {
-  const start = (currentPage.value - 1) * pageSize.value
-  const end = start + pageSize.value
-  return currentResults.value.slice(start, end)
-})
-
 const indexMethod = (index) => {
-  return String((currentPage.value - 1) * pageSize.value + index + 1).padStart(2, '0')
+  return String((currentPage.value - 1) * pageSize + index + 1).padStart(2, '0')
 }
 
 const getTabCount = (tabKey) => {
@@ -375,19 +382,19 @@ const getTabCount = (tabKey) => {
 
 watch(activeTab, () => {
   currentPage.value = 1
+  if (searchContentRef.value) {
+    searchContentRef.value.scrollTop = 0
+  }
+  isScrolled.value = false
 })
-
-const handleSizeChange = (val) => {
-  pageSize.value = val
-  currentPage.value = 1
-}
 
 const handleCurrentChange = (val) => {
   currentPage.value = val
-  const container = document.querySelector('.search-content')
-  if (container) {
-    container.scrollTop = 0
+  performSearch(searchKeyword.value, currentPage.value)
+  if (searchContentRef.value) {
+    searchContentRef.value.scrollTop = 0
   }
+  isScrolled.value = false
 }
 
 const handleTabChange = (tab) => {

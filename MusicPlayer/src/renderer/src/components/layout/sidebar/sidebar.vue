@@ -1,18 +1,18 @@
 <template>
   <a-layout-sider width="240px" class="sidebar">
     <a-menu
-      :selected-keys="selectedPlaylistKey ? [selectedPlaylistKey] : [cur_index]"
+      :selected-keys="[selectedMenuKey]"
       class="sidebar-menu"
       @menu-item-click="handleMenuClick"
       :level-indent="8"
     >
-      <a-menu-item key="mainpage">
+      <a-menu-item :key="ROUTE_NAMES.MAIN_PAGE">
         <template #icon>
           <icon-home />
         </template>
         发现
       </a-menu-item>
-      <a-menu-item key="my-music">
+      <a-menu-item :key="ROUTE_NAMES.MY_MUSIC">
         <template #icon>
           <icon-music />
         </template>
@@ -184,12 +184,13 @@
 
 <script setup>
 import { ref, onMounted, nextTick, toRaw, watch, computed } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useIndexStore } from '@/stores/indexStore'
 import { usePlaylistStore } from '@/stores/playlistStore'
 import { useUserStore } from '@/stores/userStore'
 import { storeToRefs } from 'pinia'
 import { Message, Modal } from '@arco-design/web-vue'
+import { ROUTE_NAMES } from '@/router/routeNames'
 import {
   IconHome,
   IconMusic,
@@ -203,12 +204,12 @@ import {
 } from '@arco-design/web-vue/es/icon'
 
 const router = useRouter()
+const route = useRoute()
 const indexStore = useIndexStore()
 const playlistStore = usePlaylistStore()
 const userStore = useUserStore()
 
-const { setCurIndex } = indexStore
-const { cur_index, selectedPlaylistKey } = storeToRefs(indexStore)
+const { selectedPlaylistKey } = storeToRefs(indexStore)
 const { createdPlaylists, favoritePlaylists, userPlaylists } = storeToRefs(playlistStore)
 const { userInfo, isLoggedIn } = storeToRefs(userStore)
 
@@ -234,6 +235,8 @@ const filteredUserPlaylists = computed(() => {
   return userPlaylists.value
 })
 
+const NAV_ROUTE_NAMES = [ROUTE_NAMES.MAIN_PAGE, ROUTE_NAMES.MY_MUSIC, ROUTE_NAMES.SONG_SEARCH]
+
 // 创建歌单相关
 const nameInputRef = ref(null)
 const createModalVisible = ref(false)
@@ -242,8 +245,19 @@ const newPlaylist = ref({
   description: ''
 })
 
+const selectedMenuKey = computed(() => {
+  if (route.name === ROUTE_NAMES.PLAYLIST_DETAIL && selectedPlaylistKey.value) {
+    return selectedPlaylistKey.value
+  }
+
+  return NAV_ROUTE_NAMES.includes(route.name) ? route.name : ROUTE_NAMES.MAIN_PAGE
+})
+
 const handleMenuClick = (key) => {
-  setCurIndex(key)
+  if (!NAV_ROUTE_NAMES.includes(key)) return
+
+  indexStore.setSelectedPlaylistKey(null)
+  router.push({ name: key })
 }
 
 const showCreateModal = () => {
@@ -293,16 +307,24 @@ const handleCancelCreate = () => {
 }
 
 const handlePlaylistClick = (playlist) => {
-  const playlistKey = playlist.isLocal ? `created-${playlist.id}` : `favorite-${playlist.id}`
+  const isFavorite = favoritePlaylists.value.some((item) => item.id === playlist.id)
+  const playlistType = playlist.isLocal ? 'created' : isFavorite ? 'favorite' : 'user'
+  const playlistKey = `${playlistType}-${playlist.id}`
 
   indexStore.setSelectedPlaylistKey(playlistKey)
   playlistStore.setCurrentPlaylist(playlist)
 
-  // 如果当前已经在歌单详情页，强制刷新
-  if (cur_index.value === 'PlaylistDetail') {
+  // 已在同一详情页时强制刷新，避免重新进路由
+  if (
+    route.name === ROUTE_NAMES.PLAYLIST_DETAIL &&
+    String(route.params.id || '') === String(playlist.id)
+  ) {
     indexStore.forceRefresh()
   } else {
-    setCurIndex('PlaylistDetail')
+    router.push({
+      name: ROUTE_NAMES.PLAYLIST_DETAIL,
+      params: { id: String(playlist.id) }
+    })
   }
 }
 
@@ -319,7 +341,7 @@ const handleDeletePlaylist = async (playlist) => {
           Message.success('歌单已删除')
           // 如果当前正在查看被删除的歌单，返回主页
           if (playlistStore.currentPlaylistInfo.id === playlist.id) {
-            setCurIndex('mainpage')
+            router.push({ name: ROUTE_NAMES.MAIN_PAGE })
           }
         } else {
           Message.error('删除失败')
@@ -345,7 +367,7 @@ const handleDeleteFavoritePlaylist = async (playlist) => {
           Message.success('已取消收藏')
           // 如果当前正在查看被取消收藏的歌单，返回主页
           if (playlistStore.currentPlaylistInfo.id === playlist.id) {
-            setCurIndex('mainpage')
+            router.push({ name: ROUTE_NAMES.MAIN_PAGE })
           }
         } else {
           Message.error('取消收藏失败')

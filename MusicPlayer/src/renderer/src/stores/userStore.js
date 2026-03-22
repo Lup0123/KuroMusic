@@ -50,10 +50,10 @@ export const useUserStore = defineStore('user', () => {
   }
 
   // 手机号密码登录
-  const loginByPhone = async (phone, password) => {
+  const loginByPhone = async (phone, password, countryCode = '86') => {
     loginLoading.value = true
     try {
-      const response = await window.api.loginByPhone(phone, password)
+      const response = await window.api.loginByPhone(phone, password, countryCode)
       console.log('手机号登录响应:', response)
       if (response.code === 200) {
         console.log('登录成功，用户信息:', response.profile)
@@ -66,6 +66,38 @@ export const useUserStore = defineStore('user', () => {
       return { success: false, message: error.message }
     } finally {
       loginLoading.value = false
+    }
+  }
+
+  // 手机号验证码登录
+  const loginByPhoneCaptcha = async (phone, captcha, countryCode = '86') => {
+    loginLoading.value = true
+    try {
+      const response = await window.api.loginByPhoneCaptcha(phone, captcha, countryCode)
+      if (response.code === 200) {
+        setUserInfo(response.profile)
+        return { success: true }
+      }
+      return { success: false, message: response.message || '登录失败' }
+    } catch (error) {
+      console.error('验证码登录失败:', error)
+      return { success: false, message: error.message }
+    } finally {
+      loginLoading.value = false
+    }
+  }
+
+  // 发送短信验证码
+  const sendCaptcha = async (phone, countryCode = '86') => {
+    try {
+      const response = await window.api.sendCaptcha(phone, countryCode)
+      if (response.code === 200) {
+        return { success: true }
+      }
+      return { success: false, message: response.message || '验证码发送失败' }
+    } catch (error) {
+      console.error('发送验证码失败:', error)
+      return { success: false, message: error.message }
     }
   }
 
@@ -170,6 +202,8 @@ export const useUserStore = defineStore('user', () => {
     restoreUserInfo,
     logout,
     loginByPhone,
+    loginByPhoneCaptcha,
+    sendCaptcha,
     loginByEmail,
     getQrCodeKey,
     generateQrCode,

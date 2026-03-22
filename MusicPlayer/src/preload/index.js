@@ -12,7 +12,8 @@ const api = {
 
   selectMusicFiles: () => ipcRenderer.invoke('select-music-files'),
   getMusicMetadata: (filePath) => ipcRenderer.invoke('get-music-metadata', filePath),
-  search: (keyword, typeid) => ipcRenderer.invoke('search', keyword, typeid),
+  search: (keyword, typeid, limit, offset) =>
+    ipcRenderer.invoke('search', keyword, typeid, limit, offset),
   getSongUrl: (songId, quality) => ipcRenderer.invoke('get-song-url', songId, quality),
   getSongLyrics: (songId) => ipcRenderer.invoke('get-song-lyrics', songId),
   getHotPlaylists: () => ipcRenderer.invoke('get-hot-playlists'),
@@ -54,10 +55,12 @@ const api = {
   checkQRstatus: (key) => ipcRenderer.invoke('check-qr-status', key),
 
   // 手机号登录
-  loginByPhone: (phone, password) => ipcRenderer.invoke('login-by-phone', phone, password),
-  loginByPhoneCaptcha: (phone, captcha) =>
-    ipcRenderer.invoke('login-by-phone-captcha', phone, captcha),
-  sendCaptcha: (phone) => ipcRenderer.invoke('send-captcha', phone),
+  loginByPhone: (phone, password, countryCode = '86') =>
+    ipcRenderer.invoke('login-by-phone', phone, password, countryCode),
+  loginByPhoneCaptcha: (phone, captcha, countryCode = '86') =>
+    ipcRenderer.invoke('login-by-phone-captcha', phone, captcha, countryCode),
+  sendCaptcha: (phone, countryCode = '86') =>
+    ipcRenderer.invoke('send-captcha', phone, countryCode),
 
   // 邮箱登录
   loginByEmail: (email, password) => ipcRenderer.invoke('login-by-email', email, password),

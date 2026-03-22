@@ -3,6 +3,7 @@ import {
   login_qr_key,
   login_qr_create,
   login_qr_check,
+  login,
   login_cellphone,
   login_status,
   logout as logoutApi,
@@ -81,10 +82,11 @@ const auth = {
   // ============ 手机号登录 ============
 
   // 手机号密码登录
-  async loginByPhone(phone, password) {
+  async loginByPhone(phone, password, countrycode = '86') {
     try {
       const response = await login_cellphone({
         phone,
+        countrycode,
         password,
         timestamp: Date.now()
       })
@@ -102,10 +104,11 @@ const auth = {
   },
 
   // 手机号验证码登录
-  async loginByPhoneCaptcha(phone, captcha) {
+  async loginByPhoneCaptcha(phone, captcha, countrycode = '86') {
     try {
       const response = await login_cellphone({
         phone,
+        countrycode,
         captcha,
         timestamp: Date.now()
       })
@@ -122,10 +125,11 @@ const auth = {
   },
 
   // 发送验证码
-  async sendCaptcha(phone) {
+  async sendCaptcha(phone, ctcode = '86') {
     try {
       const response = await captcha_sent({
         phone,
+        ctcode,
         timestamp: Date.now()
       })
       return response.body
@@ -137,11 +141,23 @@ const auth = {
 
   // ============ 邮箱登录 ============
 
-  // 邮箱密码登录（网易云已不支持邮箱登录，保留接口但返回提示）
+  // 邮箱密码登录
   async loginByEmail(email, password) {
-    return {
-      code: 501,
-      message: '网易云音乐已不支持邮箱登录，请使用手机号或二维码登录'
+    try {
+      const response = await login({
+        email,
+        password,
+        timestamp: Date.now()
+      })
+      if (response.body.code === 200 && response.body.cookie) {
+        userCookie = response.body.cookie
+        store.set('cookie', userCookie)
+        console.log('邮箱登录成功，cookie已保存并持久化，长度:', userCookie.length)
+      }
+      return response.body
+    } catch (error) {
+      console.error('邮箱登录失败:', error)
+      throw error
     }
   },
 

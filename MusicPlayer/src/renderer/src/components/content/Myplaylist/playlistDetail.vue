@@ -240,6 +240,7 @@
 
 <script setup>
 import { ref, onMounted, onBeforeUnmount, toRaw, watch, computed, nextTick } from 'vue'
+import { useRouter } from 'vue-router'
 import { useVirtualizer } from '@tanstack/vue-virtual'
 import { Message, Modal } from '@arco-design/web-vue'
 import {
@@ -263,15 +264,16 @@ import { useSongStore } from '@/stores/songStore'
 import { storeToRefs } from 'pinia'
 import { formatDate } from '@/utils/utils'
 import { downloadSong, downloadSongs } from '@/utils/downloadUtils'
+import { ROUTE_NAMES } from '@/router/routeNames'
 
 const isScrolled = ref(false)
 const scrollContainerRef = ref(null)
 const listBodyRef = ref(null)
+const router = useRouter()
 const indexStore = useIndexStore()
 const playlistStore = usePlaylistStore()
 const songStore = useSongStore()
 
-const { setCurIndex } = indexStore
 const { currentPlaylistInfo, createdPlaylists } = storeToRefs(playlistStore)
 const { currentSong } = storeToRefs(songStore)
 const { refreshKey } = storeToRefs(indexStore)
@@ -343,9 +345,13 @@ const handleScroll = (e) => {
 }
 
 const goBack = () => {
-  // 返回到上一个页面，如果没有记录则返回主页
-  const previousPage = indexStore.previousIndex || 'mainpage'
-  setCurIndex(previousPage)
+  // 有历史记录时回退，否则回到发现页
+  if (window.history.length > 1) {
+    router.back()
+    return
+  }
+
+  router.push({ name: ROUTE_NAMES.MAIN_PAGE })
 }
 
 const playAll = () => {

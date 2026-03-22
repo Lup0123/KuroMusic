@@ -1,24 +1,24 @@
 <template>
   <!-- 遮罩层 -->
   <transition name="fade">
-    <div class="playlist-overlay" v-show="visible" @click="closePlaylist"></div>
+    <div v-show="props.visible" class="playlist-overlay" @click="closePlaylist"></div>
   </transition>
 
   <!-- 播放列表弹窗 -->
   <transition name="slide">
-    <div class="playlist-drawer" v-show="visible" @click.stop>
+    <div v-show="props.visible" class="playlist-drawer" @click.stop>
       <div class="playlist-header">
         <h3>播放列表</h3>
         <div class="playlist-stats">
           <span>共 {{ playlist.length }} 首</span>
         </div>
         <div class="playlist-actions">
-          <a-button type="text" @click="clearPlaylist" title="清空播放列表">
+          <a-button type="text" title="清空播放列表" @click="clearPlaylist">
             <template #icon>
               <icon-delete />
             </template>
           </a-button>
-          <a-button type="text" @click="closePlaylist" title="关闭">
+          <a-button type="text" title="关闭" @click="closePlaylist">
             <template #icon>
               <icon-close />
             </template>
@@ -26,14 +26,14 @@
         </div>
       </div>
 
-      <a-scrollbar class="playlist-content">
+      <div class="playlist-content">
         <transition-group name="song-list" tag="div">
           <div
-            class="playlist-item"
             v-for="(song, index) in playlist"
             :key="song.id || index"
-            @click="playSong(index)"
+            class="playlist-item"
             :class="{ active: currentSongIndex === index }"
+            @click="playSong(index)"
           >
             <div class="song-index">
               <span v-if="currentSongIndex !== index">{{ index + 1 }}</span>
@@ -49,8 +49,8 @@
                 type="text"
                 shape="circle"
                 size="small"
-                @click.stop="removeSong(index)"
                 title="移除"
+                @click.stop="removeSong(index)"
               >
                 <template #icon>
                   <icon-close />
@@ -61,11 +61,11 @@
         </transition-group>
 
         <!-- 空状态 -->
-        <div class="empty-state" v-if="playlist.length === 0">
+        <div v-if="playlist.length === 0" class="empty-state">
           <icon-music :size="60" />
           <p>播放列表为空</p>
         </div>
-      </a-scrollbar>
+      </div>
     </div>
   </transition>
 </template>

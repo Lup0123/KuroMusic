@@ -95,97 +95,167 @@
     <a-modal
       v-model:visible="showLoginModal"
       :footer="false"
-      :width="400"
-      title="登录"
+      :width="460"
+      :z-index="3000"
+      :body-style="{ maxHeight: 'calc(100vh - 190px)', overflowY: 'auto' }"
+      title="登录 Kuromusic"
+      class="login-modal"
       @close="handleCloseLoginModal"
     >
-      <a-tabs v-model:active-key="loginTab" class="login-tabs">
-        <!-- 二维码登录 -->
-        <a-tab-pane key="qrcode" title="二维码登录">
-          <div class="qrcode-login">
-            <div class="qrcode-container">
-              <div v-if="qrCodeImg" class="qrcode-wrapper">
-                <img :src="qrCodeImg" alt="二维码" class="qrcode-img" />
-                <div v-if="qrCodeStatus === 'scanned'" class="qrcode-mask scanned">
-                  <icon-check-circle-fill :size="48" />
-                  <span>已扫码，请在手机上确认</span>
+      <div class="login-shell">
+        <a-tabs v-model:active-key="loginTab" class="login-tabs">
+          <!-- 二维码登录 -->
+          <a-tab-pane key="qrcode" title="二维码登录">
+            <div class="qrcode-login">
+              <div class="qrcode-container">
+                <div v-if="qrCodeImg" class="qrcode-wrapper">
+                  <img :src="qrCodeImg" alt="二维码" class="qrcode-img" />
+                  <div v-if="qrCodeStatus === 'scanned'" class="qrcode-mask scanned">
+                    <icon-check-circle-fill :size="46" />
+                    <span>已扫码，请在手机上确认</span>
+                  </div>
+                  <div v-if="qrCodeStatus === 'expired'" class="qrcode-mask expired">
+                    <span>二维码已过期</span>
+                    <a-button type="primary" size="small" @click="refreshQrCode">刷新</a-button>
+                  </div>
                 </div>
-                <div v-if="qrCodeStatus === 'expired'" class="qrcode-mask expired">
-                  <span>二维码已过期</span>
-                  <a-button type="primary" size="small" @click="refreshQrCode">刷新</a-button>
+                <div v-else class="qrcode-placeholder">
+                  <a-spin v-if="qrCodeLoading" tip="正在获取二维码..." />
+                  <div v-else class="qrcode-empty">
+                    <icon-qrcode :size="56" style="color: var(--color-text-4)" />
+                    <a-button type="primary" @click="refreshQrCode">获取登录二维码</a-button>
+                  </div>
                 </div>
               </div>
-              <div v-else class="qrcode-placeholder">
-                <a-spin v-if="qrCodeLoading" tip="正在获取二维码..." />
-                <div v-else class="qrcode-empty">
-                  <icon-qrcode :size="64" style="color: var(--color-text-4)" />
-                  <p>点击获取登录二维码</p>
-                  <a-button type="primary" @click="refreshQrCode">获取二维码</a-button>
-                </div>
-              </div>
+              <p class="qrcode-tip">请使用网易云音乐 App 扫码登录</p>
             </div>
-            <p class="qrcode-tip">使用网易云音乐APP扫码登录</p>
-          </div>
-        </a-tab-pane>
+          </a-tab-pane>
 
-        <!-- 密码登录 -->
-        <a-tab-pane key="password" title="密码登录">
-          <a-form :model="loginForm" layout="vertical" class="login-form">
-            <a-form-item label="登录方式">
-              <a-radio-group v-model="loginType" type="button">
-                <a-radio value="phone">手机号</a-radio>
-                <a-radio value="email">邮箱</a-radio>
-              </a-radio-group>
-            </a-form-item>
+          <!-- 账号登录 -->
+          <a-tab-pane key="password" title="账号登录">
+            <a-form :model="loginForm" layout="vertical" class="login-form">
+              <a-form-item class="compact-item" label="账号类型">
+                <a-radio-group v-model="loginType" type="radio" class="switch-group">
+                  <a-radio value="phone">手机号</a-radio>
+                  <a-radio value="email">邮箱</a-radio>
+                </a-radio-group>
+              </a-form-item>
 
-            <a-form-item v-if="loginType === 'phone'" label="手机号" required>
-              <a-input
-                v-model="loginForm.phone"
-                placeholder="请输入手机号"
-                allow-clear
-                size="large"
-              >
-                <template #prefix>
-                  <icon-phone />
-                </template>
-              </a-input>
-            </a-form-item>
+              <template v-if="loginType === 'phone'">
+                <a-form-item class="compact-item" label="手机号" required>
+                  <div class="phone-line">
+                    <a-select
+                      v-model="loginForm.countryCode"
+                      :options="countryCodeOptions"
+                      size="large"
+                      class="country-code-select"
+                      style="width: 120px; margin-right: 8px"
+                    />
+                    <a-input
+                      v-model="loginForm.phone"
+                      placeholder="请输入手机号"
+                      allow-clear
+                      size="large"
+                      class="phone-input"
+                    />
+                  </div>
+                </a-form-item>
 
-            <a-form-item v-else label="邮箱" required>
-              <a-input v-model="loginForm.email" placeholder="请输入邮箱" allow-clear size="large">
-                <template #prefix>
-                  <icon-email />
-                </template>
-              </a-input>
-            </a-form-item>
+                <a-form-item class="compact-item" label="登录方式">
+                  <a-radio-group v-model="phoneLoginMode" type="radio" class="switch-group">
+                    <a-radio value="password">密码登录</a-radio>
+                    <a-radio value="captcha">短信验证</a-radio>
+                  </a-radio-group>
+                </a-form-item>
 
-            <a-form-item label="密码" required>
-              <a-input-password
-                v-model="loginForm.password"
-                placeholder="请输入密码"
-                allow-clear
-                size="large"
-              >
-                <template #prefix>
-                  <icon-lock />
-                </template>
-              </a-input-password>
-            </a-form-item>
+                <a-form-item
+                  v-if="phoneLoginMode === 'password'"
+                  class="compact-item"
+                  label="密码"
+                  required
+                >
+                  <a-input-password
+                    v-model="loginForm.password"
+                    placeholder="请输入密码"
+                    allow-clear
+                    size="large"
+                  >
+                    <template #prefix>
+                      <icon-lock />
+                    </template>
+                  </a-input-password>
+                </a-form-item>
 
-            <a-form-item>
-              <a-button
-                type="primary"
-                long
-                size="large"
-                :loading="loginLoading"
-                @click="handlePasswordLogin"
-              >
-                登录
-              </a-button>
-            </a-form-item>
-          </a-form>
-        </a-tab-pane>
-      </a-tabs>
+                <a-form-item v-else class="compact-item" label="短信验证码" required>
+                  <a-input
+                    v-model="loginForm.captcha"
+                    placeholder="请输入验证码"
+                    allow-clear
+                    size="large"
+                  >
+                    <template #prefix>
+                      <icon-email />
+                    </template>
+                    <template #append>
+                      <a-button
+                        type="text"
+                        :disabled="smsCountdown > 0"
+                        class="captcha-btn"
+                        @click="handleSendCaptcha"
+                      >
+                        {{ smsCountdown > 0 ? `${smsCountdown}s后重试` : '发送验证码' }}
+                      </a-button>
+                    </template>
+                  </a-input>
+                </a-form-item>
+              </template>
+
+              <template v-else>
+                <a-form-item class="compact-item" label="163 邮箱" required>
+                  <a-input
+                    v-model="loginForm.emailPrefix"
+                    placeholder="请输入邮箱前缀"
+                    allow-clear
+                    size="large"
+                  >
+                    <template #prefix>
+                      <icon-email />
+                    </template>
+                    <template #append>@163.com</template>
+                  </a-input>
+                </a-form-item>
+
+                <a-form-item class="compact-item" label="密码" required>
+                  <a-input-password
+                    v-model="loginForm.password"
+                    placeholder="请输入密码"
+                    allow-clear
+                    size="large"
+                  >
+                    <template #prefix>
+                      <icon-lock />
+                    </template>
+                  </a-input-password>
+                </a-form-item>
+              </template>
+
+              <a-form-item class="submit-item">
+                <a-button
+                  type="primary"
+                  long
+                  size="large"
+                  :loading="loginLoading"
+                  @click="handlePasswordLogin"
+                >
+                  {{
+                    loginType === 'phone' && phoneLoginMode === 'captcha' ? '验证码登录' : '登录'
+                  }}
+                </a-button>
+              </a-form-item>
+            </a-form>
+          </a-tab-pane>
+        </a-tabs>
+      </div>
     </a-modal>
 
     <!-- 设置抽屉 -->
@@ -195,12 +265,13 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted, computed } from 'vue'
-import { useIndexStore } from '@/stores/indexStore'
+import { useRouter } from 'vue-router'
 import { useSearchStore } from '@/stores/searchStore'
 import { useUserStore } from '@/stores/userStore'
 import { storeToRefs } from 'pinia'
 import { Message } from '@arco-design/web-vue'
 import SettingDrawer from '@/components/content/setting/setting.vue'
+import { ROUTE_NAMES } from '@/router/routeNames'
 import {
   IconSearch,
   IconSun,
@@ -213,14 +284,12 @@ import {
   IconExport,
   IconCheckCircleFill,
   IconQrcode,
-  IconPhone,
   IconEmail,
   IconLock
 } from '@arco-design/web-vue/es/icon'
 import appIcon from '@/assets/icon/icon.png'
 
-const indexStore = useIndexStore()
-const { setCurIndex } = indexStore
+const router = useRouter()
 
 const searchStore = useSearchStore()
 const { setSearchKeyword, setHasSearched } = searchStore
@@ -251,11 +320,21 @@ const isDarkMode = ref(document.body.getAttribute('arco-theme') === 'dark')
 const showLoginModal = ref(false)
 const loginTab = ref('qrcode')
 const loginType = ref('phone')
+const phoneLoginMode = ref('password')
 const qrCodeLoading = ref(false)
+const smsCountdown = ref(0)
+const countryCodeOptions = [
+  { label: '+86', value: '86' },
+  { label: '+852', value: '852' },
+  { label: '+853', value: '853' },
+  { label: '+886', value: '886' }
+]
 const loginForm = ref({
+  countryCode: '86',
   phone: '',
-  email: '',
-  password: ''
+  emailPrefix: '',
+  password: '',
+  captcha: ''
 })
 
 // 设置抽屉状态
@@ -263,6 +342,45 @@ const showSettingsDrawer = ref(false)
 
 // 二维码轮询定时器
 let qrCodeTimer = null
+let smsTimer = null
+
+const resetLoginForm = () => {
+  loginForm.value = {
+    countryCode: '86',
+    phone: '',
+    emailPrefix: '',
+    password: '',
+    captcha: ''
+  }
+  phoneLoginMode.value = 'password'
+}
+
+const stopSmsCountdown = () => {
+  if (smsTimer) {
+    clearInterval(smsTimer)
+    smsTimer = null
+  }
+  smsCountdown.value = 0
+}
+
+const startSmsCountdown = () => {
+  stopSmsCountdown()
+  smsCountdown.value = 60
+  smsTimer = setInterval(() => {
+    if (smsCountdown.value <= 1) {
+      stopSmsCountdown()
+      return
+    }
+    smsCountdown.value -= 1
+  }, 1000)
+}
+
+const isPhoneValid = (phone) => /^\d{5,15}$/.test((phone || '').trim())
+
+const build163Email = () => {
+  const prefix = (loginForm.value.emailPrefix || '').trim()
+  return prefix ? `${prefix}@163.com` : ''
+}
 
 const handleSearch = async () => {
   if (!searchKeyword.value.trim()) {
@@ -276,7 +394,7 @@ const handleSearch = async () => {
   setSearchKeyword(searchKeyword.value.trim())
 
   // 切换到搜索页面
-  setCurIndex('songsearch')
+  router.push({ name: ROUTE_NAMES.SONG_SEARCH })
 }
 
 const handleClearSearch = () => {
@@ -352,37 +470,72 @@ const stopQrCodePolling = () => {
   }
 }
 
+const handleSendCaptcha = async () => {
+  if (!isPhoneValid(loginForm.value.phone)) {
+    Message.warning('请输入正确的手机号')
+    return
+  }
+
+  const result = await userStore.sendCaptcha(loginForm.value.phone, loginForm.value.countryCode)
+  if (result.success) {
+    Message.success('验证码已发送')
+    startSmsCountdown()
+  } else {
+    Message.error(result.message || '验证码发送失败')
+  }
+}
+
 // 密码登录
 const handlePasswordLogin = async () => {
   if (loginType.value === 'phone') {
-    if (!loginForm.value.phone) {
-      Message.warning('请输入手机号')
+    if (!isPhoneValid(loginForm.value.phone)) {
+      Message.warning('请输入正确的手机号')
       return
     }
   } else {
-    if (!loginForm.value.email) {
-      Message.warning('请输入邮箱')
+    if (!loginForm.value.emailPrefix) {
+      Message.warning('请输入163邮箱前缀')
       return
     }
-  }
-
-  if (!loginForm.value.password) {
-    Message.warning('请输入密码')
-    return
   }
 
   let result
   if (loginType.value === 'phone') {
-    result = await userStore.loginByPhone(loginForm.value.phone, loginForm.value.password)
+    if (phoneLoginMode.value === 'password') {
+      if (!loginForm.value.password) {
+        Message.warning('请输入密码')
+        return
+      }
+      result = await userStore.loginByPhone(
+        loginForm.value.phone,
+        loginForm.value.password,
+        loginForm.value.countryCode
+      )
+    } else {
+      if (!loginForm.value.captcha) {
+        Message.warning('请输入短信验证码')
+        return
+      }
+      result = await userStore.loginByPhoneCaptcha(
+        loginForm.value.phone,
+        loginForm.value.captcha,
+        loginForm.value.countryCode
+      )
+    }
   } else {
-    result = await userStore.loginByEmail(loginForm.value.email, loginForm.value.password)
+    if (!loginForm.value.password) {
+      Message.warning('请输入密码')
+      return
+    }
+    result = await userStore.loginByEmail(build163Email(), loginForm.value.password)
   }
 
   if (result.success) {
     showLoginModal.value = false
     Message.success('登录成功')
     // 重置表单
-    loginForm.value = { phone: '', email: '', password: '' }
+    resetLoginForm()
+    stopSmsCountdown()
   } else {
     Message.error(result.message || '登录失败')
   }
@@ -399,8 +552,9 @@ const handleLogout = async () => {
 // 关闭登录弹窗
 const handleCloseLoginModal = () => {
   stopQrCodePolling()
+  stopSmsCountdown()
   userStore.resetQrCode()
-  loginForm.value = { phone: '', email: '', password: '' }
+  resetLoginForm()
 }
 
 const handleuserinfo = () => {
@@ -421,6 +575,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   stopQrCodePolling()
+  stopSmsCountdown()
 })
 </script>
 

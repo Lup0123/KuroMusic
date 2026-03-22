@@ -18,9 +18,9 @@
         </div>
         <div class="playlist-grid">
           <div
-            class="playlist-card"
             v-for="playlist in recommendPlaylists"
             :key="'rec-' + playlist.id"
+            class="playlist-card"
             @click="gotodetail(playlist)"
           >
             <div class="playlist-cover">
@@ -59,9 +59,9 @@
         </div>
         <div class="playlist-grid">
           <div
-            class="playlist-card"
             v-for="playlist in personalizedPlaylists"
             :key="'per-' + playlist.id"
+            class="playlist-card"
             @click="gotodetail(playlist)"
           >
             <div class="playlist-cover">
@@ -99,9 +99,9 @@
         </div>
         <div class="playlist-grid">
           <div
-            class="playlist-card"
             v-for="playlist in topPlaylists"
             :key="'top-' + playlist.id"
+            class="playlist-card"
             @click="gotodetail(playlist)"
           >
             <div class="playlist-cover">
@@ -133,15 +133,15 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { IconPlayArrow, IconImage, IconFire, IconStarFill } from '@arco-design/web-vue/es/icon'
 import { storeToRefs } from 'pinia'
-import { useIndexStore } from '@/stores/indexStore'
 import { usePlaylistStore } from '@/stores/playlistStore'
 import { useUserStore } from '@/stores/userStore'
+import { ROUTE_NAMES } from '@/router/routeNames'
 
-const indexStore = useIndexStore()
-const { setCurIndex } = indexStore
+const router = useRouter()
 const playlistStore = usePlaylistStore()
 const { setCurrentPlaylist } = playlistStore
 const userStore = useUserStore()
@@ -166,8 +166,11 @@ const formatPlayCount = (count) => {
 }
 
 const gotodetail = async (playlist) => {
-  setCurIndex('PlaylistDetail')
   setCurrentPlaylist(playlist)
+  router.push({
+    name: ROUTE_NAMES.PLAYLIST_DETAIL,
+    params: { id: String(playlist.id) }
+  })
 }
 
 // 加载每日推荐歌单（仅登录用户）

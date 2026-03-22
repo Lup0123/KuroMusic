@@ -2,12 +2,12 @@
   <a-modal
     v-model:visible="visible"
     title="下载歌曲"
-    @ok="handleDownload"
-    @cancel="handleCancel"
     :ok-loading="downloading"
     ok-text="下载"
     cancel-text="取消"
     width="480px"
+    @ok="handleDownload"
+    @cancel="handleCancel"
   >
     <div class="download-dialog">
       <!-- 歌曲信息 -->

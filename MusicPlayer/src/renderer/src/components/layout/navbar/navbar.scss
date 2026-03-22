@@ -269,13 +269,21 @@
 }
 
 // 登录弹窗样式
+.login-shell {
+  padding-top: 2px;
+}
+
 .login-tabs {
+  :deep(.arco-tabs-nav) {
+    margin-bottom: 10px;
+  }
+
   :deep(.arco-tabs-nav-tab) {
     justify-content: center;
   }
 
   :deep(.arco-tabs-content) {
-    padding-top: 16px;
+    padding-top: 6px;
   }
 }
 
@@ -284,18 +292,19 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 20px 0;
+  padding: 8px 0 4px;
 
   .qrcode-container {
-    width: 200px;
-    height: 200px;
+    width: 220px;
+    height: 220px;
     display: flex;
     align-items: center;
     justify-content: center;
     border: 1px solid var(--color-border-2);
-    border-radius: 8px;
+    border-radius: 14px;
     background: var(--color-fill-1);
     overflow: hidden;
+    box-shadow: inset 0 0 0 1px var(--color-fill-2);
   }
 
   .qrcode-wrapper {
@@ -346,7 +355,7 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 12px;
+    gap: 14px;
     text-align: center;
 
     p {
@@ -357,7 +366,7 @@
   }
 
   .qrcode-tip {
-    margin-top: 16px;
+    margin-top: 14px;
     color: var(--color-text-3);
     font-size: 13px;
   }
@@ -365,15 +374,57 @@
 
 // 密码登录表单
 .login-form {
-  padding: 10px 0;
+  padding: 2px 0 0;
 
-  :deep(.arco-form-item) {
-    margin-bottom: 20px;
+  .switch-group {
+    width: 100%;
+  }
 
-    &:last-child {
-      margin-bottom: 0;
-      margin-top: 24px;
+  .phone-line {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    width: 100%;
+
+    .phone-input {
+      width: 100%;
+      min-width: 0;
+
+      :deep(.arco-input-wrapper) {
+        width: 100%;
+      }
     }
+  }
+
+  @media (max-width: 520px) {
+    .phone-line {
+      gap: 6px;
+
+      .country-code-select {
+        width: clamp(80px, 30%, 100px);
+        min-width: 80px;
+        max-width: 100px;
+        flex-basis: clamp(80px, 30%, 100px);
+      }
+    }
+  }
+
+  .captcha-btn {
+    padding: 0 6px;
+    font-size: 12px;
+  }
+
+  :deep(.arco-form-item.compact-item) {
+    margin-bottom: 14px;
+
+    .arco-form-item-label-col {
+      padding-bottom: 6px;
+    }
+  }
+
+  :deep(.arco-form-item.submit-item) {
+    margin-bottom: 0;
+    margin-top: 16px;
   }
 
   :deep(.arco-radio-group-button) {
@@ -389,9 +440,32 @@
     border-radius: 8px;
   }
 
+  :deep(.arco-input-append) {
+    padding: 0 8px;
+    margin-left: 8px;
+  }
+
   :deep(.arco-btn) {
     border-radius: 8px;
     height: 44px;
-    font-size: 16px;
+    font-size: 15px;
+  }
+}
+
+.login-modal {
+  :deep(.arco-modal-header) {
+    padding-bottom: 8px;
+    border-bottom: none;
+
+    .arco-modal-title {
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: 0.2px;
+    }
+  }
+
+  :deep(.arco-modal-body) {
+    padding-top: 8px;
+    padding-bottom: 18px;
   }
 }

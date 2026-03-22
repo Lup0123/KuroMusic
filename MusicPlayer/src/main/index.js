@@ -166,11 +166,13 @@ app.whenReady().then(() => {
     }
   })
 
-  ipcMain.handle('search', async (event, keyword, typeid) => {
+  ipcMain.handle('search', async (event, keyword, typeid, limit = 30, offset = 0) => {
     try {
       const response = await cloudsearch({
         keywords: keyword,
         type: typeid,
+        limit,
+        offset,
         cookie: getCookie()
       })
 
@@ -570,9 +572,9 @@ app.whenReady().then(() => {
   })
 
   // 手机号密码登录
-  ipcMain.handle('login-by-phone', async (event, phone, password) => {
+  ipcMain.handle('login-by-phone', async (event, phone, password, countryCode = '86') => {
     try {
-      return await auth.loginByPhone(phone, password)
+      return await auth.loginByPhone(phone, password, countryCode)
     } catch (error) {
       console.error('手机号登录失败:', error)
       return { code: 500, message: error.message }
@@ -580,9 +582,9 @@ app.whenReady().then(() => {
   })
 
   // 手机号验证码登录
-  ipcMain.handle('login-by-phone-captcha', async (event, phone, captcha) => {
+  ipcMain.handle('login-by-phone-captcha', async (event, phone, captcha, countryCode = '86') => {
     try {
-      return await auth.loginByPhoneCaptcha(phone, captcha)
+      return await auth.loginByPhoneCaptcha(phone, captcha, countryCode)
     } catch (error) {
       console.error('验证码登录失败:', error)
       return { code: 500, message: error.message }
@@ -590,9 +592,9 @@ app.whenReady().then(() => {
   })
 
   // 发送验证码
-  ipcMain.handle('send-captcha', async (event, phone) => {
+  ipcMain.handle('send-captcha', async (event, phone, countryCode = '86') => {
     try {
-      return await auth.sendCaptcha(phone)
+      return await auth.sendCaptcha(phone, countryCode)
     } catch (error) {
       console.error('发送验证码失败:', error)
       return { code: 500, message: error.message }

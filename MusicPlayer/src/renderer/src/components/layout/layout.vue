@@ -9,7 +9,7 @@
 
       <!-- 主内容区域 -->
       <a-layout-content class="main-content">
-        <component :is="currentComponent" />
+        <router-view />
       </a-layout-content>
     </a-layout>
 
@@ -29,46 +29,25 @@
 </template>
 
 <script setup>
-import { computed, watch } from 'vue'
+import { watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { useIndexStore } from '@/stores/indexStore'
 import { useSongStore } from '@/stores/songStore'
 import { storeToRefs } from 'pinia'
 import SongList from '@/components/content/playlist/songlist.vue'
-import myMusic from '@/components/content/my-music/my-music.vue'
 import PlayerFooter from '@/components/content/player-footer/player-footer.vue'
-import mainpage from '@/components/content/mainpage/mainpage.vue'
 import Navbar from '@/components/layout/navbar/navbar.vue'
 import Sidebar from '@/components/layout/sidebar/sidebar.vue'
-import Search from '@/components/content/songsearch/songsearch.vue'
 import LyricPlayer from '@/views/PlayerView.vue'
-import PlaylistDetail from '@/components/content/Myplaylist/PlaylistDetail.vue'
 
 const route = useRoute()
-
-const indexStore = useIndexStore()
-const { cur_index } = storeToRefs(indexStore)
 
 const songStore = useSongStore()
 const { showPlaylist, showLyric } = storeToRefs(songStore)
 
-const componentMap = {
-  mainpage: mainpage,
-  'my-music': myMusic,
-  favorites: null,
-  'recently-played': null,
-  songsearch: Search,
-  PlaylistDetail: PlaylistDetail
-}
-
-const currentComponent = computed(() => {
-  return componentMap[cur_index.value] || mainpage
-})
-
 watch(
-  () => route.name,
-  (newName) => {
-    showLyric.value = newName === 'Lyric'
+  () => route.query.lyric,
+  (lyricFlag) => {
+    showLyric.value = lyricFlag === '1'
   },
   { immediate: true }
 )
