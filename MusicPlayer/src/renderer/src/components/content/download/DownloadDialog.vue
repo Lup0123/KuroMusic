@@ -1,100 +1,108 @@
 <template>
-  <a-modal
-    v-model:visible="visible"
+  <n-modal
+    v-model:show="visible"
+    preset="card"
     title="下载歌曲"
-    :ok-loading="downloading"
-    ok-text="下载"
-    cancel-text="取消"
-    width="480px"
-    @ok="handleDownload"
-    @cancel="handleCancel"
+    :style="{ width: '480px' }"
+    :mask-closable="false"
   >
     <div class="download-dialog">
       <!-- 歌曲信息 -->
       <div class="song-info-section">
-        <a-image
+        <n-image
           :src="songInfo.cover"
-          :width="80"
-          :height="80"
+          width="80"
+          height="80"
+          object-fit="cover"
+          :preview-disabled="true"
           style="border-radius: 8px"
-          preview="false"
         />
         <div class="song-details">
           <div class="song-name">{{ songInfo.name }}</div>
           <div class="song-meta">
             <span>{{ songInfo.artist }}</span>
-            <a-divider direction="vertical" />
+            <n-divider vertical />
             <span>{{ songInfo.album }}</span>
           </div>
         </div>
       </div>
 
-      <a-divider />
+      <n-divider />
 
       <!-- 音质选择 -->
       <div class="quality-section">
         <div class="section-title">
-          <icon-music :size="18" />
+          <n-icon size="18"><MusicalNotesOutline /></n-icon>
           音质选择
         </div>
-        <a-radio-group v-model="selectedQuality" direction="vertical" class="quality-options">
-          <a-radio value="standard">
-            <div class="quality-option">
-              <span class="quality-name">标准品质</span>
-              <a-tag color="gray" size="small">128kbps</a-tag>
-            </div>
-          </a-radio>
-          <a-radio value="higher">
-            <div class="quality-option">
-              <span class="quality-name">较高品质</span>
-              <a-tag color="blue" size="small">192kbps</a-tag>
-            </div>
-          </a-radio>
-          <a-radio value="exhigh">
-            <div class="quality-option">
-              <span class="quality-name">极高品质</span>
-              <a-tag color="arcoblue" size="small">320kbps</a-tag>
-            </div>
-          </a-radio>
-          <a-radio value="lossless">
-            <div class="quality-option">
-              <span class="quality-name">无损品质</span>
-              <a-tag color="green" size="small">FLAC</a-tag>
-            </div>
-          </a-radio>
-          <a-radio value="hires">
-            <div class="quality-option">
-              <span class="quality-name">Hi-Res</span>
-              <a-tag color="gold" size="small">高解析度</a-tag>
-            </div>
-          </a-radio>
-        </a-radio-group>
+        <n-radio-group v-model:value="selectedQuality" class="quality-options">
+          <n-space vertical>
+            <n-radio value="standard">
+              <div class="quality-option">
+                <span class="quality-name">标准品质</span>
+                <n-tag size="small">128kbps</n-tag>
+              </div>
+            </n-radio>
+            <n-radio value="higher">
+              <div class="quality-option">
+                <span class="quality-name">较高品质</span>
+                <n-tag size="small" type="info">192kbps</n-tag>
+              </div>
+            </n-radio>
+            <n-radio value="exhigh">
+              <div class="quality-option">
+                <span class="quality-name">极高品质</span>
+                <n-tag size="small" type="info">320kbps</n-tag>
+              </div>
+            </n-radio>
+            <n-radio value="lossless">
+              <div class="quality-option">
+                <span class="quality-name">无损品质</span>
+                <n-tag size="small" type="success">FLAC</n-tag>
+              </div>
+            </n-radio>
+            <n-radio value="hires">
+              <div class="quality-option">
+                <span class="quality-name">Hi-Res</span>
+                <n-tag size="small" type="warning">高解析度</n-tag>
+              </div>
+            </n-radio>
+          </n-space>
+        </n-radio-group>
       </div>
 
-      <a-divider />
+      <n-divider />
 
       <!-- 下载路径 -->
       <div class="path-section">
         <div class="section-title">
-          <icon-folder :size="18" />
+          <n-icon size="18"><FolderOutline /></n-icon>
           下载路径
         </div>
         <div class="path-display">
-          <a-input :model-value="downloadPath" readonly placeholder="请在设置中选择下载路径">
-            <template #suffix>
-              <a-button type="text" size="small" @click="selectPath"> 选择 </a-button>
-            </template>
-          </a-input>
+          <n-input-group>
+            <n-input :value="downloadPath" readonly placeholder="请在设置中选择下载路径" />
+            <n-button @click="selectPath">选择</n-button>
+          </n-input-group>
         </div>
       </div>
     </div>
-  </a-modal>
+
+    <template #footer>
+      <n-space justify="end">
+        <n-button @click="handleCancel">取消</n-button>
+        <n-button type="primary" :loading="downloading" @click="handleDownload">下载</n-button>
+      </n-space>
+    </template>
+  </n-modal>
 </template>
 
 <script setup>
 import { ref, watch } from 'vue'
-import { Message } from '@arco-design/web-vue'
-import { IconMusic, IconFolder } from '@arco-design/web-vue/es/icon'
+import { useMessage } from 'naive-ui'
+import { MusicalNotesOutline, FolderOutline } from '@vicons/ionicons5'
+
+const message = useMessage()
 
 const props = defineProps({
   modelValue: {
@@ -147,22 +155,22 @@ const selectPath = async () => {
       const settings = JSON.parse(localStorage.getItem('appSettings') || '{}')
       settings.downloadPath = result.path
       localStorage.setItem('appSettings', JSON.stringify(settings))
-      Message.success('下载路径已更新')
+      message.success('下载路径已更新')
     }
   } catch (error) {
     console.error('选择路径失败:', error)
-    Message.error('选择路径失败')
+    message.error('选择路径失败')
   }
 }
 
 const handleDownload = async () => {
   if (!downloadPath.value) {
-    Message.warning('请先选择下载路径')
+    message.warning('请先选择下载路径')
     return
   }
 
   if (!props.songInfo.id) {
-    Message.warning('歌曲信息不完整')
+    message.warning('歌曲信息不完整')
     return
   }
 
@@ -174,14 +182,14 @@ const handleDownload = async () => {
 
     console.log('获取下载URL响应:', response)
     if (!response || !response.body || !response.body.data) {
-      Message.error('获取下载地址失败')
+      message.error('获取下载地址失败')
       downloading.value = false
       return
     }
 
     const downloadUrl = response.body.data.url
     if (!downloadUrl) {
-      Message.error('无法获取下载地址，可能该音质不可用')
+      message.error('无法获取下载地址，可能该音质不可用')
       downloading.value = false
       return
     }
@@ -213,15 +221,15 @@ const handleDownload = async () => {
 
       await window.api.saveDownloadedSong(songRecord)
 
-      Message.success('下载成功！')
+      message.success('下载成功！')
       emit('download-complete', songRecord)
       visible.value = false
     } else {
-      Message.error('下载失败: ' + result.error)
+      message.error('下载失败: ' + result.error)
     }
   } catch (error) {
     console.error('下载失败:', error)
-    Message.error('下载失败: ' + error.message)
+    message.error('下载失败: ' + error.message)
   } finally {
     downloading.value = false
   }
@@ -234,8 +242,6 @@ const handleCancel = () => {
 
 <style scoped lang="scss">
 .download-dialog {
-  padding: 12px 0;
-
   .song-info-section {
     display: flex;
     gap: 16px;
@@ -248,12 +254,11 @@ const handleCancel = () => {
         font-size: 16px;
         font-weight: 600;
         margin-bottom: 8px;
-        color: var(--color-text-1);
       }
 
       .song-meta {
         font-size: 13px;
-        color: var(--color-text-3);
+        opacity: 0.6;
       }
     }
   }
@@ -267,7 +272,6 @@ const handleCancel = () => {
       font-size: 14px;
       font-weight: 600;
       margin-bottom: 12px;
-      color: var(--color-text-1);
     }
 
     .quality-options {
@@ -282,12 +286,6 @@ const handleCancel = () => {
         .quality-name {
           font-size: 14px;
         }
-      }
-    }
-
-    .path-display {
-      :deep(.arco-input-wrapper) {
-        background-color: var(--color-fill-2);
       }
     }
   }

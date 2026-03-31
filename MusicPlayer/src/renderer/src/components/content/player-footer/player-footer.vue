@@ -1,55 +1,58 @@
 <template>
-  <a-layout-footer class="player-footer" :style="{ height: '80px' }">
+  <n-layout-footer class="player-footer" :style="{ height: '80px' }">
     <div class="player-container">
       <!-- 当前播放歌曲信息 -->
       <div class="current-song" @click="goToLyric">
-        <a-image
+        <n-image
           :width="50"
           :height="50"
           :src="currentSong.cover"
+          :preview-disabled="true"
+          object-fit="cover"
           style="border-radius: 4px; pointer-events: none"
-          preview="false"
         />
         <div class="song-info">
           <div class="song-title">{{ currentSong.name }}</div>
           <div class="song-artist">{{ currentSong.artist }}</div>
         </div>
-        <a-button type="text" size="small" @click.stop>
-          <template #icon>
-            <icon-star />
-          </template>
-        </a-button>
+        <n-button text size="small" @click.stop>
+          <template #icon
+            ><n-icon><StarOutline /></n-icon
+          ></template>
+        </n-button>
       </div>
 
       <!-- 播放控制 -->
       <div class="player-controls">
         <div class="control-buttons">
-          <a-button type="text" size="large" @click="playPrevious">
+          <n-button text size="large" @click="playPrevious">
+            <template #icon
+              ><n-icon size="20"><PlaySkipBackOutline /></n-icon
+            ></template>
+          </n-button>
+          <n-button type="primary" circle size="large" @click="togglePlay">
             <template #icon>
-              <icon-skip-previous />
+              <n-icon size="20">
+                <PlayOutline v-if="!isPlaying" />
+                <PauseOutline v-else />
+              </n-icon>
             </template>
-          </a-button>
-          <a-button type="primary" shape="circle" size="large" @click="togglePlay">
-            <template #icon>
-              <icon-play-arrow v-if="!isPlaying" />
-              <icon-pause v-else />
-            </template>
-          </a-button>
-          <a-button type="text" size="large" @click="playNext">
-            <template #icon>
-              <icon-skip-next />
-            </template>
-          </a-button>
+          </n-button>
+          <n-button text size="large" @click="playNext">
+            <template #icon
+              ><n-icon size="20"><PlaySkipForwardOutline /></n-icon
+            ></template>
+          </n-button>
         </div>
 
         <!-- 进度条 -->
         <div class="progress-container" @click="goToLyric">
           <span class="time-current">{{ formattedCurrentTime }}</span>
-          <a-slider
-            :model-value="progress"
-            :show-tooltip="false"
+          <n-slider
+            :value="progress"
+            :tooltip="false"
             class="progress-slider"
-            @update:model-value="handleProgressChange"
+            @update:value="handleProgressChange"
             @click.stop
           />
           <span class="time-total">{{ formattedDuration }}</span>
@@ -58,33 +61,33 @@
 
       <!-- 右侧功能 -->
       <div class="player-actions">
-        <a-button type="text" size="large">
-          <template #icon>
-            <icon-refresh size="30" />
-          </template>
-        </a-button>
-        <a-button type="text" size="large" @click="togglePlaylist">
-          <template #icon>
-            <icon-list size="30" />
-          </template>
-        </a-button>
-        <a-button type="text" size="large" :loading="isDownloading" @click="handleDownload">
-          <template #icon>
-            <icon-download size="30" />
-          </template>
-        </a-button>
-        <a-button type="text" size="large" @click="goToLyric">
-          <template #icon>
-            <icon-file size="30" />
-          </template>
-        </a-button>
+        <n-button text size="large">
+          <template #icon
+            ><n-icon><RepeatOutline /></n-icon
+          ></template>
+        </n-button>
+        <n-button text size="large" @click="togglePlaylist">
+          <template #icon
+            ><n-icon><ListOutline /></n-icon
+          ></template>
+        </n-button>
+        <n-button text size="large" :loading="isDownloading" @click="handleDownload">
+          <template #icon
+            ><n-icon><DownloadOutline /></n-icon
+          ></template>
+        </n-button>
+        <n-button text size="large" @click="goToLyric">
+          <template #icon
+            ><n-icon><DocumentTextOutline /></n-icon
+          ></template>
+        </n-button>
         <div class="volume-control">
-          <icon-sound-fill style="color: rgb(var(--primary-6))" />
-          <a-slider
-            v-model="volume"
-            :show-tooltip="false"
+          <n-icon size="20"><VolumeHighOutline /></n-icon>
+          <n-slider
+            :value="volume"
+            :tooltip="false"
             style="width: 80px; margin-left: 8px"
-            @update:model-value="handleVolumeChange"
+            @update:value="handleVolumeChange"
           />
         </div>
       </div>
@@ -97,7 +100,7 @@
       @ended="handleEnded"
       @error="handleError"
     />
-  </a-layout-footer>
+  </n-layout-footer>
 </template>
 
 <script setup>
@@ -105,22 +108,23 @@ import { ref, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useSongStore } from '@/stores/songStore'
-import { Message } from '@arco-design/web-vue'
+import { useMessage } from 'naive-ui'
 import {
-  IconStar,
-  IconSkipPrevious,
-  IconPlayArrow,
-  IconPause,
-  IconSkipNext,
-  IconRefresh,
-  IconList,
-  IconDownload,
-  IconFile,
-  IconSoundFill
-} from '@arco-design/web-vue/es/icon'
+  StarOutline,
+  PlaySkipBackOutline,
+  PlayOutline,
+  PauseOutline,
+  PlaySkipForwardOutline,
+  RepeatOutline,
+  ListOutline,
+  DownloadOutline,
+  DocumentTextOutline,
+  VolumeHighOutline
+} from '@vicons/ionicons5'
 import { downloadSong } from '@/utils/downloadUtils'
 
 const router = useRouter()
+const message = useMessage()
 const songStore = useSongStore()
 const {
   currentSong,
@@ -131,7 +135,6 @@ const {
   formattedDuration,
   currentTime
 } = storeToRefs(songStore)
-
 const {
   togglePlay,
   playNext,
@@ -148,10 +151,9 @@ const isDownloading = ref(false)
 
 const handleDownload = async () => {
   if (!currentSong.value.id) {
-    Message.warning('当前没有播放歌曲')
+    message.warning('当前没有播放歌曲')
     return
   }
-
   isDownloading.value = true
   try {
     await downloadSong(currentSong.value)
@@ -162,168 +164,80 @@ const handleDownload = async () => {
 
 const goToLyric = () => {
   if (!currentSong.value.id) {
-    Message.warning('当前没有播放歌曲')
+    message.warning('当前没有播放歌曲')
     return
   }
-
   const currentRoute = router.currentRoute.value
   const nextQuery = { ...currentRoute.query }
-
-  if (nextQuery.lyric === '1') {
-    delete nextQuery.lyric
-  } else {
-    nextQuery.lyric = '1'
-  }
-
-  router.push({
-    name: currentRoute.name,
-    params: currentRoute.params,
-    query: nextQuery
-  })
+  if (nextQuery.lyric === '1') delete nextQuery.lyric
+  else nextQuery.lyric = '1'
+  router.push({ name: currentRoute.name, params: currentRoute.params, query: nextQuery })
 }
 
-// 监听播放状态变化
 watch(isPlaying, (newVal) => {
   if (!audioRef.value) return
-  if (newVal) {
-    audioRef.value.play().catch((err) => {
-      console.error('播放失败:', err)
-    })
-  } else {
-    audioRef.value.pause()
-  }
+  if (newVal) audioRef.value.play().catch((err) => console.error('播放失败:', err))
+  else audioRef.value.pause()
 })
 
-// 监听当前歌曲变化,加载新的音频
 watch(
   () => currentSong.value.id,
   async (newId, oldId) => {
-    // 检查 newId 是否为有效值
     if (!newId || newId === '' || newId === oldId) return
-
     try {
       let songUrl = null
-
-      // 判断是否为本地音乐（有 path 或 url 字段且指向本地文件）
-      if (currentSong.value.url) {
-        // 如果已有 url 字段，直接使用（本地音乐）
-        songUrl = currentSong.value.url
-        console.log('使用本地文件路径:', songUrl)
-      } else if (currentSong.value.path) {
-        // 如果有 path 字段，说明是本地音乐
-        songUrl = currentSong.value.path
-        console.log('使用本地文件路径:', songUrl)
-      } else {
-        // 在线音乐，调用 API 获取播放 URL
-        // 从设置中获取音质
+      if (currentSong.value.url) songUrl = currentSong.value.url
+      else if (currentSong.value.path) songUrl = currentSong.value.path
+      else {
         const settings = JSON.parse(localStorage.getItem('appSettings') || '{}')
-        const settingQuality = settings.quality || 'exhigh'
-        // 映射音质设置到 API 支持的格式
-        const qualityMap = {
-          standard: 'standard', // 标准品质 128kbps
-          higher: 'higher', // 较高品质 192kbps
-          exhigh: 'exhigh', // 极高品质 320kbps
-          lossless: 'lossless', // 无损品质 FLAC
-          hires: 'hires' // Hi-Res 高解析度
-        }
-        const quality = qualityMap[settingQuality] || 'exhigh'
-
-        console.log('获取在线歌曲URL:', newId, '音质:', quality)
+        const quality = settings.quality || 'exhigh'
         const response = await window.api.getSongUrl(newId, quality)
-
-        // 检查返回的数据结构
-        if (response && response.body && response.body.data && response.body.data[0]) {
-          songUrl = response.body.data[0].url
-          console.log('获取到在线歌曲URL:', songUrl)
-        }
+        if (response?.body?.data?.[0]) songUrl = response.body.data[0].url
       }
-
       if (songUrl && audioRef.value) {
         audioRef.value.src = songUrl
         audioRef.value.load()
-
-        if (isPlaying.value) {
-          await audioRef.value.play()
-        }
+        if (isPlaying.value) await audioRef.value.play()
       } else {
-        console.error('无法获取歌曲URL', {
-          currentSong: currentSong.value,
-          songUrl
-        })
-        Message.error('无法获取歌曲播放地址')
+        message.error('无法获取歌曲播放地址')
         songStore.isPlaying = false
       }
     } catch (error) {
       console.error('加载歌曲失败:', error)
-      Message.error('歌曲加载失败')
+      message.error('歌曲加载失败')
       songStore.isPlaying = false
     }
   },
   { immediate: true }
 )
 
-// 监听音量变化
 watch(volume, (newVolume) => {
-  if (audioRef.value) {
-    audioRef.value.volume = newVolume / 100
-  }
+  if (audioRef.value) audioRef.value.volume = newVolume / 100
 })
-
-// 监听进度变化(拖动进度条时)
 watch(currentTime, (newTime) => {
   if (!audioRef.value) return
-  const timeDiff = Math.abs(audioRef.value.currentTime - newTime)
-  // 只有差异大于 0.5 秒时才更新,避免循环更新
-  if (timeDiff > 0.5) {
-    audioRef.value.currentTime = newTime
-  }
+  if (Math.abs(audioRef.value.currentTime - newTime) > 0.5) audioRef.value.currentTime = newTime
 })
 
-// 音频播放时更新当前时间
 const handleTimeUpdate = () => {
-  if (audioRef.value) {
-    setCurrentTime(audioRef.value.currentTime)
-  }
+  if (audioRef.value) setCurrentTime(audioRef.value.currentTime)
 }
-
-// 音频元数据加载完成
 const handleLoadedMetadata = () => {
-  if (audioRef.value) {
-    setDuration(audioRef.value.duration)
-  }
+  if (audioRef.value) setDuration(audioRef.value.duration)
 }
-
-// 音频播放结束
 const handleEnded = () => {
   playNext()
 }
-
-// 音频加载错误
 const handleError = (e) => {
   console.error('音频加载错误:', e)
-  console.error('当前音频 src:', audioRef.value?.src)
-  console.error('当前歌曲:', currentSong.value)
-
-  Message.error('音频加载失败,尝试播放下一首')
-
-  // 修改5: 重置播放状态
+  message.error('音频加载失败，尝试播放下一首')
   songStore.isPlaying = false
-
-  // 自动播放下一首
-  setTimeout(() => {
-    playNext()
-  }, 1000)
+  setTimeout(() => playNext(), 1000)
 }
-
-// 拖动进度条
 const handleProgressChange = (value) => {
   setProgress(value)
-  if (audioRef.value && audioRef.value.duration) {
-    audioRef.value.currentTime = (value / 100) * audioRef.value.duration
-  }
+  if (audioRef.value?.duration) audioRef.value.currentTime = (value / 100) * audioRef.value.duration
 }
-
-// 调整音量
 const handleVolumeChange = (value) => {
   setVolume(value)
 }
@@ -337,22 +251,317 @@ onMounted(() => {
 </script>
 
 <style lang="scss" scoped>
-@import './player-footer.scss';
+// 播放器底部样式
+.player-footer {
+  background: var(--n-card-color);
+  border-top: 1px solid var(--n-border-color);
+  padding: 0;
+  height: 80px;
+  box-shadow: 0 -2px 12px var(--n-hover-color);
+  backdrop-filter: blur(10px);
+
+  .player-container {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 100%;
+    padding: 0 24px;
+    gap: 24px;
+  }
+}
+
+// 当前播放歌曲信息样式
+.current-song {
+  display: flex;
+  align-items: center;
+  width: 25%;
+  min-width: 250px;
+  gap: 12px;
+
+  .song-cover {
+    width: 56px;
+    height: 56px;
+    border-radius: 8px;
+    overflow: hidden;
+    flex-shrink: 0;
+    box-shadow: 0 4px 12px var(--n-pressed-color);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+    &:hover {
+      transform: scale(1.05);
+      box-shadow: 0 6px 16px var(--n-pressed-color);
+    }
+
+    :deep(.ant-image) {
+      width: 100%;
+      height: 100%;
+    }
+  }
+
+  .song-info {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+
+    .song-title {
+      font-weight: 600;
+      font-size: 15px;
+      color: var(--n-text-color-2);
+      margin: 0 0 4px 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      cursor: pointer;
+      transition:
+        color 0.3s ease,
+        transform 0.2s ease;
+
+      &:hover {
+        color: var(--n-text-color);
+      }
+    }
+
+    .song-artist {
+      font-size: 12px;
+      color: var(--n-text-color-3);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      cursor: pointer;
+
+      &:hover {
+        color: var(--n-text-color-2);
+      }
+    }
+  }
+
+  .song-actions {
+    display: flex;
+    gap: 4px;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+
+  &:hover .song-actions {
+    opacity: 1;
+  }
+}
+
+// 播放控制区域
+.player-controls {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 50%;
+  min-width: 400px;
+  gap: 2px;
+
+  .control-buttons {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    :deep(.ant-btn) {
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+      &:hover {
+        transform: scale(1.1);
+      }
+
+      &:active {
+        transform: scale(0.95);
+      }
+    }
+
+    :deep(.ant-btn-primary) {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      box-shadow: 0 4px 12px var(--n-primary-color);
+
+      &:hover {
+        box-shadow: 0 6px 16px var(--color-primary-light-4);
+        transform: scale(1.15);
+      }
+    }
+  }
+
+  .progress-container {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    gap: 12px;
+
+    .time-current,
+    .time-total {
+      font-size: 12px;
+      color: var(--n-text-color-3);
+      width: 45px;
+      text-align: center;
+      font-variant-numeric: tabular-nums;
+      font-weight: 500;
+    }
+
+    .progress-slider {
+      flex: 1;
+      min-width: 200px;
+
+      :deep(.ant-slider-track) {
+        background: var(--n-primary-color);
+      }
+
+      :deep(.ant-slider-btn) {
+        width: 14px;
+        height: 14px;
+        border: 1px solid var(--n-card-color);
+        transition: all 0.3s ease;
+
+        &:hover {
+          transform: scale(1.05);
+        }
+      }
+    }
+  }
+}
+
+// 右侧功能区
+.player-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  width: 25%;
+  min-width: 200px;
+  gap: 12px;
+
+  .volume-control {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 120px;
+
+    :deep(.ant-btn) {
+      transition: all 0.3s ease;
+
+      &:hover {
+        transform: scale(1.1);
+      }
+    }
+
+    .volume-slider {
+      flex: 1;
+      min-width: 80px;
+
+      :deep(.ant-slider-track) {
+        background: var(--n-primary-color);
+      }
+
+      :deep(.ant-slider-btn) {
+        width: 12px;
+        height: 12px;
+        border: 2px solid var(--n-card-color);
+      }
+    }
+  }
+
+  :deep(.ant-btn) {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+    &:hover {
+      transform: scale(1.1);
+    }
+
+    &.active {
+      color: var(--n-primary-color);
+      background: color-mix(in srgb, var(--n-primary-color) 16%, transparent);
+    }
+  }
+}
+
+// 响应式设计
+@media (max-width: 1200px) {
+  .player-footer {
+    .player-container {
+      padding: 0 16px;
+    }
+  }
+
+  .current-song,
+  .player-actions {
+    width: 20%;
+    min-width: 180px;
+  }
+
+  .player-controls {
+    width: 60%;
+  }
+}
+
+@media (max-width: 768px) {
+  .player-footer {
+    height: auto;
+    padding: 12px 0;
+
+    .player-container {
+      flex-direction: column;
+      gap: 12px;
+    }
+  }
+
+  .current-song,
+  .player-controls,
+  .player-actions {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .volume-control {
+    display: none;
+  }
+}
+
+// 播放动画
+@keyframes playing {
+  0%,
+  100% {
+    transform: scaleY(0.4);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+
+.playing-animation {
+  display: flex;
+  gap: 2px;
+
+  span {
+    width: 3px;
+    height: 14px;
+    background: var(--n-primary-color);
+    border-radius: 2px;
+    animation: playing 0.8s ease-in-out infinite;
+
+    &:nth-child(2) {
+      animation-delay: 0.2s;
+    }
+
+    &:nth-child(3) {
+      animation-delay: 0.4s;
+    }
+  }
+}
 
 audio {
   display: none;
 }
-
 .current-song {
   cursor: pointer;
   transition: all 0.3s ease;
-
   &:hover {
     background-color: rgba(0, 0, 0, 0.05);
     border-radius: 8px;
   }
 }
-
 .progress-container {
   cursor: pointer;
 }

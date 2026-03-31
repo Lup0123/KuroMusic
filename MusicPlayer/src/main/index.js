@@ -22,7 +22,10 @@ import {
   likelist,
   recommend_resource,
   recommend_songs,
-  personalized
+  personalized,
+  personal_fm,
+  top_song,
+  fm_trash
 } from '@neteasecloudmusicapienhanced/api'
 
 let mainWindow = null
@@ -536,6 +539,62 @@ app.whenReady().then(() => {
     } catch (error) {
       console.error('获取个性化推荐歌单失败:', error)
       return { body: { result: [] } }
+    }
+  })
+
+  // 获取私人FM（需要登录）
+  ipcMain.handle('get-personal-fm', async () => {
+    try {
+      const cookie = getCookie()
+      if (!cookie) {
+        console.log('未登录，返回空私人FM')
+        return { body: { data: [] } }
+      }
+
+      const response = await personal_fm({
+        cookie: cookie,
+        timestamp: Date.now()
+      })
+      return response
+    } catch (error) {
+      console.error('获取私人FM失败:', error)
+      return { body: { data: [] } }
+    }
+  })
+
+  // 获取新歌速递
+  // type: 0-全部, 7-华语, 96-欧美, 8-日本, 16-韩国
+  ipcMain.handle('get-top-songs', async (event, type = 0) => {
+    try {
+      const response = await top_song({
+        type,
+        cookie: getCookie(),
+        timestamp: Date.now()
+      })
+      return response
+    } catch (error) {
+      console.error('获取新歌速递失败:', error)
+      return { body: { data: [] } }
+    }
+  })
+
+  // 将歌曲添加到FM垃圾桶（不再推荐）
+  ipcMain.handle('fm-trash', async (event, songId) => {
+    try {
+      const cookie = getCookie()
+      if (!cookie) {
+        return { code: 301, message: '未登录' }
+      }
+
+      const response = await fm_trash({
+        id: songId,
+        cookie: cookie,
+        timestamp: Date.now()
+      })
+      return response.body
+    } catch (error) {
+      console.error('FM垃圾桶操作失败:', error)
+      return { code: 500, message: error.message }
     }
   })
 

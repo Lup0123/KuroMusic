@@ -2,17 +2,19 @@
   <div :class="['lyrics-view', `preset-${lyricVisualPreset}`]">
     <!-- 左侧：封面 -->
     <div class="left-section">
-      <a-card class="song-cover-card" :bordered="false" :body-style="{ padding: '0' }">
+      <n-card class="song-cover-card" :bordered="false" content-style="padding: 0">
         <div class="song-cover">
-          <a-image :src="currentSong.cover" fit="cover">
-            <template #error>
+          <n-image :src="currentSong.cover" :preview-disabled="true">
+            <template #placeholder>
               <div class="image-error">
-                <icon-image :size="60" />
+                <n-icon :size="60">
+                  <ImageOutline />
+                </n-icon>
               </div>
             </template>
-          </a-image>
+          </n-image>
         </div>
-      </a-card>
+      </n-card>
     </div>
 
     <!-- 右侧：歌曲信息和歌词 -->
@@ -22,26 +24,28 @@
         <!-- 歌曲信息 -->
         <div class="song-info">
           <div class="song-title">{{ currentSong.name }}</div>
-          <a-space :size="20" class="song-meta">
-            <a-typography-text type="secondary">专辑: {{ currentSong.album }}</a-typography-text>
-            <a-divider direction="vertical" />
-            <a-typography-text type="secondary">歌手: {{ currentSong.artist }}</a-typography-text>
-          </a-space>
+          <n-space :size="20" class="song-meta">
+            <span class="meta-text">专辑: {{ currentSong.album }}</span>
+            <n-divider vertical />
+            <span class="meta-text">歌手: {{ currentSong.artist }}</span>
+          </n-space>
         </div>
 
         <!-- 歌词模式切换 -->
-        <a-radio-group v-model="lyricMode" class="lyric-mode-tabs" type="button">
-          <a-radio value="both">歌词</a-radio>
-          <a-radio value="translation" :disabled="!hasTranslation">译文</a-radio>
-        </a-radio-group>
+        <n-radio-group
+          :value="lyricMode"
+          class="lyric-mode-tabs"
+          @update:value="(val) => (lyricMode = val)"
+        >
+          <n-radio-button value="both">歌词</n-radio-button>
+          <n-radio-button value="translation" :disabled="!hasTranslation">译文</n-radio-button>
+        </n-radio-group>
 
         <!-- 歌词容器 -->
         <div ref="scrollbarRef" class="lyrics-scrollbar" @scroll="handleScroll">
           <div class="lyrics-wrapper">
-            <a-empty v-if="!hasLyric && !loadingLyric" description="暂无歌词" />
-            <a-skeleton v-else-if="loadingLyric" :loading="true" :animation="true">
-              <a-skeleton-line :rows="10" />
-            </a-skeleton>
+            <n-empty v-if="!hasLyric && !loadingLyric" description="暂无歌词" />
+            <n-skeleton v-else-if="loadingLyric" :repeat="10" text />
             <div
               v-for="(line, index) in displayLyrics"
               v-else
@@ -69,54 +73,62 @@
       <!-- 右侧工具栏 -->
       <div class="side-toolbar">
         <!-- 关闭按钮 -->
-        <a-button shape="circle" size="large" class="close-btn" @click="closeLyric">
+        <n-button circle size="large" class="close-btn" @click="closeLyric">
           <template #icon>
-            <icon-close :size="20" />
+            <n-icon :size="20">
+              <CloseOutline />
+            </n-icon>
           </template>
-        </a-button>
+        </n-button>
 
-        <a-divider direction="horizontal" margin="12px" />
+        <n-divider style="margin: 12px 0" />
 
         <!-- 字号调整 -->
         <div class="font-size-control">
-          <a-button
-            shape="circle"
-            size="small"
-            :disabled="fontSize >= 32"
-            @click="increaseFontSize"
-          >
+          <n-button circle size="small" :disabled="fontSize >= 32" @click="increaseFontSize">
             <template #icon>
-              <icon-plus />
+              <n-icon>
+                <AddOutline />
+              </n-icon>
             </template>
-          </a-button>
-          <a-tag color="arcoblue" class="size-tag">{{ fontSize }}</a-tag>
-          <a-button
-            shape="circle"
-            size="small"
-            :disabled="fontSize <= 14"
-            @click="decreaseFontSize"
-          >
+          </n-button>
+          <n-tag type="info" class="size-tag">{{ fontSize }}</n-tag>
+          <n-button circle size="small" :disabled="fontSize <= 14" @click="decreaseFontSize">
             <template #icon>
-              <icon-minus />
+              <n-icon>
+                <RemoveOutline />
+              </n-icon>
             </template>
-          </a-button>
+          </n-button>
         </div>
 
-        <a-divider direction="horizontal" margin="12px" />
+        <n-divider style="margin: 12px 0" />
 
         <!-- 自动滚动开关 -->
-        <a-tooltip content="自动滚动" position="left">
-          <a-switch v-model="autoScroll" type="round" size="small" class="auto-scroll-switch">
-            <template #checked>
-              <icon-check :size="14" />
-            </template>
-            <template #unchecked>
-              <icon-close :size="14" />
-            </template>
-          </a-switch>
-        </a-tooltip>
+        <n-tooltip trigger="hover" placement="left">
+          <template #trigger>
+            <n-switch
+              :value="autoScroll"
+              size="small"
+              class="auto-scroll-switch"
+              @update:value="(checked) => (autoScroll = checked)"
+            >
+              <template #checked>
+                <n-icon :size="14">
+                  <CheckmarkOutline />
+                </n-icon>
+              </template>
+              <template #unchecked>
+                <n-icon :size="14">
+                  <CloseOutline />
+                </n-icon>
+              </template>
+            </n-switch>
+          </template>
+          自动滚动
+        </n-tooltip>
 
-        <a-divider direction="horizontal" margin="12px" />
+        <n-divider style="margin: 12px 0" />
       </div>
     </div>
   </div>
@@ -127,7 +139,28 @@ import { ref, computed, watch, onUnmounted, nextTick } from 'vue'
 import { useSongStore } from '@/stores/songStore'
 import { storeToRefs } from 'pinia'
 import { useRoute, useRouter } from 'vue-router'
-import { IconClose, IconPlus, IconMinus, IconImage, IconCheck } from '@arco-design/web-vue/es/icon'
+import {
+  NCard,
+  NImage,
+  NSpace,
+  NDivider,
+  NRadioGroup,
+  NRadioButton,
+  NEmpty,
+  NSkeleton,
+  NButton,
+  NTag,
+  NTooltip,
+  NSwitch,
+  NIcon
+} from 'naive-ui'
+import {
+  CloseOutline,
+  AddOutline,
+  RemoveOutline,
+  ImageOutline,
+  CheckmarkOutline
+} from '@vicons/ionicons5'
 
 const router = useRouter()
 const route = useRoute()
@@ -149,7 +182,6 @@ const scrollTimer = ref(null)
 const lyricsRequestId = ref(0)
 const isProgrammaticScroll = ref(false)
 
-// 字号控制
 const fontSize = ref(20)
 
 // 增加字号
@@ -484,24 +516,10 @@ onUnmounted(() => {
 
 <style scoped lang="scss">
 .lyrics-view {
-  --lyric-line-opacity: 0.52;
-  --lyric-line-padding: 14px 20px;
-  --lyric-hover-shift: 3px;
-  --lyric-active-text-scale: 1.05;
-  --lyric-active-translation-scale: 1.02;
-  --lyric-active-font-weight: 650;
-  --lyric-active-glow: 0 0 18px var(--color-primary-light-2);
-  --lyric-active-bg: linear-gradient(
-    90deg,
-    var(--color-primary-light-1) 0%,
-    var(--color-primary-light-2) 100%
-  );
-
   width: 100%;
   height: 100%;
   display: flex;
   overflow: hidden;
-  background: linear-gradient(135deg, var(--color-bg-1) 0%, var(--color-bg-2) 100%);
 
   .left-section {
     flex: 0 0 45%;
@@ -509,7 +527,6 @@ onUnmounted(() => {
     align-items: center;
     justify-content: center;
     padding: 60px;
-    background: linear-gradient(135deg, rgba(var(--primary-6), 0.03) 0%, transparent 100%);
     position: relative;
 
     &::before {
@@ -519,11 +536,6 @@ onUnmounted(() => {
       left: 0;
       right: 0;
       bottom: 0;
-      background: radial-gradient(
-        circle at center,
-        rgba(var(--primary-6), 0.08) 0%,
-        transparent 70%
-      );
       pointer-events: none;
     }
 
@@ -535,8 +547,7 @@ onUnmounted(() => {
       overflow: hidden;
       box-shadow:
         0 16px 48px rgba(0, 0, 0, 0.3),
-        0 0 0 1px var(--color-border-2);
-      background: var(--color-bg-2);
+        0 0 0 1px rgba(34, 39, 46, 0.12);
       transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
       position: relative;
       z-index: 1;
@@ -545,7 +556,7 @@ onUnmounted(() => {
         transform: scale(1.02);
         box-shadow:
           0 20px 60px rgba(0, 0, 0, 0.4),
-          0 0 0 1px var(--color-border-2);
+          0 0 0 1px rgba(34, 39, 46, 0.12);
       }
 
       .song-cover {
@@ -553,13 +564,15 @@ onUnmounted(() => {
         height: 100%;
         position: relative;
 
-        :deep(.arco-image) {
+        :deep(.n-image) {
           width: 100%;
           height: 100%;
           border-radius: 20px;
 
           img {
             object-fit: cover;
+            width: 100%;
+            height: 100%;
           }
 
           &.rotating img {
@@ -573,8 +586,8 @@ onUnmounted(() => {
           display: flex;
           align-items: center;
           justify-content: center;
-          background: var(--color-fill-2);
-          color: var(--color-text-4);
+          background: rgba(24, 160, 88, 0.08);
+          color: #7b8290;
         }
       }
     }
@@ -583,9 +596,7 @@ onUnmounted(() => {
   .right-section {
     flex: 1;
     display: flex;
-    background: var(--color-bg-2);
-    color: var(--color-text-1);
-    border-left: 1px solid var(--color-border-2);
+    border-left: 1px solid rgba(34, 39, 46, 0.12);
     overflow: hidden;
 
     .content-wrapper {
@@ -603,51 +614,46 @@ onUnmounted(() => {
           font-size: 30px;
           font-weight: 700;
           margin: 0 0 12px 0;
-          color: var(--color-text-1);
         }
 
         .song-meta {
-          :deep(.arco-typography) {
-            color: var(--color-text-3);
+          .meta-text {
+            color: #7b8290;
             font-size: 14px;
           }
 
-          :deep(.arco-divider) {
-            background-color: var(--color-border-2);
+          :deep(.n-divider) {
+            background-color: rgba(34, 39, 46, 0.12);
           }
         }
       }
 
       .lyric-mode-tabs {
-        flex-shrink: 0;
-        margin-bottom: 16px;
-        padding: 4px;
-        background: var(--color-fill-2);
+        background: rgba(24, 160, 88, 0.08);
         border-radius: 10px;
         display: inline-flex;
         width: fit-content;
 
-        :deep(.arco-radio) {
+        :deep(.n-radio-button) {
           background: transparent;
           border: none;
-          color: var(--color-text-3);
+          color: #7b8290;
           border-radius: 8px;
-          padding: 6px 20px;
+          padding: 2px 20px;
           transition: all 0.3s ease;
 
-          &:hover:not(.arco-radio-disabled) {
-            color: var(--color-text-2);
-            background: var(--color-fill-3);
+          &:hover:not(.n-radio-button--disabled) {
+            color: #3f4854;
+            background: rgba(24, 160, 88, 0.16);
           }
 
-          &.arco-radio-checked {
-            color: var(--color-primary-6);
-            background: var(--color-bg-2);
-            box-shadow: 0 2px 8px var(--color-fill-3);
+          &.n-radio-button--checked {
+            color: #18a058;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
             font-weight: 600;
           }
 
-          &.arco-radio-disabled {
+          &.n-radio-button--disabled {
             opacity: 0.4;
           }
         }
@@ -664,33 +670,33 @@ onUnmounted(() => {
         }
 
         &::-webkit-scrollbar-track {
-          background: var(--color-fill-2);
+          background: rgba(24, 160, 88, 0.08);
           border-radius: 3px;
         }
 
         &::-webkit-scrollbar-thumb {
-          background: var(--color-fill-4);
+          background: rgba(24, 160, 88, 0.16);
           border-radius: 3px;
 
           &:hover {
-            background: var(--color-primary-6);
+            background: #18a058;
           }
         }
 
         .lyrics-wrapper {
-          padding: 40% 0;
+          padding: 0 0 40% 0;
           min-height: 100%;
 
-          :deep(.arco-empty) {
-            color: var(--color-text-3);
+          :deep(.n-empty) {
+            color: #7b8290;
           }
 
           .lyric-line {
             text-align: left;
-            opacity: var(--lyric-line-opacity);
+            opacity: 0.52;
             cursor: pointer;
             transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-            padding: var(--lyric-line-padding);
+            padding: 14px 20px;
             margin: 6px 0;
             border-radius: 8px;
             user-select: none;
@@ -706,7 +712,6 @@ onUnmounted(() => {
               transform: translateY(-50%);
               width: 3px;
               height: 0;
-              background: var(--color-primary-6);
               border-radius: 0 2px 2px 0;
               transition: height 0.3s ease;
             }
@@ -715,7 +720,6 @@ onUnmounted(() => {
               display: block;
               line-height: 1.85;
               font-weight: 400;
-              color: var(--color-text-1);
               transition: all 0.3s ease;
               text-wrap: pretty;
             }
@@ -724,43 +728,46 @@ onUnmounted(() => {
               display: block;
               line-height: 1.6;
               margin-top: 6px;
-              color: var(--color-text-3);
               transition: all 0.3s ease;
               text-wrap: pretty;
             }
 
             &:hover {
               opacity: 0.8;
-              background: var(--color-fill-2);
-              transform: translateX(var(--lyric-hover-shift));
+              background: rgba(24, 160, 88, 0.08);
+              transform: translateX(3px);
             }
 
             &:focus-visible {
               opacity: 0.9;
-              background: var(--color-fill-2);
-              box-shadow: 0 0 0 2px var(--color-primary-light-3);
+              background: rgba(24, 160, 88, 0.08);
+              box-shadow: 0 0 0 2px rgba(24, 160, 88, 0.3);
             }
 
             &.active {
               opacity: 1;
-              background: var(--lyric-active-bg);
+              background: linear-gradient(
+                90deg,
+                rgba(99, 125, 255, 0.08) 0%,
+                rgba(99, 125, 255, 0.12) 100%
+              );
 
               &::before {
                 height: 60%;
               }
 
               .lyric-text {
-                font-weight: var(--lyric-active-font-weight);
-                color: var(--color-primary-6);
-                transform: scale(var(--lyric-active-text-scale));
+                font-weight: 650;
+                color: #18a058;
+                transform: scale(1.05);
                 transform-origin: left center;
-                text-shadow: var(--lyric-active-glow);
+                text-shadow: 0 0 18px rgba(99, 125, 255, 0.15);
               }
 
               .lyric-translation {
                 opacity: 0.9;
-                color: var(--color-text-2);
-                transform: scale(var(--lyric-active-translation-scale));
+                color: #3f4854;
+                transform: scale(1.02);
                 transform-origin: left center;
               }
             }
@@ -777,27 +784,24 @@ onUnmounted(() => {
       justify-content: flex-start;
       padding: 20px 12px;
       gap: 8px;
-      border-left: 1px solid var(--color-border-2);
-      background: var(--color-bg-1);
+      border-left: 1px solid rgba(34, 39, 46, 0.12);
       width: auto;
       min-width: 80px;
 
       .close-btn {
         margin-bottom: 8px;
 
-        :deep(.arco-btn) {
-          &:hover {
-            background: var(--color-danger-light-1);
-            border-color: var(--color-danger-6);
-            color: var(--color-danger-6);
-          }
+        &:hover {
+          background: rgba(208, 48, 80, 0.1);
+          border-color: #d03050;
+          color: #d03050;
         }
       }
 
-      :deep(.arco-divider-horizontal) {
+      :deep(.n-divider) {
         width: 100%;
         min-width: 40px;
-        background-color: var(--color-border-2);
+        background-color: rgba(34, 39, 46, 0.12);
       }
 
       .font-size-control {
@@ -806,27 +810,26 @@ onUnmounted(() => {
         align-items: center;
         gap: 6px;
 
-        :deep(.arco-btn) {
+        :deep(.n-button) {
           background: transparent;
-          border: 1px solid var(--color-border-2);
-          color: var(--color-text-3);
+          border: 1px solid rgba(34, 39, 46, 0.12);
+          color: #7b8290;
           transition: all 0.3s ease;
 
-          &:hover:not(.arco-btn-disabled) {
-            background: var(--color-fill-2);
-            color: var(--color-primary-6);
-            border-color: var(--color-primary-6);
+          &:hover:not(.n-button--disabled) {
+            background: rgba(24, 160, 88, 0.08);
+            color: #18a058;
+            border-color: #18a058;
           }
 
-          &.arco-btn-disabled {
+          &.n-button--disabled {
             opacity: 0.3;
           }
         }
 
         .size-tag {
-          background: var(--color-bg-2);
-          border: 1px solid var(--color-border-2);
-          color: var(--color-text-2);
+          border: 1px solid rgba(34, 39, 46, 0.12);
+          color: #3f4854;
           font-weight: 600;
           padding: 4px 8px;
           font-size: 12px;
@@ -834,9 +837,9 @@ onUnmounted(() => {
       }
 
       .auto-scroll-switch {
-        :deep(.arco-switch) {
-          &.arco-switch-checked {
-            background-color: var(--color-primary-6);
+        :deep(.n-switch) {
+          &.n-switch--active {
+            background-color: #18a058;
           }
         }
       }
@@ -847,15 +850,15 @@ onUnmounted(() => {
         min-width: 28px;
         font-size: 12px;
         font-weight: 700;
-        border: 1px solid var(--color-border-2);
-        color: var(--color-text-2);
-        background: var(--color-bg-2);
+        border: 1px solid rgba(34, 39, 46, 0.12);
+        color: #3f4854;
+        background: #ffffff;
         transition: all 0.3s ease;
 
         &:hover {
-          color: var(--color-primary-6);
-          border-color: var(--color-primary-6);
-          background: var(--color-fill-2);
+          color: #18a058;
+          border-color: #18a058;
+          background: rgba(24, 160, 88, 0.08);
         }
       }
     }
@@ -886,7 +889,7 @@ onUnmounted(() => {
 
     .right-section {
       border-left: none;
-      border-top: 1px solid var(--color-border-2);
+      border-top: 1px solid rgba(34, 39, 46, 0.12);
       flex-direction: column;
 
       .content-wrapper {
@@ -902,7 +905,7 @@ onUnmounted(() => {
 
         .lyrics-scrollbar {
           .lyrics-wrapper {
-            padding: 28% 0;
+            padding: 0 0 28% 0;
 
             .lyric-line {
               margin: 4px 0;
@@ -914,7 +917,7 @@ onUnmounted(() => {
 
       .side-toolbar {
         border-left: none;
-        border-top: 1px solid var(--color-border-2);
+        border-top: 1px solid rgba(34, 39, 46, 0.12);
         flex-direction: row;
         min-width: auto;
         width: auto;
@@ -926,7 +929,7 @@ onUnmounted(() => {
           margin-bottom: 0;
         }
 
-        :deep(.arco-divider-horizontal) {
+        :deep(.n-divider) {
           display: none;
         }
 

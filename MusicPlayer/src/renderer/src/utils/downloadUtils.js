@@ -1,5 +1,7 @@
-import { Message } from '@arco-design/web-vue'
+import { createDiscreteApi } from 'naive-ui'
 import { formatDuration } from '@/utils/utils'
+
+const { message } = createDiscreteApi(['message'])
 
 /**
  * 下载单个歌曲
@@ -11,7 +13,7 @@ export async function downloadSong(song, onProgress) {
   try {
     // 检查是否为本地音乐
     if (song.url || song.path) {
-      Message.warning('本地音乐无需下载')
+      message.warning('本地音乐无需下载')
       return false
     }
 
@@ -21,15 +23,12 @@ export async function downloadSong(song, onProgress) {
     const quality = settings.quality || 'exhigh'
 
     if (!downloadPath) {
-      Message.warning('请先在设置中选择下载路径')
+      message.warning('请先在设置中选择下载路径')
       return false
     }
 
     // 显示下载开始提示
-    const loadingMessage = Message.loading({
-      content: `正在下载：${song.name}`,
-      duration: 0
-    })
+    const hideLoading = message.loading(`正在下载：${song.name}`, 0)
 
     try {
       // 获取下载URL
@@ -77,8 +76,8 @@ export async function downloadSong(song, onProgress) {
       await window.api.saveDownloadedSong(songRecord)
 
       // 关闭loading并显示成功提示
-      loadingMessage.close()
-      Message.success(`下载成功：${song.name}`)
+      hideLoading()
+      message.success(`下载成功：${song.name}`)
 
       if (onProgress) {
         onProgress({ song, success: true })
@@ -86,12 +85,12 @@ export async function downloadSong(song, onProgress) {
 
       return true
     } catch (error) {
-      loadingMessage.close()
+      hideLoading()
       throw error
     }
   } catch (error) {
     console.error('下载失败:', error)
-    Message.error(`下载失败：${error.message}`)
+    message.error(`下载失败：${error.message}`)
 
     if (onProgress) {
       onProgress({ song, success: false, error: error.message })
@@ -109,14 +108,14 @@ export async function downloadSong(song, onProgress) {
  */
 export async function downloadSongs(songs, onProgress) {
   if (!songs || songs.length === 0) {
-    Message.warning('没有可下载的歌曲')
+    message.warning('没有可下载的歌曲')
     return { success: 0, failed: 0, total: 0 }
   }
 
   // 检查下载路径
   const settings = JSON.parse(localStorage.getItem('appSettings') || '{}')
   if (!settings.downloadPath) {
-    Message.warning('请先在设置中选择下载路径')
+    message.warning('请先在设置中选择下载路径')
     return { success: 0, failed: 0, total: 0 }
   }
 
@@ -125,20 +124,14 @@ export async function downloadSongs(songs, onProgress) {
   const total = songs.length
 
   // 显示批量下载提示
-  const notification = Message.info({
-    content: `准备下载 ${total} 首歌曲...`,
-    duration: 0
-  })
+  let hideNotification = message.info(`准备下载 ${total} 首歌曲...`, 0)
 
   for (let i = 0; i < songs.length; i++) {
     const song = songs[i]
 
     // 更新进度提示
-    notification.close()
-    const progressNotification = Message.loading({
-      content: `正在下载 (${i + 1}/${total})：${song.name}`,
-      duration: 0
-    })
+    hideNotification()
+    const hideProgress = message.loading(`正在下载 (${i + 1}/${total})：${song.name}`, 0)
 
     const success = await downloadSong(song, (result) => {
       if (onProgress) {
@@ -151,7 +144,7 @@ export async function downloadSongs(songs, onProgress) {
       }
     })
 
-    progressNotification.close()
+    hideProgress()
 
     if (success) {
       successCount++
@@ -167,9 +160,9 @@ export async function downloadSongs(songs, onProgress) {
 
   // 显示最终结果
   if (failedCount === 0) {
-    Message.success(`全部下载完成！共 ${successCount} 首`)
+    message.success(`全部下载完成！共 ${successCount} 首`)
   } else {
-    Message.warning(`下载完成：成功 ${successCount} 首，失败 ${failedCount} 首`)
+    message.warning(`下载完成：成功 ${successCount} 首，失败 ${failedCount} 首`)
   }
 
   return { success: successCount, failed: failedCount, total }

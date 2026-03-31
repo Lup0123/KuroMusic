@@ -1,213 +1,94 @@
-<template>
-  <a-layout-sider width="240px" class="sidebar">
-    <a-menu
-      :selected-keys="[selectedMenuKey]"
-      class="sidebar-menu"
-      @menu-item-click="handleMenuClick"
-      :level-indent="8"
-    >
-      <a-menu-item :key="ROUTE_NAMES.MAIN_PAGE">
-        <template #icon>
-          <icon-home />
-        </template>
-        发现
-      </a-menu-item>
-      <a-menu-item :key="ROUTE_NAMES.MY_MUSIC">
-        <template #icon>
-          <icon-music />
-        </template>
-        我的音乐
-      </a-menu-item>
-
-      <a-divider />
-
-      <a-sub-menu key="my-playlists">
-        <template #icon>
-          <icon-folder />
-        </template>
-        <template #title>
-          <div class="playlist-title">
-            <span>本地歌单</span>
-            <a-button
-              type="text"
-              size="small"
-              class="create-playlist-btn"
-              @click.stop="showCreateModal"
-            >
-              <template #icon>
-                <icon-plus :size="16" />
-              </template>
-            </a-button>
-          </div>
-        </template>
-
-        <a-sub-menu key="created-playlists">
-          <template #title>
-            <span class="submenu-title-wrapper">
-              <span>我创建的歌单</span>
-              <span v-if="createdPlaylists.length > 0" class="count-badge">{{
-                createdPlaylists.length
-              }}</span>
-            </span>
-          </template>
-          <a-menu-item
-            v-for="playlist in createdPlaylists"
-            :key="`created-${playlist.id}`"
-            @click="handlePlaylistClick(playlist)"
-            class="playlist-item-with-delete"
-          >
-            <template #icon>
-              <icon-list />
-            </template>
-            <span class="playlist-item-content">
-              <span class="playlist-name">{{ playlist.name }}</span>
-              <icon-delete
-                class="delete-icon"
-                :size="16"
-                @click.stop="handleDeletePlaylist(playlist)"
-              />
-            </span>
-          </a-menu-item>
-          <a-menu-item v-if="createdPlaylists.length === 0" disabled>
-            <span style="color: var(--color-text-4)">暂无歌单</span>
-          </a-menu-item>
-        </a-sub-menu>
-
-        <a-sub-menu key="favorite-playlists">
-          <template #title>
-            <span class="submenu-title-wrapper">
-              <span>收藏的歌单</span>
-              <span v-if="favoritePlaylists.length > 0" class="count-badge">{{
-                favoritePlaylists.length
-              }}</span>
-            </span>
-          </template>
-          <a-menu-item
-            v-for="playlist in favoritePlaylists"
-            :key="`favorite-${playlist.id}`"
-            @click="handlePlaylistClick(playlist)"
-            class="playlist-item-with-delete"
-          >
-            <template #icon>
-              <icon-star-fill />
-            </template>
-            <span class="playlist-item-content">
-              <span class="playlist-name">{{ playlist.name }}</span>
-              <icon-delete
-                class="delete-icon"
-                :size="16"
-                @click.stop="handleDeleteFavoritePlaylist(playlist)"
-              />
-            </span>
-          </a-menu-item>
-          <a-menu-item v-if="favoritePlaylists.length === 0" disabled>
-            <span style="color: var(--color-text-4)">暂无收藏</span>
-          </a-menu-item>
-        </a-sub-menu>
-      </a-sub-menu>
-
-      <a-divider v-if="likedPlaylist || filteredUserPlaylists.length > 0" />
-
-      <a-menu-item
-        v-if="likedPlaylist"
-        :key="`user-${likedPlaylist.id}`"
-        @click="handlePlaylistClick(likedPlaylist)"
-      >
-        <template #icon>
-          <icon-heart-fill :style="{ color: '#f53f3f' }" />
-        </template>
-        我喜欢的音乐
-      </a-menu-item>
-
-      <a-sub-menu
-        key="user-playlists"
-        v-if="filteredUserPlaylists.length > 0"
-        class="user-playlists-menu"
-      >
-        <template #icon>
-          <icon-user />
-        </template>
-        <template #title>
-          <span class="submenu-title-wrapper">
-            <span>在线歌单</span>
-            <span v-if="filteredUserPlaylists.length > 0" class="count-badge primary">{{
-              filteredUserPlaylists.length
-            }}</span>
-          </span>
-        </template>
-        <div class="user-playlists-container">
-          <a-menu-item
-            v-for="playlist in filteredUserPlaylists"
-            :key="`user-${playlist.id}`"
-            @click="handlePlaylistClick(playlist)"
-          >
-            <template #icon>
-              <icon-list />
-            </template>
-            <span class="playlist-name">{{ playlist.name }}</span>
-          </a-menu-item>
-        </div>
-      </a-sub-menu>
-    </a-menu>
+﻿<template>
+  <n-layout-sider
+    width="240px"
+    class="sidebar"
+    bordered
+    content-style="padding: 0;"
+    :style="siderStyle"
+  >
+    <n-menu
+      :options="menuOptions"
+      :value="selectedMenuKey"
+      :root-indent="18"
+      :indent="18"
+      @update:value="handleMenuClick"
+    />
 
     <!-- 创建歌单弹窗 -->
-    <a-modal
-      v-model:visible="createModalVisible"
+    <n-modal
+      v-model:show="createModalVisible"
+      preset="dialog"
       title="创建歌单"
-      :on-before-ok="handleCreatePlaylist"
-      @cancel="handleCancelCreate"
+      :mask-closable="true"
     >
-      <a-form :model="newPlaylist">
-        <a-form-item label="歌单名称" required>
-          <a-input
+      <n-form :model="newPlaylist">
+        <n-form-item label="歌单名称" required>
+          <n-input
             ref="nameInputRef"
-            v-model="newPlaylist.name"
+            v-model:value="newPlaylist.name"
             placeholder="请输入歌单名称"
-            :max-length="40"
-            allow-clear
-            @press-enter="handleEnter"
+            :maxlength="40"
+            clearable
+            @keyup.enter="handleCreatePlaylist"
           />
-        </a-form-item>
-        <a-form-item label="歌单描述">
-          <a-textarea
-            v-model="newPlaylist.description"
+        </n-form-item>
+        <n-form-item label="歌单描述">
+          <n-input
+            v-model:value="newPlaylist.description"
+            type="textarea"
             placeholder="请输入歌单描述"
-            :max-length="200"
-            :auto-size="{ minRows: 3, maxRows: 5 }"
-            allow-clear
+            :maxlength="200"
+            :rows="3"
           />
-        </a-form-item>
-      </a-form>
-    </a-modal>
-  </a-layout-sider>
+        </n-form-item>
+      </n-form>
+      <template #action>
+        <n-button @click="handleCancelCreate">取消</n-button>
+        <n-button type="primary" :loading="createLoading" @click="handleCreatePlaylist"
+          >创建</n-button
+        >
+      </template>
+    </n-modal>
+  </n-layout-sider>
 </template>
 
 <script setup>
-import { ref, onMounted, nextTick, toRaw, watch, computed } from 'vue'
+import { ref, onMounted, nextTick, toRaw, watch, computed, h } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useIndexStore } from '@/stores/indexStore'
 import { usePlaylistStore } from '@/stores/playlistStore'
 import { useUserStore } from '@/stores/userStore'
 import { storeToRefs } from 'pinia'
-import { Message, Modal } from '@arco-design/web-vue'
+import { useMessage, useDialog, NIcon, useThemeVars } from 'naive-ui'
 import { ROUTE_NAMES } from '@/router/routeNames'
 import {
-  IconHome,
-  IconMusic,
-  IconFolder,
-  IconPlus,
-  IconList,
-  IconStarFill,
-  IconDelete,
-  IconUser,
-  IconHeartFill
-} from '@arco-design/web-vue/es/icon'
+  HomeOutline,
+  HeadsetOutline,
+  FolderOutline,
+  AddOutline,
+  ListOutline,
+  StarOutline,
+  TrashOutline,
+  PersonOutline,
+  HeartOutline
+} from '@vicons/ionicons5'
 
 const router = useRouter()
 const route = useRoute()
+const message = useMessage()
+const dialog = useDialog()
+const themeVars = useThemeVars()
 const indexStore = useIndexStore()
 const playlistStore = usePlaylistStore()
 const userStore = useUserStore()
+
+const siderStyle = computed(() => {
+  const sidebarBg = themeVars.value.cardColor || themeVars.value.bodyColor
+  return {
+    '--n-color': sidebarBg,
+    backgroundColor: sidebarBg
+  }
+})
 
 const { selectedPlaylistKey } = storeToRefs(indexStore)
 const { createdPlaylists, favoritePlaylists, userPlaylists } = storeToRefs(playlistStore)
@@ -216,88 +97,221 @@ const { userInfo, isLoggedIn } = storeToRefs(userStore)
 // 计算属性：分离"我喜欢的音乐"和其他在线歌单
 const likedPlaylist = computed(() => {
   if (userPlaylists.value.length > 0) {
-    // 即使第一个不是，如果在列表里找到带"喜欢的音乐"且是自己创建的，那也是
-    // 网易云通常把"我喜欢的音乐"放在第一个
     const first = userPlaylists.value[0]
-    if (first.name.includes('喜欢的音乐')) {
-      return first
-    }
-    // 如果第一个不是，尝试查找
+    if (first.name.includes('喜欢的音乐')) return first
     return userPlaylists.value.find((p) => p.name.includes('喜欢的音乐')) || null
   }
   return null
 })
 
 const filteredUserPlaylists = computed(() => {
-  if (likedPlaylist.value) {
-    return userPlaylists.value.filter((p) => p.id !== likedPlaylist.value.id)
-  }
+  if (likedPlaylist.value) return userPlaylists.value.filter((p) => p.id !== likedPlaylist.value.id)
   return userPlaylists.value
 })
 
 const NAV_ROUTE_NAMES = [ROUTE_NAMES.MAIN_PAGE, ROUTE_NAMES.MY_MUSIC, ROUTE_NAMES.SONG_SEARCH]
 
+// 渲染图标
+const renderIcon = (icon) => () => h(NIcon, null, { default: () => h(icon) })
+
+// 渲染带删除按钮的歌单项
+const renderPlaylistLabel = (playlist, onDelete) => () =>
+  h(
+    'div',
+    {
+      style: 'display: flex; align-items: center; justify-content: space-between; width: 100%;'
+    },
+    [
+      h(
+        'span',
+        { style: 'overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1;' },
+        playlist.name
+      ),
+      h(
+        NIcon,
+        {
+          size: 14,
+          style:
+            'opacity: 0; cursor: pointer; flex-shrink: 0; margin-left: 8px; transition: all 0.2s;',
+          class: 'delete-icon',
+          onClick: (e) => {
+            e.stopPropagation()
+            onDelete(playlist)
+          }
+        },
+        { default: () => h(TrashOutline) }
+      )
+    ]
+  )
+
+// 菜单选项
+const menuOptions = computed(() => {
+  const options = [
+    {
+      label: '发现',
+      key: ROUTE_NAMES.MAIN_PAGE,
+      icon: renderIcon(HomeOutline)
+    },
+    {
+      label: '我的音乐',
+      key: ROUTE_NAMES.MY_MUSIC,
+      icon: renderIcon(HeadsetOutline)
+    },
+    { type: 'divider' },
+    {
+      label: () =>
+        h(
+          'div',
+          {
+            style:
+              'display: flex; align-items: center; justify-content: space-between; width: 100%;'
+          },
+          [
+            h('span', '本地歌单'),
+            h(
+              NIcon,
+              {
+                size: 16,
+                style: 'cursor: pointer; opacity: 0.7;',
+                onClick: (e) => {
+                  e.stopPropagation()
+                  showCreateModal()
+                }
+              },
+              { default: () => h(AddOutline) }
+            )
+          ]
+        ),
+      key: 'my-playlists',
+      icon: renderIcon(FolderOutline),
+      children: [
+        {
+          label: `我创建的歌单 (${createdPlaylists.value.length})`,
+          key: 'created-playlists',
+          icon: renderIcon(ListOutline),
+          children:
+            createdPlaylists.value.length > 0
+              ? createdPlaylists.value.map((playlist) => ({
+                  label: renderPlaylistLabel(playlist, handleDeletePlaylist),
+                  key: `created-${playlist.id}`,
+                  icon: renderIcon(ListOutline)
+                }))
+              : [{ label: '暂无歌单', key: 'no-created', disabled: true }]
+        },
+        {
+          label: `收藏的歌单 (${favoritePlaylists.value.length})`,
+          key: 'favorite-playlists',
+          icon: renderIcon(StarOutline),
+          children:
+            favoritePlaylists.value.length > 0
+              ? favoritePlaylists.value.map((playlist) => ({
+                  label: renderPlaylistLabel(playlist, handleDeleteFavoritePlaylist),
+                  key: `favorite-${playlist.id}`,
+                  icon: renderIcon(StarOutline)
+                }))
+              : [{ label: '暂无收藏', key: 'no-favorite', disabled: true }]
+        }
+      ]
+    }
+  ]
+
+  // 如果有喜欢的音乐
+  if (likedPlaylist.value || filteredUserPlaylists.value.length > 0) {
+    options.push({ type: 'divider' })
+  }
+
+  if (likedPlaylist.value) {
+    options.push({
+      label: '我喜欢的音乐',
+      key: `user-${likedPlaylist.value.id}`,
+      icon: () => h(NIcon, { color: '#f53f3f' }, { default: () => h(HeartOutline) })
+    })
+  }
+
+  if (filteredUserPlaylists.value.length > 0) {
+    options.push({
+      label: `在线歌单 (${filteredUserPlaylists.value.length})`,
+      key: 'user-playlists',
+      icon: renderIcon(PersonOutline),
+      children: filteredUserPlaylists.value.map((playlist) => ({
+        label: playlist.name,
+        key: `user-${playlist.id}`,
+        icon: renderIcon(ListOutline)
+      }))
+    })
+  }
+
+  return options
+})
+
 // 创建歌单相关
 const nameInputRef = ref(null)
 const createModalVisible = ref(false)
-const newPlaylist = ref({
-  name: '',
-  description: ''
-})
+const createLoading = ref(false)
+const newPlaylist = ref({ name: '', description: '' })
 
 const selectedMenuKey = computed(() => {
   if (route.name === ROUTE_NAMES.PLAYLIST_DETAIL && selectedPlaylistKey.value) {
     return selectedPlaylistKey.value
   }
-
   return NAV_ROUTE_NAMES.includes(route.name) ? route.name : ROUTE_NAMES.MAIN_PAGE
 })
 
 const handleMenuClick = (key) => {
-  if (!NAV_ROUTE_NAMES.includes(key)) return
+  // 忽略空值或禁用项
+  if (!key || key.startsWith('no-')) return
 
-  indexStore.setSelectedPlaylistKey(null)
-  router.push({ name: key })
+  // 导航路由
+  if (NAV_ROUTE_NAMES.includes(key)) {
+    indexStore.setSelectedPlaylistKey(null)
+    router.push({ name: key })
+    return
+  }
+
+  // 歌单点击
+  if (key.startsWith('created-') || key.startsWith('favorite-') || key.startsWith('user-')) {
+    const [type, id] = key.split('-')
+    let playlist = null
+
+    if (type === 'created') {
+      playlist = createdPlaylists.value.find((p) => String(p.id) === id)
+    } else if (type === 'favorite') {
+      playlist = favoritePlaylists.value.find((p) => String(p.id) === id)
+    } else if (type === 'user') {
+      playlist = userPlaylists.value.find((p) => String(p.id) === id)
+    }
+
+    if (playlist) handlePlaylistClick(playlist)
+  }
 }
 
 const showCreateModal = () => {
   createModalVisible.value = true
-  newPlaylist.value = {
-    name: '',
-    description: ''
-  }
-  nextTick(() => {
-    nameInputRef.value?.focus()
-  })
+  newPlaylist.value = { name: '', description: '' }
+  nextTick(() => nameInputRef.value?.focus())
 }
 
 const handleCreatePlaylist = async () => {
   if (!newPlaylist.value.name.trim()) {
-    Message.warning('请输入歌单名称')
-    return false
+    message.warning('请输入歌单名称')
+    return
   }
 
+  createLoading.value = true
   try {
     const result = await playlistStore.createLocalPlaylist(toRaw(newPlaylist.value))
     if (result) {
-      Message.success('歌单创建成功')
+      message.success('歌单创建成功')
       newPlaylist.value = { name: '', description: '' }
-      return true
+      createModalVisible.value = false
     } else {
-      Message.error('歌单创建失败')
-      return false
+      message.error('歌单创建失败')
     }
   } catch (error) {
     console.error('创建歌单失败:', error)
-    Message.error('歌单创建失败')
-    return false
-  }
-}
-
-const handleEnter = async () => {
-  const success = await handleCreatePlaylist()
-  if (success) {
-    createModalVisible.value = false
+    message.error('歌单创建失败')
+  } finally {
+    createLoading.value = false
   }
 }
 
@@ -314,67 +328,61 @@ const handlePlaylistClick = (playlist) => {
   indexStore.setSelectedPlaylistKey(playlistKey)
   playlistStore.setCurrentPlaylist(playlist)
 
-  // 已在同一详情页时强制刷新，避免重新进路由
   if (
     route.name === ROUTE_NAMES.PLAYLIST_DETAIL &&
     String(route.params.id || '') === String(playlist.id)
   ) {
     indexStore.forceRefresh()
   } else {
-    router.push({
-      name: ROUTE_NAMES.PLAYLIST_DETAIL,
-      params: { id: String(playlist.id) }
-    })
+    router.push({ name: ROUTE_NAMES.PLAYLIST_DETAIL, params: { id: String(playlist.id) } })
   }
 }
 
 const handleDeletePlaylist = async (playlist) => {
-  Modal.warning({
+  dialog.warning({
     title: '确认删除',
     content: `确定要删除歌单 "${playlist.name}" 吗？此操作无法撤销。`,
-    okText: '删除',
-    cancelText: '取消',
-    onOk: async () => {
+    positiveText: '删除',
+    negativeText: '取消',
+    onPositiveClick: async () => {
       try {
         const success = await playlistStore.deleteLocalPlaylist(playlist.id)
         if (success) {
-          Message.success('歌单已删除')
-          // 如果当前正在查看被删除的歌单，返回主页
+          message.success('歌单已删除')
           if (playlistStore.currentPlaylistInfo.id === playlist.id) {
             router.push({ name: ROUTE_NAMES.MAIN_PAGE })
           }
         } else {
-          Message.error('删除失败')
+          message.error('删除失败')
         }
       } catch (error) {
         console.error('删除歌单失败:', error)
-        Message.error('删除失败')
+        message.error('删除失败')
       }
     }
   })
 }
 
 const handleDeleteFavoritePlaylist = async (playlist) => {
-  Modal.warning({
+  dialog.warning({
     title: '确认取消收藏',
     content: `确定要取消收藏歌单 "${playlist.name}" 吗？`,
-    okText: '取消收藏',
-    cancelText: '保留',
-    onOk: async () => {
+    positiveText: '取消收藏',
+    negativeText: '保留',
+    onPositiveClick: async () => {
       try {
         const success = await playlistStore.removeFromFavoritePlaylist(playlist.id)
         if (success) {
-          Message.success('已取消收藏')
-          // 如果当前正在查看被取消收藏的歌单，返回主页
+          message.success('已取消收藏')
           if (playlistStore.currentPlaylistInfo.id === playlist.id) {
             router.push({ name: ROUTE_NAMES.MAIN_PAGE })
           }
         } else {
-          Message.error('取消收藏失败')
+          message.error('取消收藏失败')
         }
       } catch (error) {
         console.error('取消收藏失败:', error)
-        Message.error('操作失败')
+        message.error('操作失败')
       }
     }
   })
@@ -384,35 +392,82 @@ const handleDeleteFavoritePlaylist = async (playlist) => {
 onMounted(async () => {
   await playlistStore.loadLocalPlaylists()
 
-  // 如果用户已登录，加载用户歌单
   if (isLoggedIn.value && userInfo.value) {
-    console.log('sidebar: 用户信息', userInfo.value)
     const uid = userInfo.value.userId || userInfo.value.id
-    if (uid) {
-      await playlistStore.loadUserPlaylists(uid, 1000)
-    } else {
-      console.warn('sidebar: 无法获取用户ID')
-    }
+    if (uid) await playlistStore.loadUserPlaylists(uid, 1000)
   }
 })
 
 // 监听登录状态变化
 watch(isLoggedIn, async (newValue) => {
   if (newValue && userInfo.value) {
-    console.log('sidebar: 登录状态变化，用户信息', userInfo.value)
-    // 用户登录后加载歌单
     const uid = userInfo.value.userId || userInfo.value.id
-    if (uid) {
-      await playlistStore.loadUserPlaylists(uid, 1000)
-    }
+    if (uid) await playlistStore.loadUserPlaylists(uid, 1000)
   } else {
-    // 用户登出后清空用户歌单
     playlistStore.userPlaylists = []
     playlistStore.likedSongIds = new Set()
   }
 })
 </script>
 
-<style scoped>
-@import './sidebar.scss';
+<style scoped lang="scss">
+.sidebar {
+  background-color: var(--n-color) !important;
+  height: calc(100vh - 60px - 80px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  flex-shrink: 0;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+
+  animation: slideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+  :deep(.n-layout-sider-scroll-container),
+  :deep(.n-layout-sider-content) {
+    background-color: var(--n-color) !important;
+  }
+}
+
+// Naive UI 菜单样式覆盖
+:deep(.n-menu) {
+  background: transparent;
+
+  .n-menu-item-content {
+    &:hover .delete-icon {
+      opacity: 1 !important;
+    }
+  }
+
+  .n-menu-item-content--selected {
+    font-weight: 600;
+
+    &::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 3px;
+      height: 60%;
+      background: var(--n-item-text-color-active);
+      border-radius: 0 2px 2px 0;
+    }
+  }
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
 </style>

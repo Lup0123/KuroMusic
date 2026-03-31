@@ -47,6 +47,9 @@ const api = {
   getRecommendResource: () => ipcRenderer.invoke('get-recommend-resource'),
   getRecommendSongs: () => ipcRenderer.invoke('get-recommend-songs'),
   getPersonalizedPlaylists: (limit) => ipcRenderer.invoke('get-personalized-playlists', limit),
+  getPersonalFM: () => ipcRenderer.invoke('get-personal-fm'),
+  getTopSongs: (type) => ipcRenderer.invoke('get-top-songs', type),
+  fmTrash: (songId) => ipcRenderer.invoke('fm-trash', songId),
 
   // ============ 登录相关 API ============
   // 二维码登录

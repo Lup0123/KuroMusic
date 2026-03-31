@@ -1,17 +1,14 @@
 import './assets/main.css'
-import 'element-plus/dist/index.css'
 import { createPinia } from 'pinia'
-import router  from './router'
+import router from './router'
 import { createApp } from 'vue'
 import App from './App.vue'
-import ArcoVue from '@arco-design/web-vue'
-import '@arco-design/web-vue/dist/arco.css'
-
+import naive from 'naive-ui'
 
 const pinia = createPinia()
 const app = createApp(App)
 
-app.use(ArcoVue)
+app.use(naive)
 app.use(pinia)
 app.use(router)
 app.mount('#app')
