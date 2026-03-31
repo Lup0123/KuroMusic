@@ -8,7 +8,7 @@
 - Vue 3 + Vite（electron-vite）
 - Pinia
 - Vue Router（Memory History）
-- Arco Design Vue
+- Naive UI
 - @neteasecloudmusicapienhanced/api
 - electron-store（本地持久化）
 - music-metadata（本地音频元数据读取）
