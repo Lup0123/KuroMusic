@@ -634,13 +634,13 @@ onUnmounted(() => {
 .header-right {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 20px;
 }
 
 .window-controls {
   display: flex;
   margin-left: 12px;
-  gap: 1px;
+  gap: 20px;
 }
 
 .user-avatar {
@@ -648,7 +648,7 @@ onUnmounted(() => {
   transition: all 0.3s ease;
 
   &:hover {
-    border-color: var(--primary-color, #165dff);
+    border-color: var(--primary-hover-color, #4080ff);
     transform: scale(1.05);
   }
 }
@@ -934,6 +934,7 @@ onUnmounted(() => {
       cursor: pointer;
 
       &:hover {
+        color: var(--primary-hover-color, #4080ff);
         text-decoration: underline;
       }
     }

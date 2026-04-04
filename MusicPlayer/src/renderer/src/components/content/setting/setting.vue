@@ -159,29 +159,18 @@ const defaultSettings = {
 const settings = ref({ ...defaultSettings })
 
 const themeColors = [
-  { name: '拂晓蓝', value: 'arcoblue', color: 'rgb(22, 93, 255)' },
-  { name: '极客蓝', value: 'blue', color: 'rgb(52, 145, 250)' },
-  { name: '暮光紫', value: 'purple', color: 'rgb(114, 46, 209)' },
-  { name: '浪漫粉', value: 'pinkpurple', color: 'rgb(217, 26, 217)' },
-  { name: '火山红', value: 'red', color: 'rgb(245, 63, 63)' },
-  { name: '日出橙', value: 'orangered', color: 'rgb(247, 114, 52)' },
-  { name: '金盏黄', value: 'gold', color: 'rgb(247, 186, 30)' },
-  { name: '极光绿', value: 'green', color: 'rgb(0, 180, 42)' },
-  { name: '青春青', value: 'cyan', color: 'rgb(20, 201, 201)' },
-  { name: '雅致灰', value: 'gray', color: 'rgb(134, 144, 156)' }
+  { name: '拂晓蓝', value: 'arcoblue', color: '#165DFF', hover: '#4080FF' },
+  { name: '极客蓝', value: 'blue', color: '#3491FA', hover: '#5AA9FA' },
+  { name: '暮光紫', value: 'purple', color: '#722ED1', hover: '#9254DE' },
+  { name: '浪漫粉', value: 'pinkpurple', color: '#D91AD9', hover: '#EA3FEA' },
+  { name: '火山红', value: 'red', color: '#F53F3F', hover: '#F76560' },
+  { name: '日出橙', value: 'orangered', color: '#F77234', hover: '#FF9A2E' },
+  { name: '金盏黄', value: 'gold', color: '#F7BA1E', hover: '#F9CC45' },
+  { name: '极光绿', value: 'green', color: '#00B42A', hover: '#23C343' },
+  { name: '青春青', value: 'cyan', color: '#14C9C9', hover: '#33D4CF' },
+  { name: '雅致灰', value: 'gray', color: '#86909C', hover: '#A4ACB5' }
 ]
-const colorMap = {
-  arcoblue: '#165DFF',
-  blue: '#3491FA',
-  purple: '#722ED1',
-  pinkpurple: '#D91AD9',
-  red: '#F53F3F',
-  orangered: '#F77234',
-  gold: '#F7BA1E',
-  green: '#00B42A',
-  cyan: '#14C9C9',
-  gray: '#86909C'
-}
+const themeColorMap = Object.fromEntries(themeColors.map((item) => [item.value, item]))
 
 const changeThemeColor = (colorScheme) => {
   settings.value.themeColor = colorScheme
@@ -190,8 +179,8 @@ const changeThemeColor = (colorScheme) => {
   message.success('主题颜色已更改')
 }
 const applyThemeColor = (colorScheme) => {
-  const color = colorMap[colorScheme] || '#165DFF'
-  if (setPrimaryColor) setPrimaryColor(color)
+  const targetThemeColor = themeColorMap[colorScheme] || themeColorMap.arcoblue
+  if (setPrimaryColor) setPrimaryColor(targetThemeColor.color, targetThemeColor.hover)
 }
 const changeFontSize = (value) => {
   settings.value.fontSize = value

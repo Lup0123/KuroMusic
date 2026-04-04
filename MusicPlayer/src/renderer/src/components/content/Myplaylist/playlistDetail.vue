@@ -35,7 +35,7 @@
     <div ref="scrollContainerRef" class="scroll-container" @scroll="handleScroll">
       <!-- 头部信息区 -->
       <div class="detail-header">
-        <div class="header-back">
+        <div class="header-back" style="height: auto; padding: 12px">
           <n-button text @click="goBack">
             <n-icon size="20"><ChevronBack /></n-icon>
           </n-button>
@@ -776,9 +776,6 @@ watch([() => currentPlaylistInfo.value.id, refreshKey], async () => {
               border: none;
               border-radius: 20px;
               padding: 0 24px;
-              &:hover {
-                background: var(--n-primary-color-hover);
-              }
             }
 
             .action-btn {

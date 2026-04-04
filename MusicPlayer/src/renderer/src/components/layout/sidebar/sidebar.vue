@@ -5,6 +5,7 @@
     bordered
     content-style="padding: 0;"
     :style="siderStyle"
+    :native-scrollbar="false"
   >
     <n-menu
       :options="menuOptions"
@@ -418,12 +419,6 @@ watch(isLoggedIn, async (newValue) => {
   overflow-x: hidden;
   flex-shrink: 0;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-
-  &::-webkit-scrollbar {
-    display: none;
-  }
 
   animation: slideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 

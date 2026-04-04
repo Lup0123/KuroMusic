@@ -593,7 +593,6 @@ onMounted(async () => {
           span {
             width: 3px;
             height: 14px;
-            background: white;
             border-radius: 2px;
           }
         }
@@ -628,13 +627,10 @@ onMounted(async () => {
           gap: 12px;
 
           :deep(.ant-btn) {
-            background: color-mix(in srgb, var(--n-color) 22%, transparent);
             border: none;
-            color: white;
             backdrop-filter: blur(10px);
 
             &:hover {
-              background: color-mix(in srgb, var(--n-color) 32%, transparent);
               transform: scale(1.1);
             }
 
