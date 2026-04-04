@@ -7,9 +7,10 @@
           :width="50"
           :height="50"
           :src="currentSong.cover"
-          :preview-disabled="true"
+          preview-disabled
           object-fit="cover"
           style="border-radius: 4px; pointer-events: none"
+          :fallback-src="pic_err"
         />
         <div class="song-info">
           <div class="song-title">{{ currentSong.name }}</div>
@@ -122,6 +123,7 @@ import {
   VolumeHighOutline
 } from '@vicons/ionicons5'
 import { downloadSong } from '@/utils/downloadUtils'
+import pic_err from '@/assets/icon/pic_err.png'
 
 const router = useRouter()
 const message = useMessage()

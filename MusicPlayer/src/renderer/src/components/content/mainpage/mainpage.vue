@@ -27,6 +27,7 @@
             <h3 class="fm-title">{{ fmSong.name }}</h3>
             <p class="fm-artist">{{ fmSong.artist }}</p>
             <p class="fm-album">{{ fmSong.album }}</p>
+            <p class="fm-duration">{{ formatDuration(fmSong.duration) }}</p>
             <div class="fm-actions">
               <n-button type="primary" circle size="large" @click="playFmSong">
                 <template #icon>
@@ -300,9 +301,9 @@ const gotodetail = async (playlist) => {
 const playSong = async (song) => {
   try {
     const response = await window.api.getSongUrl(song.id, 'standard')
+    console.log('获取歌曲URL响应:', response)
     if (response.body?.data?.[0]?.url) {
-      songStore.setCurrentSong({ ...song, url: response.body.data[0].url })
-      songStore.setIsPlaying(true)
+      songStore.play({ ...song, url: response.body.data[0].url })
     } else {
       message.warning('该歌曲暂时无法播放')
     }
@@ -315,7 +316,7 @@ const playSong = async (song) => {
 const playFmSong = async () => {
   if (!fmSong.value) return
   if (isCurrentFmPlaying.value) {
-    songStore.setIsPlaying(false)
+    songStore.isPlaying = false
     return
   }
   await playSong(fmSong.value)
@@ -386,6 +387,7 @@ const loadPersonalFM = async () => {
   if (!isLoggedIn.value) return
   try {
     const response = await window.api.getPersonalFM()
+    console.log('私人FM数据:', response)
     if (response.body?.data) {
       const newSongs = response.body.data.map((s) => ({
         id: s.id,
@@ -619,6 +621,12 @@ onMounted(async () => {
         .fm-album {
           font-size: 14px;
           opacity: 0.7;
+          margin: 0 0 4px 0;
+        }
+
+        .fm-duration {
+          font-size: 13px;
+          opacity: 0.75;
           margin: 0 0 20px 0;
         }
 

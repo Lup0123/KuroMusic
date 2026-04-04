@@ -1,5 +1,3 @@
-import { ref } from 'vue'
-
 //时间戳转换年月日函数（支持时间戳和ISO字符串）
 export function formatDate(timestamp) {
   if (!timestamp) return ''
@@ -20,10 +18,14 @@ export function formatTime(timestamp) {
   return `${hours}:${minutes}:${seconds}`
 }
 
-export function formatDuration(ms) {
-  if (!ms) return '00:00'
-  const seconds = Math.floor(ms / 1000)
-  const mins = Math.floor(seconds / 60)
-  const secs = seconds % 60
-  return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`
+export function formatDuration(duration) {
+  if (duration === null || duration === undefined || duration === '') return '--:--'
+  if (typeof duration === 'string') return duration
+
+  const totalSeconds = Math.floor(Number(duration) / 1000)
+  if (!Number.isFinite(totalSeconds) || totalSeconds < 0) return '--:--'
+
+  const minutes = Math.floor(totalSeconds / 60)
+  const seconds = totalSeconds % 60
+  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
 }

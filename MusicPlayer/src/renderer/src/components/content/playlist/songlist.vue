@@ -46,7 +46,7 @@
               <div class="song-title">{{ song.name }}</div>
               <div class="song-artist">{{ song.artist }}</div>
             </div>
-            <div class="song-duration">{{ song.duration }}</div>
+            <div class="song-duration">{{ formatDuration(song.duration) }}</div>
             <div class="song-actions">
               <n-button text circle size="small" title="移除" @click.stop="removeSong(index)">
                 <template #icon
@@ -70,6 +70,7 @@
 import { computed } from 'vue'
 import { useDialog, useThemeVars } from 'naive-ui'
 import { useSongStore } from '@/stores/songStore'
+import { formatDuration } from '@/utils/utils'
 import { storeToRefs } from 'pinia'
 import { TrashOutline, CloseOutline, PlayOutline, HeadsetOutline } from '@vicons/ionicons5'
 
@@ -104,6 +105,7 @@ const playSong = (index) => {
 const removeSong = (index) => {
   songStore.removeFromPlaylist(index)
 }
+
 const clearPlaylist = async () => {
   dialog.warning({
     title: '提示',
