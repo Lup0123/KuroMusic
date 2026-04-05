@@ -13,7 +13,7 @@
 
 <script setup>
 import { computed, ref, provide, onMounted, watchEffect } from 'vue'
-import { darkTheme } from 'naive-ui'
+import { darkTheme, NConfigProvider } from 'naive-ui'
 
 const isDarkMode = ref(false)
 const primaryColor = ref('#165DFF')
@@ -54,10 +54,15 @@ const applyPrimaryTheme = (color, hoverColor) => {
 }
 
 const currentTheme = computed(() => (isDarkMode.value ? darkTheme : null))
+
 const themeOverrides = computed(() => ({
   common: {
     primaryColor: primaryColor.value,
     primaryColorHover: primaryHoverColor.value
+  },
+  Slider: {
+    fillColor: primaryColor.value,
+    fillColorHover: primaryHoverColor.value
   }
 }))
 

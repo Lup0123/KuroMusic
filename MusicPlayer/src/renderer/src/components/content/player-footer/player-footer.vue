@@ -382,7 +382,7 @@ onMounted(() => {
       box-shadow: 0 4px 12px var(--n-primary-color);
 
       &:hover {
-        box-shadow: 0 6px 16px var(--color-primary-light-4);
+        box-shadow: 0 6px 16px var(--n-primary-color);
         transform: scale(1.15);
       }
     }
@@ -409,7 +409,7 @@ onMounted(() => {
       min-width: 200px;
 
       :deep(.ant-slider-track) {
-        background: var(--n-primary-color);
+        background-color: var(--n-primary-color);
       }
 
       :deep(.ant-slider-btn) {
@@ -452,10 +452,6 @@ onMounted(() => {
     .volume-slider {
       flex: 1;
       min-width: 80px;
-
-      :deep(.ant-slider-track) {
-        background: var(--n-primary-color);
-      }
 
       :deep(.ant-slider-btn) {
         width: 12px;

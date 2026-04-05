@@ -62,25 +62,32 @@
           <p class="section-subtitle">每日更新，根据你的音乐口味推荐</p>
         </div>
         <div class="songs-scroll-container">
-          <div class="songs-scroll">
-            <div
-              v-for="song in recommendSongs"
-              :key="'song-' + song.id"
-              class="song-card"
-              @click="playSong(song)"
-            >
-              <div class="song-cover">
-                <n-image :src="song.cover" :preview-disabled="true" object-fit="cover" />
-                <div class="play-overlay">
-                  <n-icon size="24"><PlayOutline /></n-icon>
+          <n-scrollbar
+            class="songs-scrollbar"
+            x-scrollable
+            trigger="hover"
+            :horizontal-rail-style="{ background: 'transparent' }"
+          >
+            <div class="songs-scroll">
+              <div
+                v-for="song in recommendSongs"
+                :key="'song-' + song.id"
+                class="song-card"
+                @click="playSong(song)"
+              >
+                <div class="song-cover">
+                  <n-image :src="song.cover" :preview-disabled="true" object-fit="cover" />
+                  <div class="play-overlay">
+                    <n-icon size="24"><PlayOutline /></n-icon>
+                  </div>
+                </div>
+                <div class="song-info">
+                  <h4>{{ song.name }}</h4>
+                  <p>{{ song.artist }}</p>
                 </div>
               </div>
-              <div class="song-info">
-                <h4>{{ song.name }}</h4>
-                <p>{{ song.artist }}</p>
-              </div>
             </div>
-          </div>
+          </n-scrollbar>
         </div>
       </div>
 
@@ -657,35 +664,21 @@ onMounted(async () => {
 
     // 每日推荐歌曲横向滚动
     .songs-scroll-container {
-      overflow: hidden;
-      margin: 0 -30px;
-      padding: 0 30px;
+      width: 100%;
+      max-width: 100%;
+    }
+
+    .songs-scrollbar {
+      width: 100%;
+      max-width: 100%;
     }
 
     .songs-scroll {
       display: flex;
       gap: 16px;
-      overflow-x: auto;
       padding-bottom: 12px;
-      scroll-behavior: smooth;
-
-      &::-webkit-scrollbar {
-        height: 6px;
-      }
-
-      &::-webkit-scrollbar-track {
-        background: var(--n-hover-color);
-        border-radius: 3px;
-      }
-
-      &::-webkit-scrollbar-thumb {
-        background: var(--n-pressed-color);
-        border-radius: 3px;
-
-        &:hover {
-          background: var(--n-pressed-color);
-        }
-      }
+      width: max-content;
+      min-width: 100%;
     }
 
     .song-card {
@@ -761,7 +754,6 @@ onMounted(async () => {
       }
     }
 
-    // 鏂版瓕閫熼€掓牱寮?
     &.new-songs-section {
       .new-songs-tabs {
         display: flex;

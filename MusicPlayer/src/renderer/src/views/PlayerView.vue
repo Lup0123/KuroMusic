@@ -633,11 +633,10 @@ onUnmounted(() => {
         border-radius: 10px;
         display: inline-flex;
         width: fit-content;
+        margin-bottom: 10px;
 
         :deep(.n-radio-button) {
-          background: transparent;
           border: none;
-          color: #7b8290;
           border-radius: 8px;
           padding: 2px 20px;
           transition: all 0.3s ease;
@@ -670,7 +669,7 @@ onUnmounted(() => {
         }
 
         &::-webkit-scrollbar-track {
-          background: rgba(24, 160, 88, 0.08);
+          background: rgba(1, 215, 101, 0.08);
           border-radius: 3px;
         }
 
