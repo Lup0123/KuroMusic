@@ -63,7 +63,13 @@ function normalizeSong(song) {
   return {
     id: song?.id,
     name: song?.name || '未知歌曲',
-    artist: song?.ar?.map((item) => item?.name).filter(Boolean).join(' / ') || song?.artist || '未知艺术家',
+    artist:
+      song?.ar
+        ?.map((item) => item?.name)
+        .filter(Boolean)
+        .join(' / ') ||
+      song?.artist ||
+      '未知艺术家',
     album: song?.al?.name || song?.album || '未知专辑',
     albumCover: song?.al?.picUrl || song?.albumCover || '',
     durationMs: Number.isFinite(durationMs) && durationMs >= 0 ? durationMs : 0,
@@ -116,7 +122,10 @@ function scoreAndSortSongs(songs, signals, prompt) {
 }
 
 export function buildDraftFromSongs(prompt, songs, maxSongs = DEFAULT_MAX_SONGS) {
-  const boundedMaxSongs = Math.min(DEFAULT_MAX_SONGS, Math.max(1, Number(maxSongs) || DEFAULT_MAX_SONGS))
+  const boundedMaxSongs = Math.min(
+    DEFAULT_MAX_SONGS,
+    Math.max(1, Number(maxSongs) || DEFAULT_MAX_SONGS)
+  )
   const deduped = dedupeBySongId(songs).slice(0, boundedMaxSongs)
   const trimmedPrompt = String(prompt || '').trim()
   const nameSeed = trimmedPrompt ? trimmedPrompt.slice(0, 12) : 'AI推荐'
@@ -162,11 +171,18 @@ async function searchSongsByKeyword(keyword, limit) {
 export async function recommendByRule(prompt, context = {}) {
   const signals = parsePromptToSignals(prompt)
   const keywords = pickKeywords(signals.prompt, signals)
-  const maxSongs = Math.min(DEFAULT_MAX_SONGS, Math.max(1, Number(context?.maxSongs) || DEFAULT_MAX_SONGS))
+  const maxSongs = Math.min(
+    DEFAULT_MAX_SONGS,
+    Math.max(1, Number(context?.maxSongs) || DEFAULT_MAX_SONGS)
+  )
   const searchLimit = Math.max(1, Number(context?.searchLimit) || DEFAULT_SEARCH_LIMIT)
 
-  const searchResults = await Promise.allSettled(keywords.map((keyword) => searchSongsByKeyword(keyword, searchLimit)))
-  let allSongs = searchResults.flatMap((result) => (result.status === 'fulfilled' ? result.value : []))
+  const searchResults = await Promise.allSettled(
+    keywords.map((keyword) => searchSongsByKeyword(keyword, searchLimit))
+  )
+  let allSongs = searchResults.flatMap((result) =>
+    result.status === 'fulfilled' ? result.value : []
+  )
 
   const initialUniqueCount = dedupeBySongId(allSongs).length
   if (initialUniqueCount < SAFE_MIN_SONGS) {

@@ -8,6 +8,8 @@ import icon from '../../resources/icon.png?asset'
 import * as musicMetadata from 'music-metadata'
 import { playlistConfig } from './getLocalConfig/playlistconfig'
 import { auth, getCookie } from './auth/login'
+import { recommendPlaylistByLLM } from './ai/llmPlaylist'
+import { runLangChainRecommend } from './ai/langchainRecommend'
 import {
   cloudsearch,
   song_url_v1,
@@ -187,6 +189,75 @@ app.whenReady().then(() => {
       return {
         success: false,
         error: error.message
+      }
+    }
+  })
+
+  ipcMain.handle('ai-recommend-playlist', async (event, prompt, context = {}) => {
+    try {
+      const apiKey = process.env.OPENAI_API_KEY
+      if (!apiKey) {
+        return {
+          success: false,
+          error: '未配置 OPENAI_API_KEY'
+        }
+      }
+
+      const model = context?.model || process.env.OPENAI_MODEL || 'gpt-4o-mini'
+
+      const llmClient = async ({ prompt: userPrompt, messages = [] }) => {
+        const structured = await runLangChainRecommend({
+          prompt: userPrompt,
+          messages,
+          apiKey,
+          model,
+          timeoutMs: Number(context?.timeoutMs) || 20000
+        })
+        return JSON.stringify(structured)
+      }
+
+      const searchSongs = async (keyword, limit = 30) => {
+        const response = await cloudsearch({
+          keywords: keyword,
+          type: 1,
+          limit,
+          offset: 0,
+          cookie: getCookie()
+        })
+
+        const songs = response?.body?.result?.songs || []
+        return songs.map((item) => ({
+          id: item.id,
+          name: item.name,
+          artists: item.ar,
+          artist:
+            item.ar
+              ?.map((artist) => artist?.name)
+              .filter(Boolean)
+              .join(' / ') || '未知艺术家',
+          album: item.al?.name || '未知专辑',
+          albumCover: item.al?.picUrl || '',
+          durationMs: item.dt,
+          duration: item.dt
+        }))
+      }
+
+      const result = await recommendPlaylistByLLM({
+        prompt,
+        context,
+        searchSongs,
+        llmClient
+      })
+
+      return {
+        success: true,
+        ...result
+      }
+    } catch (error) {
+      console.error('AI 推荐歌单失败:', error)
+      return {
+        success: false,
+        error: error?.message || 'AI 推荐失败'
       }
     }
   })

@@ -53,6 +53,8 @@ const api = {
   getArtistTopSongs: (artistId) => ipcRenderer.invoke('get-artist-top-songs', artistId),
   getArtistAlbums: (artistId, limit, offset) =>
     ipcRenderer.invoke('get-artist-albums', artistId, limit, offset),
+  aiRecommendPlaylist: (prompt, context) =>
+    ipcRenderer.invoke('ai-recommend-playlist', prompt, context),
 
   // ============ 登录相关 API ============
   // 二维码登录

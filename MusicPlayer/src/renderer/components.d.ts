@@ -11,16 +11,18 @@ export {}
 /* prettier-ignore */
 declare module 'vue' {
   export interface GlobalComponents {
+    AIFloatBall: typeof import('./src/components/ai/AIFloatBall.vue')['default']
+    AIPlaylistModal: typeof import('./src/components/ai/AIPlaylistModal.vue')['default']
     AppCover: typeof import('./src/components/common/AppCover.vue')['default']
     ArtistDetail: typeof import('./src/components/content/artist/artistDetail.vue')['default']
     DownloadDialog: typeof import('./src/components/content/download/DownloadDialog.vue')['default']
     Layout: typeof import('./src/components/layout/layout.vue')['default']
     Mainpage: typeof import('./src/components/content/mainpage/mainpage.vue')['default']
     MyMusic: typeof import('./src/components/content/my-music/my-music.vue')['default']
+    NAlert: typeof import('naive-ui')['NAlert']
     NAvatar: typeof import('naive-ui')['NAvatar']
     Navbar: typeof import('./src/components/layout/navbar/navbar.vue')['default']
     NButton: typeof import('naive-ui')['NButton']
-    NConfigProvider: typeof import('naive-ui')['NConfigProvider']
     NDialogProvider: typeof import('naive-ui')['NDialogProvider']
     NDivider: typeof import('naive-ui')['NDivider']
     NDrawer: typeof import('naive-ui')['NDrawer']
