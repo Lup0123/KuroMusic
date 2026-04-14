@@ -29,6 +29,11 @@ const routes = [
         path: 'playlist/:id',
         name: ROUTE_NAMES.PLAYLIST_DETAIL,
         component: () => import('@/components/content/Myplaylist/playlistDetail.vue')
+      },
+      {
+        path: 'artist/:id',
+        name: ROUTE_NAMES.ARTIST_DETAIL,
+        component: () => import('@/components/content/artist/artistDetail.vue')
       }
     ]
   }

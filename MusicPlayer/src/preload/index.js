@@ -17,7 +17,7 @@ const api = {
   getSongUrl: (songId, quality) => ipcRenderer.invoke('get-song-url', songId, quality),
   getSongLyrics: (songId) => ipcRenderer.invoke('get-song-lyrics', songId),
   getHotPlaylists: () => ipcRenderer.invoke('get-hot-playlists'),
-  getTopPlaylists: (cat) => ipcRenderer.invoke('get-top-playlists', cat),
+  getTopPlaylists: (cat, limit) => ipcRenderer.invoke('get-top-playlists', cat, limit),
   getPlaylistsDetails: (playlistId) => ipcRenderer.invoke('get-playlist-details', playlistId),
   getPlaylistsAllSongs: (playlistId) => ipcRenderer.invoke('get-playlist-all-songs', playlistId),
 
@@ -50,6 +50,9 @@ const api = {
   getPersonalFM: () => ipcRenderer.invoke('get-personal-fm'),
   getTopSongs: (type) => ipcRenderer.invoke('get-top-songs', type),
   fmTrash: (songId) => ipcRenderer.invoke('fm-trash', songId),
+  getArtistTopSongs: (artistId) => ipcRenderer.invoke('get-artist-top-songs', artistId),
+  getArtistAlbums: (artistId, limit, offset) =>
+    ipcRenderer.invoke('get-artist-albums', artistId, limit, offset),
 
   // ============ 登录相关 API ============
   // 二维码登录

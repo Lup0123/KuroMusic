@@ -99,7 +99,7 @@ const closePlaylist = () => {
 }
 const playSong = (index) => {
   songStore.currentSongIndex = index
-  songStore.isPlaying = true
+  songStore.setPlaying(true)
 }
 
 const removeSong = (index) => {
@@ -115,7 +115,8 @@ const clearPlaylist = async () => {
     onPositiveClick: () => {
       playlist.value = []
       songStore.currentSongIndex = -1
-      songStore.isPlaying = false
+      songStore.setPlaying(false)
+      songStore.persistPlaybackState()
     }
   })
 }

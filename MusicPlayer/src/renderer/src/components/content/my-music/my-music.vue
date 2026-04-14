@@ -548,6 +548,7 @@ onMounted(async () => {
   .control-bar {
     display: flex;
     align-items: center;
+    flex-wrap: wrap;
     padding: 16px 32px;
     background: transparent;
     max-width: 1600px;
@@ -556,11 +557,11 @@ onMounted(async () => {
     gap: 12px;
 
     .search-box {
-      flex: 1;
-      max-width: 500px;
+      flex: 1 1 360px;
+      min-width: 240px;
+      max-width: none;
       height: 36px;
       border-radius: 18px;
-      background: var(--n-hover-color);
       border: 1px solid transparent;
       transition: all 0.2s ease;
 
@@ -585,18 +586,24 @@ onMounted(async () => {
       }
     }
 
-    :deep(.ant-select-view) {
-      flex-shrink: 0;
-      width: 120px;
-      height: 36px;
-      border-radius: 18px;
-      background: var(--n-hover-color);
-      border: 1px solid transparent;
-      transition: all 0.2s ease;
+    .sort-select {
+      flex: 0 0 132px;
+      width: 132px;
+    }
 
-      &:hover {
-        background: var(--n-card-color);
-        border-color: var(--n-border-color);
+    .sort-select {
+      :deep(.ant-select-view) {
+        width: 100%;
+        height: 36px;
+        border-radius: 18px;
+        background: var(--n-hover-color);
+        border: 1px solid transparent;
+        transition: all 0.2s ease;
+
+        &:hover {
+          background: var(--n-card-color);
+          border-color: var(--n-border-color);
+        }
       }
     }
   }
@@ -872,12 +879,10 @@ onMounted(async () => {
                   transition: all 0.15s ease;
 
                   &:hover {
-                    background: var(--n-pressed-color);
                     transform: scale(1.05);
                   }
 
                   &.delete-btn:hover {
-                    background: color-mix(in srgb, var(--n-error-color) 50%, transparent);
                     color: var(--n-error-color);
                   }
                 }
@@ -929,7 +934,6 @@ onMounted(async () => {
           transition: all 0.2s ease;
 
           &:hover {
-            background: var(--n-primary-color-hover);
             transform: translateY(-1px);
             box-shadow: 0 2px 8px rgba(var(--n-primary-color-rgb, 22, 119, 255), 0.25);
           }

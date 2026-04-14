@@ -3,14 +3,20 @@ import { ref } from 'vue'
 import { usePlaylistStore } from './playlistStore'
 
 export const useSearchStore = defineStore('search', () => {
+  const createEmptySearchResults = () => ({
+    songs: [],
+    trackCount: 0,
+    artists: [],
+    artistCount: 0,
+    playlists: [],
+    playlistCount: 0
+  })
+
   // 搜索关键词
   const searchKeyword = ref('')
 
   // 搜索结果
-  const searchResults = ref({
-    songs: [],
-    trackCount: 0
-  })
+  const searchResults = ref(createEmptySearchResults())
 
   // 当前激活的标签页
   const activeTab = ref('songs')
@@ -27,37 +33,75 @@ export const useSearchStore = defineStore('search', () => {
   }
 
   // 设置搜索结果 - 转换API返回格式
-  const setSearchResults = (results) => {
+  const setSearchResults = (results, tab = 'songs') => {
     const playlistStore = usePlaylistStore()
-    // 转换歌曲数据格式
+
     const songs = (results.songs || []).map((song) => ({
       id: song.id,
       name: song.name,
-      alias: song.alia?.join(' / ') || '', // 副标题
-      artist: song.ar?.map((a) => a.name).join(' / ') || '', // 艺术家
-      album: song.al?.name || '', // 专辑
+      alias: song.alia?.join(' / ') || '',
+      artist: song.ar?.map((a) => a.name).join(' / ') || '',
+      album: song.al?.name || '',
       albumId: song.al?.id,
-      albumCover: song.al?.picUrl || '', // 专辑封面
-      duration: formatDuration(song.dt), // 时长格式化
-      durationMs: song.dt, // 原始时长(毫秒)
-      fee: song.fee, // 付费类型
-      mvId: song.mv, // MV ID
-      privilege: song.privilege, // 权限信息
-      liked: playlistStore.isSongLiked(song.id), // 根据喜欢列表设置状态
-      // 音质信息
+      albumCover: song.al?.picUrl || '',
+      duration: formatDuration(song.dt),
+      durationMs: song.dt,
+      fee: song.fee,
+      mvId: song.mv,
+      privilege: song.privilege,
+      liked: playlistStore.isSongLiked(song.id),
       quality: {
-        h: song.h, // 高音质
-        m: song.m, // 中音质
-        l: song.l, // 低音质
-        sq: song.sq, // 无损
-        hr: song.hr // Hi-Res
+        h: song.h,
+        m: song.m,
+        l: song.l,
+        sq: song.sq,
+        hr: song.hr
       }
     }))
 
-    searchResults.value = {
-      songs,
-      trackCount: results.songCount || songs.length
+    const artists = (results.artists || []).map((artist) => ({
+      id: artist.id,
+      name: artist.name || '未知歌手',
+      alias: artist.alias?.join(' / ') || '',
+      picUrl: artist.picUrl || artist.img1v1Url || '',
+      accountId: artist.accountId,
+      albumSize: artist.albumSize || 0,
+      musicSize: artist.musicSize || 0,
+      fanCount: artist.fansCount || artist.fanCount || 0,
+      briefDesc: artist.briefDesc || ''
+    }))
+
+    const playlists = (results.playlists || []).map((playlist) => ({
+      id: playlist.id,
+      name: playlist.name || '未命名歌单',
+      coverImgUrl: playlist.coverImgUrl || '',
+      playCount: playlist.playCount || 0,
+      trackCount: playlist.trackCount || 0,
+      bookCount: playlist.bookCount || 0,
+      creatorName: playlist.creator?.nickname || '',
+      description: playlist.description || ''
+    }))
+
+    const nextResults = {
+      ...searchResults.value
     }
+
+    if (tab === 'songs') {
+      nextResults.songs = songs
+      nextResults.trackCount = results.songCount || songs.length
+    }
+
+    if (tab === 'artists') {
+      nextResults.artists = artists
+      nextResults.artistCount = results.artistCount || artists.length
+    }
+
+    if (tab === 'playlists') {
+      nextResults.playlists = playlists
+      nextResults.playlistCount = results.playlistCount || playlists.length
+    }
+
+    searchResults.value = nextResults
   }
 
   // 格式化时长
@@ -87,10 +131,7 @@ export const useSearchStore = defineStore('search', () => {
   // 清空搜索
   const clearSearch = () => {
     searchKeyword.value = ''
-    searchResults.value = {
-      songs: [],
-      trackCount: 0
-    }
+    searchResults.value = createEmptySearchResults()
     activeTab.value = 'songs'
     hasSearched.value = false
     loading.value = false

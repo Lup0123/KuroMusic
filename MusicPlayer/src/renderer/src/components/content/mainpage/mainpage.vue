@@ -18,7 +18,7 @@
         </div>
         <div class="fm-card">
           <div class="fm-cover">
-            <n-image :src="fmSong.cover" :preview-disabled="true" object-fit="cover" />
+            <AppCover :src="fmSong.cover" :size="220" />
             <div class="fm-playing-indicator" :class="{ active: isCurrentFmPlaying }">
               <span></span><span></span><span></span>
             </div>
@@ -76,7 +76,7 @@
                 @click="playSong(song)"
               >
                 <div class="song-cover">
-                  <n-image :src="song.cover" :preview-disabled="true" object-fit="cover" />
+                  <AppCover :src="song.cover" :size="80" />
                   <div class="play-overlay">
                     <n-icon size="24"><PlayOutline /></n-icon>
                   </div>
@@ -119,7 +119,7 @@
           >
             <span class="song-index" :class="{ top: index < 3 }">{{ index + 1 }}</span>
             <div class="song-cover-small">
-              <n-image :src="song.cover" :preview-disabled="true" object-fit="cover" />
+              <AppCover :src="song.cover" :size="60" />
             </div>
             <div class="song-detail">
               <h4>{{ song.name }}</h4>
@@ -147,7 +147,7 @@
             @click="gotodetail(playlist)"
           >
             <div class="playlist-cover">
-              <n-image :src="playlist.cover" :preview-disabled="true" object-fit="cover" />
+              <AppCover :src="playlist.cover" :size="240" />
               <div class="play-overlay">
                 <n-button type="primary" circle size="large"
                   ><template #icon
@@ -181,7 +181,7 @@
             @click="gotodetail(playlist)"
           >
             <div class="playlist-cover">
-              <n-image :src="playlist.cover" :preview-disabled="true" object-fit="cover" />
+              <AppCover :src="playlist.cover" :size="240" />
               <div class="play-overlay">
                 <n-button type="primary" circle size="large"
                   ><template #icon
@@ -213,7 +213,7 @@
             @click="gotodetail(playlist)"
           >
             <div class="playlist-cover">
-              <n-image :src="playlist.cover" :preview-disabled="true" object-fit="cover" />
+              <AppCover :src="playlist.cover" :size="240" />
               <div class="play-overlay">
                 <n-button type="primary" circle size="large"
                   ><template #icon
@@ -252,6 +252,7 @@ import { usePlaylistStore } from '@/stores/playlistStore'
 import { useUserStore } from '@/stores/userStore'
 import { useSongStore } from '@/stores/songStore'
 import { ROUTE_NAMES } from '@/router/routeNames'
+import AppCover from '@/components/common/AppCover.vue'
 
 const router = useRouter()
 const message = useMessage()
@@ -323,7 +324,7 @@ const playSong = async (song) => {
 const playFmSong = async () => {
   if (!fmSong.value) return
   if (isCurrentFmPlaying.value) {
-    songStore.isPlaying = false
+    songStore.setPlaying(false)
     return
   }
   await playSong(fmSong.value)
@@ -450,9 +451,9 @@ const loadPersonalizedPlaylists = async () => {
 
 const loadTopPlaylists = async () => {
   try {
-    const response = await window.api.getTopPlaylists()
+    const response = await window.api.getTopPlaylists(undefined, 60)
     if (response.body?.playlists) {
-      topPlaylists.value = response.body.playlists.slice(0, 20).map((p) => ({
+      topPlaylists.value = response.body.playlists.map((p) => ({
         id: p.id,
         name: p.name,
         cover: p.coverImgUrl,
@@ -877,7 +878,7 @@ onMounted(async () => {
 
     .playlist-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
       gap: 20px;
 
       .playlist-card {
@@ -1146,7 +1147,7 @@ onMounted(async () => {
   .recommend-playlists {
     .playlist-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
       gap: 24px;
 
       .playlist-card {
@@ -1454,7 +1455,7 @@ onMounted(async () => {
 // 鍝嶅簲寮忚璁?
 @media (max-width: 1200px) {
   .mainpage .section.hot-playlists .playlist-grid {
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
     gap: 20px;
   }
 }
@@ -1468,7 +1469,7 @@ onMounted(async () => {
     }
 
     .section.hot-playlists .playlist-grid {
-      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
       gap: 16px;
     }
 

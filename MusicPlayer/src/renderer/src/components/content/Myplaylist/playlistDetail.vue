@@ -43,7 +43,13 @@
 
         <div class="playlist-info-section">
           <div class="cover-section">
-            <n-image :src="playlist.cover" :width="200" :height="200" preview-disabled />
+            <AppCover
+              class="cover-box"
+              :src="playlist.cover"
+              :width="200"
+              :height="200"
+              :size="400"
+            />
           </div>
           <div class="info-section">
             <h2 class="playlist-title">{{ playlist.name }}</h2>
@@ -141,7 +147,13 @@
 
               <div class="col-title">
                 <div class="song-cover">
-                  <n-image :src="item.song.cover" :width="40" :height="40" preview-disabled />
+                  <AppCover
+                    :src="item.song.cover"
+                    :width="40"
+                    :height="40"
+                    :size="80"
+                    :radius="4"
+                  />
                 </div>
                 <div class="song-info">
                   <div class="song-name">
@@ -233,7 +245,13 @@
             @click="selectPlaylist(item.id)"
           >
             <div class="playlist-cover">
-              <n-image :src="getPlaylistCover(item)" :width="40" :height="40" preview-disabled />
+              <AppCover
+                :src="getPlaylistCover(item)"
+                :width="40"
+                :height="40"
+                :size="80"
+                :radius="6"
+              />
             </div>
             <div class="playlist-info">
               <div class="playlist-name">{{ item.name }}</div>
@@ -277,6 +295,7 @@ import { storeToRefs } from 'pinia'
 import { formatDate } from '@/utils/utils'
 import { downloadSong, downloadSongs } from '@/utils/downloadUtils'
 import { ROUTE_NAMES } from '@/router/routeNames'
+import AppCover from '@/components/common/AppCover.vue'
 
 const message = useMessage()
 const dialog = useDialog()

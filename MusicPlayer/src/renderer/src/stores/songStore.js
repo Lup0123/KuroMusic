@@ -1,5 +1,48 @@
 import { defineStore } from 'pinia'
 
+const PLAYBACK_STATE_STORAGE_KEY = 'playerPlaybackState'
+
+function clampNumber(value, min, max, fallback) {
+  const numeric = Number(value)
+  if (Number.isNaN(numeric)) return fallback
+  return Math.min(max, Math.max(min, numeric))
+}
+
+function safeReadPlaybackState() {
+  try {
+    const raw = localStorage.getItem(PLAYBACK_STATE_STORAGE_KEY)
+    if (!raw) return null
+
+    const parsed = JSON.parse(raw)
+    if (!parsed || typeof parsed !== 'object') return null
+    return parsed
+  } catch (error) {
+    console.error('读取播放状态失败:', error)
+    return null
+  }
+}
+
+function safeWritePlaybackState(payload) {
+  try {
+    localStorage.setItem(PLAYBACK_STATE_STORAGE_KEY, JSON.stringify(payload))
+  } catch (error) {
+    console.error('保存播放状态失败:', error)
+  }
+}
+
+function normalizeRestoredPlaylist(playlist) {
+  return playlist.map((song) => {
+    if (!song || typeof song !== 'object') return song
+
+    const hasLocalPath = typeof song.path === 'string' && song.path.trim() !== ''
+    if (hasLocalPath) return song
+
+    const normalized = { ...song }
+    delete normalized.url
+    return normalized
+  })
+}
+
 export const useSongStore = defineStore('song', {
   state: () => ({
     playlist: [],
@@ -48,6 +91,7 @@ export const useSongStore = defineStore('song', {
       this.playlist = [...songs]
       this.currentSongIndex = -1
       this.isPlaying = false
+      this.persistPlaybackState()
     },
 
     // 从指定索引开始播放
@@ -56,6 +100,7 @@ export const useSongStore = defineStore('song', {
         this.currentSongIndex = index
         this.isPlaying = true
         this.currentTime = 0
+        this.persistPlaybackState()
       }
     },
 
@@ -70,12 +115,14 @@ export const useSongStore = defineStore('song', {
       }
       this.isPlaying = true
       this.currentTime = 0
+      this.persistPlaybackState()
     },
 
     addToPlaylist(song) {
       const exists = this.playlist.some((item) => item.id === song.id)
       if (!exists) {
         this.playlist.push(song)
+        this.persistPlaybackState()
       }
     },
 
@@ -91,6 +138,7 @@ export const useSongStore = defineStore('song', {
         this.currentSongIndex--
       }
       this.playlist.splice(index, 1)
+      this.persistPlaybackState()
     },
 
     togglePlay() {
@@ -99,6 +147,7 @@ export const useSongStore = defineStore('song', {
         this.currentSongIndex = 0
       }
       this.isPlaying = !this.isPlaying
+      this.persistPlaybackState()
     },
 
     playNext() {
@@ -118,6 +167,7 @@ export const useSongStore = defineStore('song', {
 
       this.isPlaying = true
       this.currentTime = 0
+      this.persistPlaybackState()
     },
 
     playPrevious() {
@@ -129,6 +179,7 @@ export const useSongStore = defineStore('song', {
       }
       this.isPlaying = true
       this.currentTime = 0
+      this.persistPlaybackState()
     },
 
     togglePlaylist() {
@@ -140,7 +191,12 @@ export const useSongStore = defineStore('song', {
     },
 
     setCurrentTime(time) {
+      const previousSecond = Math.floor(this.currentTime || 0)
       this.currentTime = time
+      const currentSecond = Math.floor(this.currentTime || 0)
+      if (currentSecond !== previousSecond) {
+        this.persistPlaybackState()
+      }
     },
 
     setDuration(time) {
@@ -149,11 +205,13 @@ export const useSongStore = defineStore('song', {
 
     setVolume(vol) {
       this.volume = Math.max(0, Math.min(100, vol))
+      this.persistPlaybackState()
     },
 
     setProgress(prog) {
       if (this.duration > 0) {
         this.currentTime = (prog / 100) * this.duration
+        this.persistPlaybackState()
       }
     },
 
@@ -163,6 +221,48 @@ export const useSongStore = defineStore('song', {
 
     setPlayMode(mode) {
       this.playMode = mode
+      this.persistPlaybackState()
+    },
+
+    setPlaying(playing) {
+      this.isPlaying = Boolean(playing)
+      this.persistPlaybackState()
+    },
+
+    persistPlaybackState() {
+      const playlist = Array.isArray(this.playlist) ? this.playlist : []
+      const maxIndex = playlist.length - 1
+      const currentSongIndex = clampNumber(this.currentSongIndex, -1, maxIndex, -1)
+
+      safeWritePlaybackState({
+        version: 1,
+        playlist,
+        currentSongIndex,
+        currentTime: Math.max(0, Number(this.currentTime) || 0),
+        volume: clampNumber(this.volume, 0, 100, 70),
+        playMode: ['list', 'single', 'random'].includes(this.playMode) ? this.playMode : 'list'
+      })
+    },
+
+    restorePlaybackState() {
+      const saved = safeReadPlaybackState()
+      if (!saved) return
+
+      const rawPlaylist = Array.isArray(saved.playlist) ? saved.playlist : []
+      const playlist = normalizeRestoredPlaylist(rawPlaylist)
+      const maxIndex = playlist.length - 1
+
+      this.playlist = playlist
+      this.currentSongIndex =
+        maxIndex >= 0 ? clampNumber(saved.currentSongIndex, -1, maxIndex, -1) : -1
+      this.currentTime = Math.max(0, Number(saved.currentTime) || 0)
+      this.volume = clampNumber(saved.volume, 0, 100, 70)
+      this.playMode = ['list', 'single', 'random'].includes(saved.playMode)
+        ? saved.playMode
+        : 'list'
+      this.isPlaying = false
+
+      this.persistPlaybackState()
     }
   }
 })

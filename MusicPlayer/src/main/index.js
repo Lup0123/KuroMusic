@@ -25,7 +25,9 @@ import {
   personalized,
   personal_fm,
   top_song,
-  fm_trash
+  fm_trash,
+  artist_top_song,
+  artist_album
 } from '@neteasecloudmusicapienhanced/api'
 
 let mainWindow = null
@@ -237,9 +239,9 @@ app.whenReady().then(() => {
     }
   })
 
-  ipcMain.handle('get-top-playlists', async (event, cat) => {
+  ipcMain.handle('get-top-playlists', async (event, cat, limit = 60) => {
     try {
-      const response = await top_playlist_highquality({ cat, cookie: getCookie() })
+      const response = await top_playlist_highquality({ cat, limit, cookie: getCookie() })
       return response
     } catch (error) {
       console.error('获取精选歌单时发生错误：', error)
@@ -595,6 +597,38 @@ app.whenReady().then(() => {
     } catch (error) {
       console.error('FM垃圾桶操作失败:', error)
       return { code: 500, message: error.message }
+    }
+  })
+
+  // 获取歌手热门单曲
+  ipcMain.handle('get-artist-top-songs', async (event, artistId) => {
+    try {
+      const response = await artist_top_song({
+        id: artistId,
+        cookie: getCookie(),
+        timestamp: Date.now()
+      })
+      return response
+    } catch (error) {
+      console.error('获取歌手热门单曲失败:', error)
+      return { body: { songs: [] } }
+    }
+  })
+
+  // 获取歌手专辑
+  ipcMain.handle('get-artist-albums', async (event, artistId, limit = 20, offset = 0) => {
+    try {
+      const response = await artist_album({
+        id: artistId,
+        limit,
+        offset,
+        cookie: getCookie(),
+        timestamp: Date.now()
+      })
+      return response
+    } catch (error) {
+      console.error('获取歌手专辑失败:', error)
+      return { body: { hotAlbums: [] } }
     }
   })
 

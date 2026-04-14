@@ -3,22 +3,31 @@
     <div class="player-container">
       <!-- 当前播放歌曲信息 -->
       <div class="current-song" @click="goToLyric">
-        <n-image
-          :width="50"
-          :height="50"
-          :src="currentSong.cover"
-          preview-disabled
-          object-fit="cover"
-          style="border-radius: 4px; pointer-events: none"
-          :fallback-src="pic_err"
-        />
+        <div class="song-cover">
+          <AppCover
+            :src="currentSong.cover"
+            :width="50"
+            :height="50"
+            :size="100"
+            :radius="6"
+            alt="current-song-cover"
+          />
+        </div>
         <div class="song-info">
           <div class="song-title">{{ currentSong.name }}</div>
           <div class="song-artist">{{ currentSong.artist }}</div>
         </div>
-        <n-button text size="small" @click.stop>
+        <n-button
+          text
+          size="small"
+          :loading="isLikeUpdating"
+          :disabled="!currentSong.id"
+          @click.stop="handleToggleLike"
+        >
           <template #icon
-            ><n-icon><StarOutline /></n-icon
+            ><n-icon>
+              <Heart v-if="isCurrentSongLiked" />
+              <HeartOutline v-else /> </n-icon
           ></template>
         </n-button>
       </div>
@@ -105,13 +114,16 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted } from 'vue'
+import { ref, watch, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useSongStore } from '@/stores/songStore'
+import { usePlaylistStore } from '@/stores/playlistStore'
+import { useUserStore } from '@/stores/userStore'
 import { useMessage } from 'naive-ui'
 import {
-  StarOutline,
+  Heart,
+  HeartOutline,
   PlaySkipBackOutline,
   PlayOutline,
   PauseOutline,
@@ -123,11 +135,13 @@ import {
   VolumeHighOutline
 } from '@vicons/ionicons5'
 import { downloadSong } from '@/utils/downloadUtils'
-import pic_err from '@/assets/icon/pic_err.png'
+import AppCover from '@/components/common/AppCover.vue'
 
 const router = useRouter()
 const message = useMessage()
 const songStore = useSongStore()
+const playlistStore = usePlaylistStore()
+const userStore = useUserStore()
 const {
   currentSong,
   isPlaying,
@@ -137,6 +151,7 @@ const {
   formattedDuration,
   currentTime
 } = storeToRefs(songStore)
+const { isLoggedIn, userInfo } = storeToRefs(userStore)
 const {
   togglePlay,
   playNext,
@@ -150,6 +165,50 @@ const {
 
 const audioRef = ref(null)
 const isDownloading = ref(false)
+const isLikeUpdating = ref(false)
+
+const isCurrentSongLiked = computed(() => {
+  const songId = currentSong.value?.id
+  if (!songId) return false
+  return Boolean(currentSong.value?.liked) || playlistStore.isSongLiked(songId)
+})
+
+const handleToggleLike = async () => {
+  if (!currentSong.value?.id) {
+    message.warning('当前没有播放歌曲')
+    return
+  }
+
+  if (!isLoggedIn.value) {
+    message.warning('请先登录后再操作')
+    return
+  }
+
+  if (isLikeUpdating.value) return
+
+  isLikeUpdating.value = true
+  try {
+    const nextLiked = !isCurrentSongLiked.value
+    const success = await playlistStore.toggleLikeSong(currentSong.value.id, nextLiked)
+
+    if (!success) {
+      message.error('操作失败，请重试')
+      return
+    }
+
+    const targetSong = songStore.playlist.find((song) => song.id === currentSong.value.id)
+    if (targetSong) {
+      targetSong.liked = nextLiked
+    }
+
+    message.success(nextLiked ? '已添加到我喜欢的音乐' : '已取消喜欢')
+  } catch (error) {
+    console.error('喜欢操作失败:', error)
+    message.error('操作失败，请重试')
+  } finally {
+    isLikeUpdating.value = false
+  }
+}
 
 const handleDownload = async () => {
   if (!currentSong.value.id) {
@@ -202,12 +261,12 @@ watch(
         if (isPlaying.value) await audioRef.value.play()
       } else {
         message.error('无法获取歌曲播放地址')
-        songStore.isPlaying = false
+        songStore.setPlaying(false)
       }
     } catch (error) {
       console.error('加载歌曲失败:', error)
       message.error('歌曲加载失败')
-      songStore.isPlaying = false
+      songStore.setPlaying(false)
     }
   },
   { immediate: true }
@@ -233,7 +292,7 @@ const handleEnded = () => {
 const handleError = (e) => {
   console.error('音频加载错误:', e)
   message.error('音频加载失败，尝试播放下一首')
-  songStore.isPlaying = false
+  songStore.setPlaying(false)
   setTimeout(() => playNext(), 1000)
 }
 const handleProgressChange = (value) => {
@@ -248,6 +307,10 @@ onMounted(() => {
   if (audioRef.value) {
     audioRef.value.volume = volume.value / 100
     songStore.audioElement = audioRef.value
+  }
+
+  if (isLoggedIn.value && userInfo.value?.userId && playlistStore.likedSongIds.size === 0) {
+    playlistStore.loadLikedSongs(userInfo.value.userId)
   }
 })
 </script>

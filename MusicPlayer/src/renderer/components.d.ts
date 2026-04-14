@@ -11,6 +11,8 @@ export {}
 /* prettier-ignore */
 declare module 'vue' {
   export interface GlobalComponents {
+    AppCover: typeof import('./src/components/common/AppCover.vue')['default']
+    ArtistDetail: typeof import('./src/components/content/artist/artistDetail.vue')['default']
     DownloadDialog: typeof import('./src/components/content/download/DownloadDialog.vue')['default']
     Layout: typeof import('./src/components/layout/layout.vue')['default']
     Mainpage: typeof import('./src/components/content/mainpage/mainpage.vue')['default']

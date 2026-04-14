@@ -10,7 +10,7 @@
         <div class="search-info">
           <h1 class="search-keyword">{{ searchKeyword }}</h1>
           <p class="search-stats">
-            找到 <span class="count">{{ totalCount }}</span> 首相关歌曲
+            找到 <span class="count">{{ totalCount }}</span> {{ resultLabel }}
           </p>
         </div>
 
@@ -68,7 +68,7 @@
 
       <!-- 无结果 -->
       <n-empty
-        v-else-if="!loading && currentResults.length === 0"
+        v-else-if="!loading && isSupportedTab && currentResults.length === 0"
         description="暂无搜索结果"
         class="empty-result"
       />
@@ -114,13 +114,13 @@
             <!-- 歌曲信息 -->
             <div class="col-title">
               <div class="song-cover">
-                <n-image :src="song.albumCover" :width="40" :height="40" preview-disabled>
-                  <template #error>
+                <AppCover :src="song.albumCover" :width="40" :height="40" :size="80">
+                  <template #fallback>
                     <div class="cover-placeholder">
                       <n-icon><MusicalNotesOutline /></n-icon>
                     </div>
                   </template>
-                </n-image>
+                </AppCover>
                 <div v-if="currentSong?.id === song.id && isPlaying" class="cover-play-icon">
                   <n-icon><VolumeHighOutline /></n-icon>
                 </div>
@@ -196,6 +196,75 @@
         </div>
       </div>
 
+      <!-- 歌手列表 -->
+      <div v-else-if="activeTab === 'artists'" class="artists-result-container">
+        <div class="artists-list">
+          <div
+            v-for="artist in currentResults"
+            :key="artist.id"
+            class="artist-card"
+            title="点击查看歌手详情"
+            @click="handleArtistCardClick(artist)"
+          >
+            <div class="artist-avatar">
+              <AppCover :src="artist.picUrl" :width="72" :height="72" :size="144" :radius="999">
+                <template #fallback>
+                  <div class="avatar-placeholder">
+                    <n-icon><PersonOutline /></n-icon>
+                  </div>
+                </template>
+              </AppCover>
+            </div>
+            <div class="artist-main">
+              <div class="artist-name" :title="artist.name">{{ artist.name || '未知歌手' }}</div>
+              <div v-if="artist.alias" class="artist-alias" :title="artist.alias">
+                {{ artist.alias }}
+              </div>
+              <div class="artist-meta">
+                <span>粉丝 {{ formatCount(artist.fanCount) }}</span>
+                <span>单曲 {{ artist.musicSize || 0 }}</span>
+                <span>专辑 {{ artist.albumSize || 0 }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 歌单列表 -->
+      <div v-else-if="activeTab === 'playlists'" class="playlists-result-container">
+        <div class="playlists-list">
+          <div
+            v-for="playlist in currentResults"
+            :key="playlist.id"
+            class="playlist-card"
+            @click="handlePlaylistCardClick(playlist)"
+          >
+            <div class="playlist-cover">
+              <AppCover :src="playlist.coverImgUrl" :width="88" :height="88" :size="176">
+                <template #fallback>
+                  <div class="playlist-placeholder">
+                    <n-icon><FolderOutline /></n-icon>
+                  </div>
+                </template>
+              </AppCover>
+            </div>
+            <div class="playlist-main">
+              <div class="playlist-name" :title="playlist.name">
+                {{ playlist.name || '未命名歌单' }}
+              </div>
+              <div class="playlist-meta">
+                <span>播放 {{ formatCount(playlist.playCount) }}</span>
+                <span>曲目 {{ playlist.trackCount || 0 }}</span>
+                <span v-if="playlist.creatorName">创建者 {{ playlist.creatorName }}</span>
+              </div>
+              <div v-if="playlist.description" class="playlist-desc" :title="playlist.description">
+                {{ playlist.description }}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- 其他标签页 -->
       <div v-else class="other-tab-content">
         <n-empty description="该功能开发中..." />
@@ -261,6 +330,7 @@
 <script setup>
 import { ref, computed, watch, onMounted, toRaw } from 'vue'
 import { useMessage } from 'naive-ui'
+import { useRouter } from 'vue-router'
 import {
   SearchOutline,
   PlaySharp,
@@ -280,14 +350,17 @@ import {
 import { useSearchStore } from '@/stores/searchStore'
 import { useSongStore } from '@/stores/songStore'
 import { usePlaylistStore } from '@/stores/playlistStore'
+import { ROUTE_NAMES } from '@/router/routeNames'
+import AppCover from '@/components/common/AppCover.vue'
 import { storeToRefs } from 'pinia'
 
 const message = useMessage()
+const router = useRouter()
 
 const searchStore = useSearchStore()
 const { searchKeyword, searchResults, activeTab, hasSearched, loading } = storeToRefs(searchStore)
 
-const { setSearchResults, setActiveTab, setHasSearched, setLoading } = searchStore
+const { setSearchResults, setSearchKeyword, setActiveTab, setHasSearched, setLoading } = searchStore
 
 const songStore = useSongStore()
 const { currentSong, isPlaying } = storeToRefs(songStore)
@@ -295,6 +368,7 @@ const { play } = songStore
 
 const playlistStore = usePlaylistStore()
 const { createdPlaylists } = storeToRefs(playlistStore)
+const { setCurrentPlaylist } = playlistStore
 
 // 添加到歌单相关
 const addToPlaylistModalVisible = ref(false)
@@ -319,14 +393,25 @@ const tabs = [
 const currentPage = ref(1)
 const pageSize = 50
 
+const tabTypeMap = {
+  songs: 1,
+  artists: 100,
+  playlists: 1000
+}
+
 const handleContentScroll = (event) => {
   const scrollTop = event.target.scrollTop
   isScrolled.value = scrollTop > 220
 }
 
 // 执行搜索
-const performSearch = async (keyword, page = 1) => {
+const performSearch = async (keyword, page = 1, targetTab = activeTab.value) => {
   if (!keyword || !keyword.trim()) {
+    return
+  }
+
+  const tabType = tabTypeMap[targetTab]
+  if (!tabType) {
     return
   }
 
@@ -335,19 +420,19 @@ const performSearch = async (keyword, page = 1) => {
 
   try {
     const offset = (page - 1) * pageSize
-    const response = await window.api.search(keyword.trim(), 1, pageSize, offset)
+    const response = await window.api.search(keyword.trim(), tabType, pageSize, offset)
     console.log('搜索结果:', response)
-    const results = response.body.result
+    const results = response?.body?.result
     if (results && response) {
-      setSearchResults(results)
+      setSearchResults(results, targetTab)
     } else {
       message.error('搜索失败，请重试')
-      setSearchResults({ songs: [], songCount: 0 })
+      setSearchResults({}, targetTab)
     }
   } catch (error) {
     console.error('搜索错误:', error)
     message.error('搜索出错，请稍后重试')
-    setSearchResults({ songs: [], songCount: 0 })
+    setSearchResults({}, targetTab)
   } finally {
     setLoading(false)
   }
@@ -359,7 +444,7 @@ watch(
   (newKeyword) => {
     if (newKeyword && newKeyword.trim()) {
       currentPage.value = 1
-      performSearch(newKeyword, 1)
+      performSearch(newKeyword, 1, activeTab.value)
     }
   },
   { immediate: false }
@@ -368,19 +453,37 @@ watch(
 // 组件挂载时检查是否有搜索关键词
 onMounted(() => {
   if (searchKeyword.value && searchKeyword.value.trim()) {
-    performSearch(searchKeyword.value, currentPage.value)
+    performSearch(searchKeyword.value, currentPage.value, activeTab.value)
   }
 })
 
 const totalCount = computed(() => {
-  return searchResults.value.trackCount || searchResults.value.songs?.length || 0
+  if (activeTab.value === 'songs') {
+    return searchResults.value.trackCount || searchResults.value.songs?.length || 0
+  }
+  if (activeTab.value === 'artists') {
+    return searchResults.value.artistCount || searchResults.value.artists?.length || 0
+  }
+  if (activeTab.value === 'playlists') {
+    return searchResults.value.playlistCount || searchResults.value.playlists?.length || 0
+  }
+  return 0
 })
 
+const resultLabel = computed(() => {
+  if (activeTab.value === 'songs') return '首相关歌曲'
+  if (activeTab.value === 'artists') return '位相关歌手'
+  if (activeTab.value === 'playlists') return '个相关歌单'
+  return '条相关结果'
+})
+
+const isSupportedTab = computed(() => Boolean(tabTypeMap[activeTab.value]))
+
 const currentResults = computed(() => {
-  if (activeTab.value === 'songs') {
-    return searchResults.value.songs || []
-  }
-  return searchResults.value[activeTab.value] || []
+  if (activeTab.value === 'songs') return searchResults.value.songs || []
+  if (activeTab.value === 'artists') return searchResults.value.artists || []
+  if (activeTab.value === 'playlists') return searchResults.value.playlists || []
+  return []
 })
 
 const indexMethod = (index) => {
@@ -391,21 +494,34 @@ const getTabCount = (tabKey) => {
   if (tabKey === 'songs') {
     return searchResults.value.trackCount || searchResults.value.songs?.length || 0
   }
-  const results = searchResults.value[tabKey]
-  return results?.length || 0
+  if (tabKey === 'artists') {
+    return searchResults.value.artistCount || searchResults.value.artists?.length || 0
+  }
+  if (tabKey === 'playlists') {
+    return searchResults.value.playlistCount || searchResults.value.playlists?.length || 0
+  }
+  return 0
 }
 
-watch(activeTab, () => {
+watch(activeTab, (newTab) => {
   currentPage.value = 1
   if (searchContentRef.value) {
     searchContentRef.value.scrollTop = 0
   }
   isScrolled.value = false
+
+  if (!searchKeyword.value || !searchKeyword.value.trim()) {
+    return
+  }
+
+  if (tabTypeMap[newTab]) {
+    performSearch(searchKeyword.value, 1, newTab)
+  }
 })
 
 const handleCurrentChange = (val) => {
   currentPage.value = val
-  performSearch(searchKeyword.value, currentPage.value)
+  performSearch(searchKeyword.value, currentPage.value, activeTab.value)
   if (searchContentRef.value) {
     searchContentRef.value.scrollTop = 0
   }
@@ -414,6 +530,45 @@ const handleCurrentChange = (val) => {
 
 const handleTabChange = (tab) => {
   setActiveTab(tab)
+}
+
+const handleArtistCardClick = async (artist) => {
+  if (!artist?.id) return
+
+  router.push({
+    name: ROUTE_NAMES.ARTIST_DETAIL,
+    params: { id: String(artist.id) },
+    query: {
+      name: artist.name || '',
+      alias: artist.alias || '',
+      avatar: artist.picUrl || '',
+      fanCount: String(artist.fanCount || 0),
+      musicSize: String(artist.musicSize || 0),
+      albumSize: String(artist.albumSize || 0)
+    }
+  })
+}
+
+const handlePlaylistCardClick = (playlist) => {
+  if (!playlist?.id) return
+
+  setCurrentPlaylist({
+    id: playlist.id,
+    name: playlist.name || '未命名歌单',
+    cover: playlist.coverImgUrl || '',
+    description: playlist.description || '',
+    createTime: playlist.createTime,
+    isLocal: false
+  })
+
+  router.push({ name: ROUTE_NAMES.PLAYLIST_DETAIL, params: { id: String(playlist.id) } })
+}
+
+const formatCount = (value) => {
+  const count = Number(value) || 0
+  if (count >= 100000000) return `${(count / 100000000).toFixed(1).replace(/\.0$/, '')}亿`
+  if (count >= 10000) return `${(count / 10000).toFixed(1).replace(/\.0$/, '')}万`
+  return `${count}`
 }
 
 const playSong = async (song) => {
@@ -1154,6 +1309,100 @@ const handleCreateNewPlaylist = () => {
   }
 }
 
+.artists-result-container,
+.playlists-result-container {
+  .artists-list,
+  .playlists-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 12px;
+  }
+}
+
+.artist-card,
+.playlist-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid var(--n-border-color);
+  background: var(--n-card-color);
+  transition: all 0.25s ease;
+
+  &:hover {
+    background: color-mix(in srgb, var(--n-primary-color) 8%, var(--n-card-color));
+    border-color: color-mix(in srgb, var(--n-primary-color) 32%, var(--n-border-color));
+    transform: translateY(-1px);
+  }
+}
+
+.artist-avatar,
+.playlist-cover {
+  flex-shrink: 0;
+  border-radius: 10px;
+  overflow: hidden;
+
+  .avatar-placeholder,
+  .playlist-placeholder {
+    width: 72px;
+    height: 72px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--n-hover-color);
+    color: var(--n-text-color-3);
+    font-size: 24px;
+  }
+
+  .playlist-placeholder {
+    width: 88px;
+    height: 88px;
+  }
+}
+
+.artist-main,
+.playlist-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.artist-name,
+.playlist-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--n-text-color);
+  margin-bottom: 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.artist-alias,
+.playlist-desc {
+  font-size: 12px;
+  color: var(--n-text-color-3);
+  margin-bottom: 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.artist-meta,
+.playlist-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+
+  span {
+    font-size: 12px;
+    color: var(--n-text-color-2);
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: var(--n-hover-color);
+  }
+}
+
 // 分页
 .pagination-wrapper {
   display: flex;
@@ -1304,6 +1553,19 @@ const handleCreateNewPlaylist = () => {
 
   .col-album {
     display: none !important;
+  }
+
+  .artists-result-container,
+  .playlists-result-container {
+    .artists-list,
+    .playlists-list {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .artist-card,
+  .playlist-card {
+    padding: 10px;
   }
 }
 
