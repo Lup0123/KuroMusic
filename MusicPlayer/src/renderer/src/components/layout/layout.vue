@@ -22,6 +22,9 @@
         <LyricPlayer />
       </div>
     </transition>
+
+    <AIFloatBall />
+    <AIPlaylistModal />
   </div>
 </template>
 
@@ -36,6 +39,8 @@ import PlayerFooter from '@/components/content/player-footer/player-footer.vue'
 import Navbar from '@/components/layout/navbar/navbar.vue'
 import Sidebar from '@/components/layout/sidebar/sidebar.vue'
 import LyricPlayer from '@/views/PlayerView.vue'
+import AIFloatBall from '@/components/ai/AIFloatBall.vue'
+import AIPlaylistModal from '@/components/ai/AIPlaylistModal.vue'
 
 const route = useRoute()
 const themeVars = useThemeVars()
