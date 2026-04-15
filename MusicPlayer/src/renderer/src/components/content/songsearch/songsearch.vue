@@ -735,7 +735,12 @@ const getPlaylistCover = (playlist) => {
   }
   if (playlist.songs && playlist.songs.length > 0) {
     const firstSong = playlist.songs[0]
-    return firstSong.al?.picUrl || firstSong.cover || 'https://via.placeholder.com/40'
+    return (
+      firstSong.al?.picUrl ||
+      firstSong.cover ||
+      firstSong.albumCover ||
+      'https://via.placeholder.com/40'
+    )
   }
   return 'https://via.placeholder.com/40'
 }

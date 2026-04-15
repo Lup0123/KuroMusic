@@ -15,7 +15,7 @@ function getSongFailureReason(error) {
 function mapLlmErrorTypeToMessage(errorType) {
   switch (errorType) {
     case 'auth':
-      return 'AI服务鉴权失败，已切换到规则推荐。请检查 OPENAI_API_KEY。'
+      return 'AI服务鉴权失败，已切换到规则推荐。请检查设置中的 Alibaba API Key。'
     case 'rate_limit':
       return 'AI服务触发限流，已切换到规则推荐。稍后可重试。'
     case 'timeout':
@@ -437,6 +437,14 @@ export const useAiPlaylistStore = defineStore('aiPlaylist', {
           const fallbackMessage = mapLlmErrorTypeToMessage(result?.debug?.llmErrorType)
           if (fallbackMessage) {
             this.addChatMessage('assistant', fallbackMessage, {
+              provider: 'rule',
+              type: 'status',
+              reason: result?.debug?.llmErrorType || 'unknown'
+            })
+          }
+
+          if (result?.debug?.llmErrorMessage) {
+            this.addChatMessage('assistant', `LLM原始错误：${result.debug.llmErrorMessage}`, {
               provider: 'rule',
               type: 'status',
               reason: result?.debug?.llmErrorType || 'unknown'

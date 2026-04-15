@@ -1,12 +1,34 @@
 import { recommendByRule } from './ruleProvider'
 
+function toPlainJson(value, fallback) {
+  try {
+    const serialized = JSON.stringify(value)
+    if (serialized === undefined) return fallback
+    return JSON.parse(serialized)
+  } catch {
+    return fallback
+  }
+}
+
+function buildIpcLlmContext(context = {}) {
+  const timeoutMs = Number(context?.timeoutMs)
+  return {
+    apiKey: String(context?.apiKey || ''),
+    model: String(context?.model || ''),
+    baseUrl: String(context?.baseUrl || ''),
+    timeoutMs: timeoutMs > 0 ? timeoutMs : 35000,
+    messages: toPlainJson(context?.messages, []),
+    baseSongs: toPlainJson(context?.baseSongs, [])
+  }
+}
+
 function createTimeoutError(timeoutMs) {
   const error = new Error(`LLM request timed out after ${timeoutMs}ms`)
   error.code = 'LLM_TIMEOUT'
   return error
 }
 
-function withTimeout(promise, timeoutMs = 20000) {
+function withTimeout(promise, timeoutMs = 35000) {
   if (!timeoutMs || timeoutMs <= 0) return promise
 
   return Promise.race([
@@ -21,13 +43,17 @@ function withTimeout(promise, timeoutMs = 20000) {
 }
 
 function classifyLlmError(error) {
-  const status = Number(error?.status || error?.statusCode)
   const message = String(error?.message || '').toLowerCase()
+  const statusFromMessage = message.match(/http\s*(\d{3})/)?.[1]
+  const status = Number(error?.status || error?.statusCode || statusFromMessage)
 
   if (error?.code === 'LLM_TIMEOUT' || message.includes('timed out')) return 'timeout'
   if (
     status === 401 ||
     status === 403 ||
+    message.includes('api key') ||
+    message.includes('invalid api key') ||
+    message.includes('未配置') ||
     message.includes('unauthorized') ||
     message.includes('forbidden')
   ) {
@@ -60,10 +86,18 @@ export async function recommend(prompt, context = {}) {
 
   if (shouldUseLLM && typeof globalThis?.window?.api?.aiRecommendPlaylist === 'function') {
     try {
+      const ipcContext = buildIpcLlmContext(context)
       const llmResult = await withTimeout(
-        globalThis.window.api.aiRecommendPlaylist(prompt, context),
-        Number(context?.timeoutMs) || 20000
+        globalThis.window.api.aiRecommendPlaylist(prompt, ipcContext),
+        Number(ipcContext?.timeoutMs) || 35000
       )
+
+      if (llmResult && llmResult.success === false) {
+        const err = new Error(llmResult.error || 'LLM provider request failed')
+        err.status = llmResult.status
+        throw err
+      }
+
       return assertProviderResultShape(llmResult)
     } catch (error) {
       const ruleResult = await recommendByRule(prompt, context)
@@ -72,7 +106,8 @@ export async function recommend(prompt, context = {}) {
         debug: {
           ...(ruleResult?.debug || {}),
           fallback: 'rule',
-          llmErrorType: classifyLlmError(error)
+          llmErrorType: classifyLlmError(error),
+          llmErrorMessage: String(error?.message || '')
         }
       }
       return assertProviderResultShape(normalizedRuleResult)

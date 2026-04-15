@@ -25,7 +25,10 @@ describe('providerAdapter', () => {
 
   it('uses llm provider when useLLM is true', async () => {
     const result = await recommend('夜跑电子', { useLLM: true })
-    expect(window.api.aiRecommendPlaylist).toHaveBeenCalledWith('夜跑电子', { useLLM: true })
+    expect(window.api.aiRecommendPlaylist).toHaveBeenCalledWith(
+      '夜跑电子',
+      expect.objectContaining({ timeoutMs: 35000 })
+    )
     expect(result.draft.name).toBe('LLM歌单')
   })
 

@@ -24,6 +24,7 @@
     "@electron-toolkit/utils": "^4.0.0",
     "@langchain/core": "^1.1.39",
     "@langchain/openai": "^1.4.4",
+    "@langchain/community": "^0.3.58",
     "@neteasecloudmusicapienhanced/api": "^4.30.1",
     "@tanstack/vue-virtual": "^3.13.23",
     "@vicons/ionicons5": "^0.13.0",

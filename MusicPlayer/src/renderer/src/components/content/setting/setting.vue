@@ -75,6 +75,31 @@
           </n-space>
         </div>
         <n-divider />
+        <div class="setting-section">
+          <h3 class="setting-title">
+            <n-icon><SparklesOutline /></n-icon> AI Provider
+          </h3>
+          <n-space vertical :size="12" style="width: 100%">
+            <n-input
+              v-model:value="settings.aiApiKey"
+              type="password"
+              show-password-on="click"
+              placeholder="填写 Alibaba API Key"
+              @update:value="saveSettings"
+            />
+            <n-input
+              v-model:value="settings.aiModel"
+              placeholder="模型（如 qwen-plus）"
+              @update:value="saveSettings"
+            />
+            <n-input
+              v-model:value="settings.aiBaseUrl"
+              placeholder="Base URL"
+              @update:value="saveSettings"
+            />
+          </n-space>
+        </div>
+        <n-divider />
         <!-- 音质设置 -->
         <div class="setting-section">
           <h3 class="setting-title">
@@ -139,7 +164,8 @@ import {
   TextOutline,
   PlayCircleOutline,
   VolumeHighOutline,
-  DownloadOutline
+  DownloadOutline,
+  SparklesOutline
 } from '@vicons/ionicons5'
 
 const visible = defineModel('visible', { type: Boolean, default: false })
@@ -154,7 +180,10 @@ const defaultSettings = {
   enableFade: true,
   showLyrics: true,
   quality: 'exhigh',
-  downloadPath: ''
+  downloadPath: '',
+  aiApiKey: '',
+  aiModel: 'qwen-plus',
+  aiBaseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1'
 }
 const settings = ref({ ...defaultSettings })
 
@@ -193,6 +222,14 @@ const applyFontSize = (size) => {
 }
 const saveSettings = () => {
   localStorage.setItem('appSettings', JSON.stringify(settings.value))
+
+  if (window.api?.setAiProviderConfig) {
+    window.api.setAiProviderConfig({
+      apiKey: settings.value.aiApiKey,
+      model: settings.value.aiModel,
+      baseUrl: settings.value.aiBaseUrl
+    })
+  }
 }
 const loadSettings = () => {
   const saved = localStorage.getItem('appSettings')
@@ -204,6 +241,16 @@ const loadSettings = () => {
     } catch (e) {
       console.error('加载设置失败:', e)
     }
+  }
+
+  if (window.api?.getAiProviderConfig) {
+    window.api.getAiProviderConfig().then((res) => {
+      if (res?.success && res.data) {
+        settings.value.aiApiKey = res.data.apiKey || settings.value.aiApiKey
+        settings.value.aiModel = res.data.model || settings.value.aiModel
+        settings.value.aiBaseUrl = res.data.baseUrl || settings.value.aiBaseUrl
+      }
+    })
   }
 }
 const selectDownloadPath = async () => {

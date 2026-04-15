@@ -7,6 +7,7 @@ import http from 'http'
 import icon from '../../resources/icon.png?asset'
 import * as musicMetadata from 'music-metadata'
 import { playlistConfig } from './getLocalConfig/playlistconfig'
+import { aiConfig } from './getLocalConfig/aiConfig'
 import { auth, getCookie } from './auth/login'
 import { recommendPlaylistByLLM } from './ai/llmPlaylist'
 import { runLangChainRecommend } from './ai/langchainRecommend'
@@ -195,23 +196,57 @@ app.whenReady().then(() => {
 
   ipcMain.handle('ai-recommend-playlist', async (event, prompt, context = {}) => {
     try {
-      const apiKey = process.env.OPENAI_API_KEY
+      const localProviderConfig = aiConfig.getProviderConfig()
+      const apiKey =
+        String(context?.apiKey || '').trim() ||
+        localProviderConfig.apiKey ||
+        process.env.ALIBABA_API_KEY ||
+        ''
       if (!apiKey) {
         return {
           success: false,
-          error: '未配置 OPENAI_API_KEY'
+          error: '未配置 AI Provider Key（可在设置中填写）'
         }
       }
 
-      const model = context?.model || process.env.OPENAI_MODEL || 'gpt-4o-mini'
+      const model =
+        String(context?.model || '').trim() ||
+        localProviderConfig.model ||
+        process.env.ALIBABA_MODEL ||
+        'qwen-plus'
+      const baseUrl =
+        String(context?.baseUrl || '').trim() ||
+        localProviderConfig.baseUrl ||
+        process.env.ALIBABA_BASE_URL ||
+        'https://dashscope.aliyuncs.com/compatible-mode/v1'
 
       const llmClient = async ({ prompt: userPrompt, messages = [] }) => {
+        // Diagnostic logging for provider configuration (masked key)
+        const maskedKey = apiKey ? `${apiKey.slice(0, 4)}***${apiKey.slice(-2)}` : ''
+        console.log('[AI] provider config', {
+          model,
+          baseUrl,
+          hasApiKey: Boolean(apiKey),
+          apiKeyHint: maskedKey
+        })
+        console.log('[AI] llm request payload', {
+          prompt: String(userPrompt || ''),
+          messageCount: Array.isArray(messages) ? messages.length : 0,
+          messages: Array.isArray(messages)
+            ? messages.map((item) => ({
+                role: item?.role === 'assistant' ? 'assistant' : 'user',
+                content: String(item?.content || '')
+              }))
+            : []
+        })
+
         const structured = await runLangChainRecommend({
           prompt: userPrompt,
           messages,
           apiKey,
           model,
-          timeoutMs: Number(context?.timeoutMs) || 20000
+          baseUrl,
+          timeoutMs: Number(context?.timeoutMs) || 35000
         })
         return JSON.stringify(structured)
       }
@@ -259,6 +294,23 @@ app.whenReady().then(() => {
         success: false,
         error: error?.message || 'AI 推荐失败'
       }
+    }
+  })
+
+  ipcMain.handle('get-ai-provider-config', async () => {
+    try {
+      return { success: true, data: aiConfig.getProviderConfig() }
+    } catch (error) {
+      return { success: false, error: error?.message || '读取 AI 配置失败' }
+    }
+  })
+
+  ipcMain.handle('set-ai-provider-config', async (event, payload = {}) => {
+    try {
+      const data = aiConfig.setProviderConfig(payload)
+      return { success: true, data }
+    } catch (error) {
+      return { success: false, error: error?.message || '保存 AI 配置失败' }
     }
   })
 

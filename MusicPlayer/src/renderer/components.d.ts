@@ -19,7 +19,6 @@ declare module 'vue' {
     Layout: typeof import('./src/components/layout/layout.vue')['default']
     Mainpage: typeof import('./src/components/content/mainpage/mainpage.vue')['default']
     MyMusic: typeof import('./src/components/content/my-music/my-music.vue')['default']
-    NAlert: typeof import('naive-ui')['NAlert']
     NAvatar: typeof import('naive-ui')['NAvatar']
     Navbar: typeof import('./src/components/layout/navbar/navbar.vue')['default']
     NButton: typeof import('naive-ui')['NButton']

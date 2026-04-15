@@ -1,0 +1,521 @@
+{
+  "exportedAt": 1776261059163,
+  "prompt": "帮我生成歌手叫做harui的相关歌单",
+  "providerMode": "llm",
+  "draftSongCount": 30,
+  "pendingDraftSongCount": 0,
+  "chatMessages": [
+    {
+      "id": "1776260330991-p5k11g",
+      "role": "user",
+      "content": "帮我生成歌手叫做prodriki的相关歌单",
+      "time": 1776260330991,
+      "provider": "rule",
+      "type": "text",
+      "error": false,
+      "meta": {}
+    },
+    {
+      "id": "1776260360352-5c7yua",
+      "role": "assistant",
+      "content": "已根据你的描述生成「generate_pla歌单」，共 30 首歌。",
+      "time": 1776260360352,
+      "provider": "llm",
+      "type": "recommendation",
+      "error": false,
+      "meta": {
+        "intent": "generate_playlist",
+        "reason": ""
+      }
+    },
+    {
+      "id": "1776260974760-k7x2ya",
+      "role": "user",
+      "content": "帮我生成歌手叫做harui的相关歌单",
+      "time": 1776260974760,
+      "provider": "rule",
+      "type": "text",
+      "error": false,
+      "meta": {}
+    },
+    {
+      "id": "1776261009186-9g3q0m",
+      "role": "assistant",
+      "content": "已根据你的描述生成「generate_pla歌单」，共 30 首歌。",
+      "time": 1776261009186,
+      "provider": "llm",
+      "type": "recommendation",
+      "error": false,
+      "meta": {
+        "intent": "generate_playlist",
+        "reason": ""
+      }
+    },
+    {
+      "id": "1776261037423-idc6qu",
+      "role": "assistant",
+      "content": "已应用本次调整：新增 28 首，移除 28 首。",
+      "time": 1776261037423,
+      "provider": "llm",
+      "type": "status",
+      "error": false,
+      "meta": {
+        "intent": "generate_playlist",
+        "reason": "用户请求生成指定歌手 harui 的相关歌单"
+      }
+    }
+  ],
+  "generationMetrics": [
+    {
+      "id": "1776183168091-fzp0av",
+      "prompt": "想要一份华语流行歌单",
+      "provider": "rule",
+      "fallback": true,
+      "llmErrorType": "unknown",
+      "success": true,
+      "generatedSongCount": 30,
+      "time": 1776183168091
+    },
+    {
+      "id": "1776183228224-7irf0d",
+      "prompt": "想要一份英语流行歌单",
+      "provider": "rule",
+      "fallback": true,
+      "llmErrorType": "unknown",
+      "success": true,
+      "generatedSongCount": 30,
+      "time": 1776183228224
+    },
+    {
+      "id": "1776253909600-51z5yu",
+      "prompt": "想要一份英语流行歌单",
+      "provider": "rule",
+      "fallback": true,
+      "llmErrorType": "unknown",
+      "success": true,
+      "generatedSongCount": 30,
+      "time": 1776253909600
+    },
+    {
+      "id": "1776254017880-haz4j6",
+      "prompt": "想要一份华语流行歌单",
+      "provider": "rule",
+      "fallback": true,
+      "llmErrorType": "unknown",
+      "success": true,
+      "generatedSongCount": 30,
+      "time": 1776254017880
+    },
+    {
+      "id": "1776254401743-wdeqhi",
+      "prompt": "给我一份纯音乐歌单",
+      "provider": "rule",
+      "fallback": true,
+      "llmErrorType": "unknown",
+      "success": true,
+      "generatedSongCount": 30,
+      "time": 1776254401743
+    },
+    {
+      "id": "1776255008088-1hl53f",
+      "prompt": "给我一份纯音乐歌单",
+      "provider": "rule",
+      "fallback": true,
+      "llmErrorType": "unknown",
+      "success": true,
+      "generatedSongCount": 30,
+      "time": 1776255008088
+    },
+    {
+      "id": "1776255316757-dn2q30",
+      "prompt": "夜跑用的动感歌单",
+      "provider": "llm",
+      "fallback": false,
+      "llmErrorType": "",
+      "success": true,
+      "generatedSongCount": 30,
+      "time": 1776255316757
+    },
+    {
+      "id": "1776255893381-3l9qwn",
+      "prompt": "推荐几个prodriki的歌曲做成一个歌单",
+      "provider": "rule",
+      "fallback": true,
+      "llmErrorType": "timeout",
+      "success": true,
+      "generatedSongCount": 30,
+      "time": 1776255893381
+    },
+    {
+      "id": "1776255952126-w4p0f2",
+      "prompt": "推荐几个prodriki的歌曲做成一个歌单",
+      "provider": "rule",
+      "fallback": true,
+      "llmErrorType": "timeout",
+      "success": true,
+      "generatedSongCount": 30,
+      "time": 1776255952126
+    },
+    {
+      "id": "1776257394795-f58kyu",
+      "prompt": "给我一份纯音乐歌单",
+      "provider": "llm",
+      "fallback": false,
+      "llmErrorType": "",
+      "success": true,
+      "generatedSongCount": 30,
+      "time": 1776257394795
+    },
+    {
+      "id": "1776258127304-h50jkx",
+      "prompt": "推荐一些prodriki的歌曲，不少于50首",
+      "provider": "rule",
+      "fallback": true,
+      "llmErrorType": "timeout",
+      "success": true,
+      "generatedSongCount": 30,
+      "time": 1776258127304
+    },
+    {
+      "id": "1776258421694-nolt28",
+      "prompt": "推荐一些prodriki的歌曲，不少于50首",
+      "provider": "llm",
+      "fallback": false,
+      "llmErrorType": "",
+      "success": true,
+      "generatedSongCount": 30,
+      "time": 1776258421694
+    },
+    {
+      "id": "1776260195554-zlja13",
+      "prompt": "推荐一些prodriki的歌曲，不少于50首",
+      "provider": "rule",
+      "fallback": true,
+      "llmErrorType": "timeout",
+      "success": true,
+      "generatedSongCount": 30,
+      "time": 1776260195554
+    },
+    {
+      "id": "1776260360352-ranqft",
+      "prompt": "帮我生成歌手叫做prodriki的相关歌单",
+      "provider": "llm",
+      "fallback": false,
+      "llmErrorType": "",
+      "success": true,
+      "generatedSongCount": 30,
+      "time": 1776260360352
+    },
+    {
+      "id": "1776261009186-nn818b",
+      "prompt": "帮我生成歌手叫做harui的相关歌单",
+      "provider": "llm",
+      "fallback": false,
+      "llmErrorType": "",
+      "success": true,
+      "generatedSongCount": 30,
+      "time": 1776261009186
+    }
+  ],
+  "recentPrompts": [
+    "帮我生成歌手叫做harui的相关歌单",
+    "帮我生成歌手叫做prodriki的相关歌单",
+    "推荐一些prodriki的歌曲，不少于50首",
+    "给我一份纯音乐歌单",
+    "推荐几个prodriki的歌曲做成一个歌单",
+    "夜跑用的动感歌单",
+    "想要一份华语流行歌单",
+    "想要一份英语流行歌单"
+  ],
+  "lastCreateResult": {
+    "success": true,
+    "status": "success",
+    "partial": false,
+    "playlist": {
+      "id": 1776261037426,
+      "name": "generate_pla歌单",
+      "description": "用户请求生成指定歌手 harui 的相关歌单",
+      "cover": "",
+      "songs": [
+        {
+          "id": 2616593202,
+          "name": "情话商店",
+          "artist": "艾里克 / 梅克",
+          "album": "情话商店",
+          "albumCover": "http://p3.music.126.net/CaFG1LqvrhSww9lXZcZxoA==/109951169866045052.jpg",
+          "durationMs": 211500,
+          "duration": 211500
+        },
+        {
+          "id": 2684365229,
+          "name": "他没走过",
+          "artist": "吴今屿jy",
+          "album": "浅爱",
+          "albumCover": "http://p3.music.126.net/tXxqc2bKkLNpnFnwAMUeyQ==/109951169803750254.jpg",
+          "durationMs": 261354,
+          "duration": 261354
+        },
+        {
+          "id": 3370463304,
+          "name": "无懈可击",
+          "artist": "harui",
+          "album": "中国风 x 三国杀 x sexydrill type beat",
+          "albumCover": "http://p3.music.126.net/7Me9AewvWv9-nbKME5-_8Q==/109951173052909668.jpg",
+          "durationMs": 158955,
+          "duration": 158955
+        },
+        {
+          "id": 2669563292,
+          "name": "love like this",
+          "artist": "harui",
+          "album": "90s rnb x slow jam x ballad type beat",
+          "albumCover": "http://p4.music.126.net/J9HigsIwvknGMVIwaUuzvg==/109951170425989619.jpg",
+          "durationMs": 188891,
+          "duration": 188891
+        },
+        {
+          "id": 2654249026,
+          "name": "3 6 0 1",
+          "artist": "harui",
+          "album": "90s rnb x 2000s x slow jam x 婉瑜回来 type beat",
+          "albumCover": "http://p4.music.126.net/aWjvTMoGLvP74gNeOP86ZQ==/109951170233873544.jpg",
+          "durationMs": 177031,
+          "duration": 177031
+        },
+        {
+          "id": 2747899483,
+          "name": "i'm blind for love",
+          "artist": "harui",
+          "album": "90s rnb x sad ballad type beat",
+          "albumCover": "http://p4.music.126.net/zygGNifp0m_9upyQO6XkNg==/109951172036960207.jpg",
+          "durationMs": 216768,
+          "duration": 216768
+        },
+        {
+          "id": 2641955086,
+          "name": "how to say",
+          "artist": "Luv8z / harui",
+          "album": "(SOLD) 90s rnb×pluggnb type beat",
+          "albumCover": "http://p4.music.126.net/C7nrwwnyt3kBuGxTK43tRw==/109951170100664363.jpg",
+          "durationMs": 175037,
+          "duration": 175037
+        },
+        {
+          "id": 2667279629,
+          "name": "[sold] like you the most w/ bonnytown",
+          "artist": "harui",
+          "album": "90s rnb x k-ballad type beat",
+          "albumCover": "http://p4.music.126.net/fWUpKOpSTWC4BGuAukt1gA==/109951170394084070.jpg",
+          "durationMs": 195996,
+          "duration": 195996
+        },
+        {
+          "id": 1974586266,
+          "name": "lover girl",
+          "artist": "harui",
+          "album": "lover girl",
+          "albumCover": "http://p4.music.126.net/S6_f1DNGR7UPDOUvtczuRw==/109951167808561828.jpg",
+          "durationMs": 187941,
+          "duration": 187941
+        },
+        {
+          "id": 2671581702,
+          "name": "too slick",
+          "artist": "harui",
+          "album": "90s rnb x new jack swing type beat",
+          "albumCover": "http://p4.music.126.net/2XqqPR8yxM8SiP90GX3INA==/109951170448157560.jpg",
+          "durationMs": 184058,
+          "duration": 184058
+        },
+        {
+          "id": 2636159972,
+          "name": "meet me again",
+          "artist": "harui / Tsuki.",
+          "album": "90s rnb x jssr x lawsy x nostalgic type beat",
+          "albumCover": "http://p4.music.126.net/WMraOrFdbAWY-VR_JNadbA==/109951170040897740.jpg",
+          "durationMs": 135653,
+          "duration": 135653
+        },
+        {
+          "id": 2672826659,
+          "name": "插头情人节",
+          "artist": "harui",
+          "album": "romantic 90s rnb x pluggnb type beat",
+          "albumCover": "http://p3.music.126.net/0lehwi-o33ftr_6lsRiiBA==/109951170461158455.jpg",
+          "durationMs": 171755,
+          "duration": 171755
+        },
+        {
+          "id": 2634205444,
+          "name": "我才不抽象，在等对的人罢了",
+          "artist": "harui",
+          "album": "jersey club x wintfye x zachz type beat",
+          "albumCover": "http://p3.music.126.net/xZRj7EL8ZCMhh7OMTvrsVA==/109951170023819764.jpg",
+          "durationMs": 131395,
+          "duration": 131395
+        },
+        {
+          "id": 1971277546,
+          "name": "偷心盗贼",
+          "artist": "harui / LucidLotty",
+          "album": "偷心盗贼",
+          "albumCover": "http://p4.music.126.net/nCb3GMfwTYcmT-TVMyKCmA==/109951167768948681.jpg",
+          "durationMs": 169456,
+          "duration": 169456
+        },
+        {
+          "id": 2725145559,
+          "name": "meant to be",
+          "artist": "harui",
+          "album": "90s rnb x ballad x faith evans type beat",
+          "albumCover": "http://p3.music.126.net/sfsWlhkYSZuVdd65apxWqw==/109951171450089626.jpg",
+          "durationMs": 215379,
+          "duration": 215379
+        },
+        {
+          "id": 2634200905,
+          "name": "nostalgia",
+          "artist": "harui",
+          "album": "90s rnb + 复古 rnb ballad type beat",
+          "albumCover": "http://p4.music.126.net/mxRctWBAem8A7jx9h4Bamw==/109951170023802127.jpg",
+          "durationMs": 206315,
+          "duration": 206315
+        },
+        {
+          "id": 2652084463,
+          "name": "what bout love",
+          "artist": "harui",
+          "album": "90s rnb x slow jam x rnb ballad type beat",
+          "albumCover": "http://p4.music.126.net/IqIJU9_K60NE7htqcL9TmQ==/109951170210033158.jpg",
+          "durationMs": 179487,
+          "duration": 179487
+        },
+        {
+          "id": 3351468409,
+          "name": "QQ",
+          "artist": "harui / 付思遥",
+          "album": "90s rnb x 2000s x sad ballad type beat",
+          "albumCover": "http://p3.music.126.net/W_f6iCCw5FYmVzvJCPul5g==/109951172770016931.jpg",
+          "durationMs": 189816,
+          "duration": 189816
+        },
+        {
+          "id": 2634178880,
+          "name": "snow garden",
+          "artist": "harui",
+          "album": "autumn! x summrs x pluggnb type beat",
+          "albumCover": "http://p4.music.126.net/xKFmGU4hLe_gHkHNpal6xg==/109951170023591426.jpg",
+          "durationMs": 151849,
+          "duration": 151849
+        },
+        {
+          "id": 2664872474,
+          "name": "cappuccino",
+          "artist": "harui",
+          "album": "90s rnb x k-pop type beat",
+          "albumCover": "http://p3.music.126.net/GWaLGbNaRmIZtkDOOlQk2Q==/109951170366862455.jpg",
+          "durationMs": 200411,
+          "duration": 200411
+        },
+        {
+          "id": 2746522828,
+          "name": "cookie",
+          "artist": "harui",
+          "album": "90s rnb x k-pop type beat",
+          "albumCover": "http://p3.music.126.net/zztIxxufVJyOL0alVl5M6w==/109951172020868342.jpg",
+          "durationMs": 241176,
+          "duration": 241176
+        },
+        {
+          "id": 2688918193,
+          "name": "intentions",
+          "artist": "harui",
+          "album": "90s rnb x jssr x 10kdunkin type beat",
+          "albumCover": "http://p4.music.126.net/6LbVcbtCEjWjGtVcHWf_lA==/109951170657855505.jpg",
+          "durationMs": 195500,
+          "duration": 195500
+        },
+        {
+          "id": 2691739313,
+          "name": "[sold] one more",
+          "artist": "harui",
+          "album": "90s rnb x ballad type beat",
+          "albumCover": "http://p3.music.126.net/4dzmlLfZCf0AE6rd2mwrBw==/109951170695491211.jpg",
+          "durationMs": 192052,
+          "duration": 192052
+        },
+        {
+          "id": 2660821651,
+          "name": "towards then",
+          "artist": "harui",
+          "album": "90s rnb x sad rnb ballad x k-ballad type beat",
+          "albumCover": "http://p4.music.126.net/xKAFHBaLT2aQ-3LCkJ3lNw==/109951170322818764.jpg",
+          "durationMs": 210808,
+          "duration": 210808
+        },
+        {
+          "id": 2743545304,
+          "name": "[sold] secretly like you",
+          "artist": "harui",
+          "album": "90s rnb x 2000s x sad ballad type beat",
+          "albumCover": "http://p3.music.126.net/yyXKpKz7SPewamL8SN1LAQ==/109951171976843449.jpg",
+          "durationMs": 190848,
+          "duration": 190848
+        },
+        {
+          "id": 2716874246,
+          "name": "streetlights w/ kashik",
+          "artist": "harui",
+          "album": "90s rnb x 2000s x 周杰伦 type beat",
+          "albumCover": "http://p3.music.126.net/-4uqRp0BcWCPL0wWWpDxxw==/109951171327788587.jpg",
+          "durationMs": 150308,
+          "duration": 150308
+        },
+        {
+          "id": 2645815998,
+          "name": "slow xmas",
+          "artist": "harui",
+          "album": "90s rnb x slow jam x lacrisis x 冬日圣诞 type beat",
+          "albumCover": "http://p3.music.126.net/5-el09FOr1C5U2R36Min2Q==/109951170144830193.jpg",
+          "durationMs": 194246,
+          "duration": 194246
+        },
+        {
+          "id": 2750478803,
+          "name": "[sold] endless night",
+          "artist": "harui",
+          "album": "90s rnb x ballad type beat",
+          "albumCover": "http://p3.music.126.net/IIqllwOUNOKw9tRwxe6h9w==/109951172074515407.jpg",
+          "durationMs": 235824,
+          "duration": 235824
+        },
+        {
+          "id": 3318043910,
+          "name": "where we left off",
+          "artist": "harui",
+          "album": "botanica x rnb x porter robinson type beat",
+          "albumCover": "http://p3.music.126.net/dTRqUzvoFUTAKpIka3mdVg==/109951172259632498.jpg",
+          "durationMs": 213106,
+          "duration": 213106
+        },
+        {
+          "id": 2708649053,
+          "name": "if you knew",
+          "artist": "harui",
+          "album": "90s rnb x sad ballad x aaliyah type beat",
+          "albumCover": "http://p3.music.126.net/w975gCbgsCS-PdDMxOievw==/109951171027801097.jpg",
+          "durationMs": 209502,
+          "duration": 209502
+        }
+      ],
+      "isLocal": true,
+      "createTime": "2026-04-15T13:50:37.426Z",
+      "updateTime": "2026-04-15T13:50:37.426Z"
+    },
+    "playlistId": 1776261037426,
+    "totalSongs": 30,
+    "addedSongs": 30,
+    "failedSongs": [],
+    "failedSongDetails": []
+  }
+}

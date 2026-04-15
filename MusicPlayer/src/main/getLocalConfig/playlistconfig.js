@@ -18,16 +18,46 @@ const store = new StoreConstructor({
   }
 })
 
+function normalizeStoredSong(song) {
+  if (!song || typeof song !== 'object') return song
+  const cover = song.cover || song.albumCover || song.al?.picUrl || ''
+  return {
+    ...song,
+    cover
+  }
+}
+
+function normalizeStoredPlaylist(playlist) {
+  if (!playlist || typeof playlist !== 'object') return playlist
+  const songs = Array.isArray(playlist.songs) ? playlist.songs.map(normalizeStoredSong) : []
+  const firstSongCover = songs[0]?.cover || songs[0]?.albumCover || songs[0]?.al?.picUrl || ''
+  const cover = playlist.cover || firstSongCover || ''
+  return {
+    ...playlist,
+    songs,
+    cover
+  }
+}
+
 // 歌单相关操作
 const playlistConfig = {
   // 获取所有歌单
   getAllPlaylists() {
-    return store.get('playlists', { created: [], favorite: [] })
+    return {
+      created: this.getCreatedPlaylists(),
+      favorite: this.getFavoritePlaylists()
+    }
   },
 
   // 获取创建的歌单
   getCreatedPlaylists() {
-    return store.get('playlists.created', [])
+    const raw = store.get('playlists.created', [])
+    const normalized = Array.isArray(raw) ? raw.map(normalizeStoredPlaylist) : []
+    const changed = JSON.stringify(raw) !== JSON.stringify(normalized)
+    if (changed) {
+      store.set('playlists.created', normalized)
+    }
+    return normalized
   },
 
   // 获取收藏的歌单
@@ -88,11 +118,15 @@ const playlistConfig = {
       // 检查歌曲是否已存在
       const songExists = playlists[index].songs.some((s) => s.id === song.id)
       if (!songExists) {
-        playlists[index].songs.push(song)
+        const normalizedSong = {
+          ...song,
+          cover: song?.cover || song?.albumCover || song?.al?.picUrl || ''
+        }
+        playlists[index].songs.push(normalizedSong)
         playlists[index].updateTime = new Date().toISOString()
         // 如果是第一首歌，更新封面
-        if (playlists[index].songs.length === 1 && song.al?.picUrl) {
-          playlists[index].cover = song.al.picUrl
+        if (playlists[index].songs.length === 1 && normalizedSong.cover) {
+          playlists[index].cover = normalizedSong.cover
         }
         store.set('playlists.created', playlists)
         return true
@@ -112,7 +146,11 @@ const playlistConfig = {
       playlists[index].updateTime = new Date().toISOString()
       // 如果删除的是第一首歌，更新封面为新的第一首歌
       if (removedSongIndex === 0) {
-        playlists[index].cover = playlists[index].songs[0]?.al?.picUrl || ''
+        playlists[index].cover =
+          playlists[index].songs[0]?.cover ||
+          playlists[index].songs[0]?.albumCover ||
+          playlists[index].songs[0]?.al?.picUrl ||
+          ''
       }
       store.set('playlists.created', playlists)
       return true

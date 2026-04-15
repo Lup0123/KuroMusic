@@ -70,6 +70,7 @@ import {
   ListOutline,
   StarOutline,
   TrashOutline,
+  CreateOutline,
   PersonOutline,
   HeartOutline
 } from '@vicons/ionicons5'
@@ -115,35 +116,57 @@ const NAV_ROUTE_NAMES = [ROUTE_NAMES.MAIN_PAGE, ROUTE_NAMES.MY_MUSIC, ROUTE_NAME
 // 渲染图标
 const renderIcon = (icon) => () => h(NIcon, null, { default: () => h(icon) })
 
-// 渲染带删除按钮的歌单项
-const renderPlaylistLabel = (playlist, onDelete) => () =>
-  h(
-    'div',
-    {
-      style: 'display: flex; align-items: center; justify-content: space-between; width: 100%;'
-    },
-    [
-      h(
-        'span',
-        { style: 'overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1;' },
-        playlist.name
-      ),
-      h(
-        NIcon,
-        {
-          size: 14,
-          style:
-            'opacity: 0; cursor: pointer; flex-shrink: 0; margin-left: 8px; transition: all 0.2s;',
-          class: 'delete-icon',
-          onClick: (e) => {
-            e.stopPropagation()
-            onDelete(playlist)
-          }
-        },
-        { default: () => h(TrashOutline) }
-      )
-    ]
-  )
+// 渲染带编辑/删除按钮的歌单项
+const renderPlaylistLabel =
+  (playlist, { onDelete, onRename }) =>
+  () =>
+    h(
+      'div',
+      {
+        style: 'display: flex; align-items: center; justify-content: space-between; width: 100%;'
+      },
+      [
+        h(
+          'span',
+          { style: 'overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1;' },
+          playlist.name
+        ),
+        h(
+          'div',
+          {
+            style: 'display: flex; align-items: center; gap: 8px; margin-left: 8px;'
+          },
+          [
+            h(
+              NIcon,
+              {
+                size: 14,
+                style: 'opacity: 0; cursor: pointer; flex-shrink: 0; transition: all 0.2s;',
+                class: 'rename-icon',
+                onClick: (e) => {
+                  e.stopPropagation()
+                  onRename(playlist)
+                }
+              },
+              { default: () => h(CreateOutline) }
+            ),
+            h(
+              NIcon,
+              {
+                size: 14,
+                style: 'opacity: 0; cursor: pointer; flex-shrink: 0; transition: all 0.2s;',
+                class: 'delete-icon',
+                onClick: (e) => {
+                  e.stopPropagation()
+                  onDelete(playlist)
+                }
+              },
+              { default: () => h(TrashOutline) }
+            )
+          ]
+        )
+      ]
+    )
 
 // 菜单选项
 const menuOptions = computed(() => {
@@ -193,7 +216,10 @@ const menuOptions = computed(() => {
           children:
             createdPlaylists.value.length > 0
               ? createdPlaylists.value.map((playlist) => ({
-                  label: renderPlaylistLabel(playlist, handleDeletePlaylist),
+                  label: renderPlaylistLabel(playlist, {
+                    onDelete: handleDeletePlaylist,
+                    onRename: handleRenamePlaylist
+                  }),
                   key: `created-${playlist.id}`,
                   icon: renderIcon(ListOutline)
                 }))
@@ -389,6 +415,55 @@ const handleDeleteFavoritePlaylist = async (playlist) => {
   })
 }
 
+const handleRenamePlaylist = (playlist) => {
+  const renameDraft = ref(playlist.name || '')
+
+  dialog.create({
+    title: '重命名歌单',
+    positiveText: '保存',
+    negativeText: '取消',
+    content: () =>
+      h('div', { style: 'margin-top: 8px;' }, [
+        h(
+          'div',
+          { style: 'margin-bottom: 8px; color: var(--n-text-color-2); font-size: 13px;' },
+          '请输入新的歌单名称'
+        ),
+        h('input', {
+          value: renameDraft.value,
+          maxlength: 40,
+          style:
+            'width: 100%; height: 34px; border: 1px solid var(--n-border-color); border-radius: 6px; padding: 0 10px; outline: none; background: var(--n-color); color: var(--n-text-color);',
+          onInput: (e) => {
+            renameDraft.value = e.target.value
+          }
+        })
+      ]),
+    onPositiveClick: async () => {
+      const name = String(renameDraft.value || '').trim()
+      if (!name) {
+        message.warning('歌单名称不能为空')
+        return false
+      }
+      if (name === playlist.name) {
+        return true
+      }
+
+      const updated = await playlistStore.updateLocalPlaylist(playlist.id, { name })
+      if (!updated) {
+        message.error('重命名失败')
+        return false
+      }
+
+      if (playlistStore.currentPlaylistInfo.id === playlist.id) {
+        playlistStore.setCurrentPlaylist({ ...playlistStore.currentPlaylistInfo, name })
+      }
+      message.success('歌单名称已更新')
+      return true
+    }
+  })
+}
+
 // 加载歌单数据
 onMounted(async () => {
   await playlistStore.loadLocalPlaylists()
@@ -433,7 +508,8 @@ watch(isLoggedIn, async (newValue) => {
   background: transparent;
 
   .n-menu-item-content {
-    &:hover .delete-icon {
+    &:hover .delete-icon,
+    &:hover .rename-icon {
       opacity: 1 !important;
     }
   }

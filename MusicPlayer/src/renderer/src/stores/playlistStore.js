@@ -2,6 +2,16 @@ import { defineStore } from 'pinia'
 import { formatDuration } from '../utils/utils'
 import { useSongStore } from './songStore'
 
+function toSerializableObject(value, fallback = null) {
+  try {
+    const serialized = JSON.stringify(value)
+    if (serialized === undefined) return fallback
+    return JSON.parse(serialized)
+  } catch {
+    return fallback
+  }
+}
+
 export const usePlaylistStore = defineStore('playlist', {
   state: () => ({
     playlists: [],
@@ -58,6 +68,13 @@ export const usePlaylistStore = defineStore('playlist', {
 
     // 标准化歌曲数据格式
     normalizeSong(song) {
+      const rawDurationMs = Number(song.dt ?? song.durationMs ?? song.duration)
+      const durationMs = Number.isFinite(rawDurationMs) && rawDurationMs >= 0 ? rawDurationMs : 0
+      const normalizedDuration =
+        typeof song.duration === 'string' && song.duration.includes(':')
+          ? song.duration
+          : formatDuration(durationMs)
+
       return {
         id: song.id,
         name: song.name,
@@ -65,9 +82,10 @@ export const usePlaylistStore = defineStore('playlist', {
         artist: song.ar?.map((a) => a.name).join(' / ') || song.artist || '未知艺术家',
         album: song.al?.name || song.album || '未知专辑',
         albumId: song.al?.id || song.albumId,
-        cover: song.al?.picUrl || song.cover || 'https://via.placeholder.com/200',
-        duration: song.duration || formatDuration(song.dt || song.durationMs),
-        dt: song.dt || song.durationMs, // 保留毫秒用于播放器
+        cover:
+          song.al?.picUrl || song.cover || song.albumCover || 'https://via.placeholder.com/200',
+        duration: normalizedDuration,
+        dt: song.dt || song.durationMs || durationMs, // 保留毫秒用于播放器
         fee: song.fee || 0,
         mvId: song.mv || song.mvId,
         vip: song.fee === 1 || song.vip,
@@ -267,7 +285,8 @@ export const usePlaylistStore = defineStore('playlist', {
     // 添加歌曲到歌单
     async addSongToLocalPlaylist(playlistId, song) {
       try {
-        const success = await window.api.addSongToPlaylist(playlistId, song)
+        const plainSong = toSerializableObject(song, {})
+        const success = await window.api.addSongToPlaylist(playlistId, plainSong)
         console.log(success)
         if (success) {
           const playlist = this.createdPlaylists.find((p) => p.id === playlistId)
@@ -275,7 +294,7 @@ export const usePlaylistStore = defineStore('playlist', {
             if (!playlist.songs) {
               playlist.songs = []
             }
-            playlist.songs.push(song)
+            playlist.songs.push(plainSong)
           }
           return true
         }

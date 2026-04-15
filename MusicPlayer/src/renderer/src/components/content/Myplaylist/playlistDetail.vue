@@ -213,7 +213,7 @@
                 </div>
               </div>
 
-              <div class="col-duration">{{ item.song.duration }}</div>
+              <div class="col-duration">{{ getSongDurationLabel(item.song) }}</div>
             </div>
           </div>
         </div>
@@ -292,7 +292,7 @@ import { usePlaylistStore } from '@/stores/playlistStore'
 import { useIndexStore } from '@/stores/indexStore'
 import { useSongStore } from '@/stores/songStore'
 import { storeToRefs } from 'pinia'
-import { formatDate } from '@/utils/utils'
+import { formatDate, formatDuration } from '@/utils/utils'
 import { downloadSong, downloadSongs } from '@/utils/downloadUtils'
 import { ROUTE_NAMES } from '@/router/routeNames'
 import AppCover from '@/components/common/AppCover.vue'
@@ -371,6 +371,14 @@ const virtualRowItems = computed(() =>
     .map((row) => ({ row, song: songs.value[row.index] }))
     .filter((item) => Boolean(item.song))
 )
+
+const getSongDurationLabel = (song) => {
+  const value = song?.duration
+  if (typeof value === 'string' && value.includes(':')) return value
+
+  const durationMs = Number(song?.dt ?? song?.durationMs ?? value)
+  return formatDuration(durationMs)
+}
 
 const handleScroll = (e) => {
   const scrollTop = e.target.scrollTop
@@ -531,7 +539,12 @@ const getPlaylistCover = (playlist) => {
   }
   if (playlist.songs && playlist.songs.length > 0) {
     const firstSong = playlist.songs[0]
-    return firstSong.al?.picUrl || firstSong.cover || 'https://via.placeholder.com/40'
+    return (
+      firstSong.al?.picUrl ||
+      firstSong.cover ||
+      firstSong.albumCover ||
+      'https://via.placeholder.com/40'
+    )
   }
   return 'https://via.placeholder.com/40'
 }

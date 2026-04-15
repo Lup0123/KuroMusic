@@ -55,6 +55,8 @@ const api = {
     ipcRenderer.invoke('get-artist-albums', artistId, limit, offset),
   aiRecommendPlaylist: (prompt, context) =>
     ipcRenderer.invoke('ai-recommend-playlist', prompt, context),
+  getAiProviderConfig: () => ipcRenderer.invoke('get-ai-provider-config'),
+  setAiProviderConfig: (payload) => ipcRenderer.invoke('set-ai-provider-config', payload),
 
   // ============ 登录相关 API ============
   // 二维码登录
