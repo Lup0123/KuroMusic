@@ -14,7 +14,14 @@
     <PlayerFooter />
 
     <!-- 播放列表弹窗 -->
-    <SongList v-model:visible="showPlaylist" />
+    <Suspense>
+      <template #default>
+        <SongList v-if="showPlaylist" v-model:visible="showPlaylist" />
+      </template>
+      <template #fallback>
+        <div class="async-overlay async-overlay--playlist">正在加载播放列表...</div>
+      </template>
+    </Suspense>
 
     <!-- 歌词页面抽屉 - 从底部上拉 -->
     <transition name="slide-up">
@@ -24,23 +31,47 @@
     </transition>
 
     <AIFloatBall />
-    <AIPlaylistModal />
+    <Suspense>
+      <template #default>
+        <AIPlaylistModal />
+      </template>
+      <template #fallback>
+        <div class="async-overlay async-overlay--ai">正在加载 AI 助手...</div>
+      </template>
+    </Suspense>
   </div>
 </template>
 
 <script setup>
-import { watch, computed } from 'vue'
+import { watch, computed, defineAsyncComponent } from 'vue'
 import { useRoute } from 'vue-router'
 import { useSongStore } from '@/stores/songStore'
 import { storeToRefs } from 'pinia'
 import { useThemeVars } from 'naive-ui'
-import SongList from '@/components/content/playlist/songlist.vue'
 import PlayerFooter from '@/components/content/player-footer/player-footer.vue'
 import Navbar from '@/components/layout/navbar/navbar.vue'
 import Sidebar from '@/components/layout/sidebar/sidebar.vue'
-import LyricPlayer from '@/views/PlayerView.vue'
-import AIFloatBall from '@/components/ai/AIFloatBall.vue'
-import AIPlaylistModal from '@/components/ai/AIPlaylistModal.vue'
+
+const SongList = defineAsyncComponent({
+  loader: () => import('@/components/content/playlist/songlist.vue'),
+  delay: 120,
+  timeout: 15000
+})
+const LyricPlayer = defineAsyncComponent({
+  loader: () => import('@/views/PlayerView.vue'),
+  delay: 120,
+  timeout: 15000
+})
+const AIFloatBall = defineAsyncComponent({
+  loader: () => import('@/components/ai/AIFloatBall.vue'),
+  delay: 120,
+  timeout: 15000
+})
+const AIPlaylistModal = defineAsyncComponent({
+  loader: () => import('@/components/ai/AIPlaylistModal.vue'),
+  delay: 120,
+  timeout: 15000
+})
 
 const route = useRoute()
 const themeVars = useThemeVars()
@@ -61,6 +92,7 @@ watch(
   },
   { immediate: true }
 )
+
 </script>
 
 <style scoped lang="scss">
@@ -168,5 +200,27 @@ watch(
   left: 0;
   right: 0;
   z-index: 2001 !important;
+}
+
+.async-overlay {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2400;
+  padding: 8px 14px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--n-color) 90%, var(--n-primary-color));
+  border: 1px solid var(--n-border-color);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+  font-size: 12px;
+  color: var(--n-text-color-2);
+}
+
+.async-overlay--playlist {
+  bottom: 102px;
+}
+
+.async-overlay--ai {
+  top: 74px;
 }
 </style>

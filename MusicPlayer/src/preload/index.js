@@ -55,6 +55,35 @@ const api = {
     ipcRenderer.invoke('get-artist-albums', artistId, limit, offset),
   aiRecommendPlaylist: (prompt, context) =>
     ipcRenderer.invoke('ai-recommend-playlist', prompt, context),
+  aiChatStream: (payload) => ipcRenderer.invoke('ai-chat-stream', payload),
+  openAiWindow: () => ipcRenderer.invoke('open-ai-window'),
+  focusAiWindow: () => ipcRenderer.invoke('focus-ai-window'),
+  closeAiWindow: () => ipcRenderer.invoke('close-ai-window'),
+  getWindowRole: () => ipcRenderer.invoke('get-window-role'),
+  aiWindowMinimize: () => ipcRenderer.send('ai-window-minimize'),
+  aiWindowMaximize: () => ipcRenderer.send('ai-window-maximize'),
+  aiWindowClose: () => ipcRenderer.send('ai-window-close'),
+  getAiWindowMaximized: () => ipcRenderer.invoke('get-ai-window-maximized'),
+  onAiWindowMaximizedChanged: (callback) => {
+    const listener = (_, value) => callback(value)
+    ipcRenderer.on('ai-window-maximized-changed', listener)
+    return () => ipcRenderer.removeListener('ai-window-maximized-changed', listener)
+  },
+  onAiChatStreamChunk: (callback) => {
+    const handler = (_, data) => callback?.(data)
+    ipcRenderer.on('ai-chat-stream-chunk', handler)
+    return () => ipcRenderer.removeListener('ai-chat-stream-chunk', handler)
+  },
+  onAiChatStreamEnd: (callback) => {
+    const handler = (_, data) => callback?.(data)
+    ipcRenderer.on('ai-chat-stream-end', handler)
+    return () => ipcRenderer.removeListener('ai-chat-stream-end', handler)
+  },
+  onAiChatStreamError: (callback) => {
+    const handler = (_, data) => callback?.(data)
+    ipcRenderer.on('ai-chat-stream-error', handler)
+    return () => ipcRenderer.removeListener('ai-chat-stream-error', handler)
+  },
   getAiProviderConfig: () => ipcRenderer.invoke('get-ai-provider-config'),
   setAiProviderConfig: (payload) => ipcRenderer.invoke('set-ai-provider-config', payload),
 

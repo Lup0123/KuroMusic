@@ -1,11 +1,18 @@
 import { z } from 'zod'
 import { app } from 'electron'
-import { existsSync, mkdirSync, writeFileSync } from 'fs'
+import { existsSync, mkdirSync, readdirSync, unlinkSync, writeFileSync } from 'fs'
 import { join } from 'path'
 
 const RecommendSchema = z.object({
   intent: z.string().default(''),
-  reason: z.string().default('')
+  reason: z.string().default(''),
+  artist: z.string().default(''),
+  count: z.coerce.number().int().min(0).max(200).default(0),
+  mood: z.string().default(''),
+  language: z.string().default(''),
+  include: z.array(z.string()).default([]),
+  exclude: z.array(z.string()).default([]),
+  adjustmentType: z.enum(['add', 'remove', 'replace', 'none']).default('none')
 })
 
 const LONG_PROMPT_THRESHOLD = 36
@@ -23,7 +30,31 @@ function ensureLogDir() {
 function persistLlmTrace(trace) {
   try {
     const logDir = ensureLogDir()
-    writeFileSync(join(logDir, 'last-llm-trace.json'), JSON.stringify(trace, null, 2), 'utf-8')
+    const payload = JSON.stringify(trace, null, 2)
+    writeFileSync(join(logDir, 'last-llm-trace.json'), payload, 'utf-8')
+
+    const archiveDir = join(logDir, 'llm-traces')
+    if (!existsSync(archiveDir)) {
+      mkdirSync(archiveDir, { recursive: true })
+    }
+
+    const fileName = `llm-trace-${Date.now()}.json`
+    writeFileSync(join(archiveDir, fileName), payload, 'utf-8')
+
+    const files = readdirSync(archiveDir)
+      .filter((name) => name.startsWith('llm-trace-') && name.endsWith('.json'))
+      .sort()
+    const maxKeep = 20
+    if (files.length > maxKeep) {
+      const staleFiles = files.slice(0, files.length - maxKeep)
+      for (const stale of staleFiles) {
+        try {
+          unlinkSync(join(archiveDir, stale))
+        } catch {
+          // ignore cleanup errors
+        }
+      }
+    }
   } catch {
     // never block main flow on logging
   }
@@ -52,9 +83,43 @@ function extractTextContent(content) {
   return ''
 }
 
+function dedupeMessages(messages = [], prompt = '') {
+  const normalizedPrompt = String(prompt || '').trim()
+  const seen = new Set()
+  const result = []
+
+  for (const item of messages) {
+    const role = item?.role === 'assistant' ? 'assistant' : 'user'
+    const content = String(item?.content || '').trim()
+    if (!content) continue
+
+    if (role === 'user' && normalizedPrompt && content === normalizedPrompt) {
+      continue
+    }
+
+    const key = `${role}::${content}`
+    if (seen.has(key)) continue
+    seen.add(key)
+    result.push({ role, content })
+  }
+
+  return result
+}
+
 function parseStructuredResult(rawText) {
   const text = String(rawText || '').trim()
-  if (!text) return { intent: '', reason: '' }
+  if (!text)
+    return {
+      intent: '',
+      reason: '',
+      artist: '',
+      count: 0,
+      mood: '',
+      language: '',
+      include: [],
+      exclude: [],
+      adjustmentType: 'none'
+    }
 
   try {
     const parsed = JSON.parse(text)
@@ -88,7 +153,14 @@ function parseStructuredResult(rawText) {
 
   return {
     intent: text.slice(0, 80),
-    reason: text
+    reason: text,
+    artist: '',
+    count: 0,
+    mood: '',
+    language: '',
+    include: [],
+    exclude: [],
+    adjustmentType: 'none'
   }
 }
 
@@ -115,7 +187,7 @@ async function requestChatCompletion({ endpoint, apiKey, model, messages, timeou
       body: JSON.stringify({
         model,
         messages,
-        temperature: 0.2,
+        temperature: 0.15,
         max_tokens: Number(maxTokens) || 200
       }),
       signal: controller.signal
@@ -127,6 +199,13 @@ async function requestChatCompletion({ endpoint, apiKey, model, messages, timeou
   } finally {
     clearTimeout(timer)
   }
+}
+
+function trimMessagesForLatency(messages = [], keepCount = 4) {
+  if (!Array.isArray(messages) || messages.length <= keepCount + 1) return messages
+  const head = messages[0]
+  const tail = messages.slice(-keepCount)
+  return [head, ...tail]
 }
 
 export async function runLangChainRecommend({
@@ -146,13 +225,16 @@ export async function runLangChainRecommend({
     safePrompt.length >= LONG_PROMPT_THRESHOLD || LONG_PROMPT_PATTERN.test(safePrompt)
 
   const recentMessages = Array.isArray(messages)
-    ? messages
-        .slice(-8)
-        .filter((item) => item && typeof item.content === 'string')
-        .map((item) => ({
-          role: item.role === 'assistant' ? 'assistant' : 'user',
-          content: item.content
-        }))
+    ? dedupeMessages(
+        messages
+          .slice(-8)
+          .filter((item) => item && typeof item.content === 'string')
+          .map((item) => ({
+            role: item.role === 'assistant' ? 'assistant' : 'user',
+            content: item.content
+          })),
+        safePrompt
+      )
     : []
 
   const requestMessages = [
@@ -161,8 +243,11 @@ export async function runLangChainRecommend({
       content: [
         '你是音乐推荐助手。',
         '严格只返回 JSON，不要 Markdown，不要代码块，不要额外解释。',
-        'JSON 结构固定：{"intent": string, "reason": string}。',
-        'intent 请简洁概括用户意图（<=32字）；reason 请说明依据（<=120字）。'
+        'JSON 结构固定：{"intent": string, "reason": string, "artist": string, "count": number, "mood": string, "language": string, "include": string[], "exclude": string[], "adjustmentType": "add"|"remove"|"replace"|"none"}。',
+        'intent <=32字，reason <=120字。',
+        'count 必须是数字；无法确定时填 0。',
+        'artist 仅填明确歌手名；如果是“这个歌手/该歌手”这类指代，artist 置空。',
+        'include/exclude 仅放短关键词，不要长句。'
       ].join(' ')
     },
     ...recentMessages,
@@ -173,15 +258,13 @@ export async function runLangChainRecommend({
   ]
 
   const endpoint = `${String(targetBaseUrl).replace(/\/+$/, '')}/chat/completions`
+  const baseTimeout = Number(timeoutMs) || 28000
   const attempts = promptIsLong
     ? [
-        { timeout: Number(timeoutMs) || 35000, recentCount: 4, maxTokens: 180 },
-        { timeout: Math.max(Number(timeoutMs) || 35000, 50000), recentCount: 2, maxTokens: 120 }
+        { timeout: Math.min(baseTimeout, 28000), recentCount: 3, maxTokens: 120 },
+        { timeout: Math.max(baseTimeout, 36000), recentCount: 2, maxTokens: 90 }
       ]
-    : [
-        { timeout: Number(timeoutMs) || 35000, recentCount: 8, maxTokens: 220 },
-        { timeout: Math.max(Number(timeoutMs) || 35000, 50000), recentCount: 4, maxTokens: 160 }
-      ]
+    : [{ timeout: Math.min(baseTimeout, 24000), recentCount: 4, maxTokens: 120 }]
 
   let lastError = null
   const trace = {
@@ -195,11 +278,11 @@ export async function runLangChainRecommend({
 
   for (let index = 0; index < attempts.length; index += 1) {
     const attempt = attempts[index]
-    const slicedMessages = [
+    const slicedMessages = trimMessagesForLatency([
       requestMessages[0],
       ...recentMessages.slice(-attempt.recentCount),
       requestMessages[requestMessages.length - 1]
-    ]
+    ])
 
     try {
       const response = await requestChatCompletion({
@@ -250,7 +333,21 @@ export async function runLangChainRecommend({
 
       return {
         intent: parsed.intent || '',
-        reason: parsed.reason || ''
+        reason: parsed.reason || '',
+        artist: parsed.artist || '',
+        count: Number(parsed.count) || 0,
+        mood: parsed.mood || '',
+        language: parsed.language || '',
+        include: Array.isArray(parsed.include) ? parsed.include : [],
+        exclude: Array.isArray(parsed.exclude) ? parsed.exclude : [],
+        adjustmentType: parsed.adjustmentType || 'none',
+        llmTrace: {
+          prompt: safePrompt,
+          promptIsLong,
+          model: targetModel,
+          attemptCount: trace.attempts.length,
+          latestAttempt: trace.attempts[trace.attempts.length - 1] || null
+        }
       }
     } catch (error) {
       lastError = error

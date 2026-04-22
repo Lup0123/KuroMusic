@@ -28,6 +28,8 @@ const RESIZE_PERSIST_DELAY = 180
 
 const aiPlaylistStore = useAiPlaylistStore()
 const themeVars = useThemeVars()
+const preloaded = ref(false)
+const preloadPending = ref(false)
 
 const dock = ref('right')
 const y = ref(120)
@@ -46,8 +48,10 @@ let resizePersistTimer = null
 
 const ballStyle = computed(() => ({
   top: `${y.value}px`,
-  left: dock.value === 'left' ? `var(--ai-float-ball-edge-offset, ${OFFSET_DEFAULTS.edge}px)` : 'auto',
-  right: dock.value === 'right' ? `var(--ai-float-ball-edge-offset, ${OFFSET_DEFAULTS.edge}px)` : 'auto',
+  left:
+    dock.value === 'left' ? `var(--ai-float-ball-edge-offset, ${OFFSET_DEFAULTS.edge}px)` : 'auto',
+  right:
+    dock.value === 'right' ? `var(--ai-float-ball-edge-offset, ${OFFSET_DEFAULTS.edge}px)` : 'auto',
   background: themeVars.value.primaryColor,
   color: themeVars.value.baseColor
 }))
@@ -117,7 +121,12 @@ function onPointerMove(event) {
   const nextY = dragState.startBallY + (event.clientY - dragState.startY)
   y.value = clampY(nextY)
 
-  const movedDistance = getDistance(dragState.startX, dragState.startY, event.clientX, event.clientY)
+  const movedDistance = getDistance(
+    dragState.startX,
+    dragState.startY,
+    event.clientX,
+    event.clientY
+  )
   if (movedDistance > CLICK_DISTANCE_THRESHOLD) {
     dragState.moved = true
   }
@@ -134,7 +143,7 @@ function onPointerUp(event) {
   persistPosition()
 
   if (!dragState.moved) {
-    aiPlaylistStore.openModal()
+    void globalThis?.window?.api?.openAiWindow?.()
   }
 }
 
@@ -152,7 +161,25 @@ function onClick() {
     return
   }
 
-  aiPlaylistStore.openModal()
+  if (preloadPending.value) return
+
+  if (preloaded.value) {
+    void globalThis?.window?.api?.openAiWindow?.()
+    return
+  }
+
+  preloadPending.value = true
+  import('@/components/ai/AIPlaylistModal.vue')
+    .then(() => {
+      preloaded.value = true
+    })
+    .catch(() => {
+      // ignore preload failure and fallback to normal async render
+    })
+    .finally(() => {
+      preloadPending.value = false
+      void globalThis?.window?.api?.openAiWindow?.()
+    })
 }
 
 function onPointerDown(event) {

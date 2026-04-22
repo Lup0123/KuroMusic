@@ -1,14 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { recommend } from '../providerAdapter'
 
-vi.mock('../ruleProvider', () => ({
-  recommendByRule: vi.fn(async () => ({
-    recommendations: [{ id: 'rule', title: '规则推荐' }],
-    draft: { name: '规则歌单', reason: 'rule', songs: [{ id: 1, name: 'song-1' }] },
-    debug: { provider: 'rule' }
-  }))
-}))
-
 describe('providerAdapter', () => {
   beforeEach(() => {
     vi.restoreAllMocks()
@@ -32,40 +24,36 @@ describe('providerAdapter', () => {
     expect(result.draft.name).toBe('LLM歌单')
   })
 
-  it('forces rule provider when providerMode is rule', async () => {
+  it('always uses llm provider even when providerMode is rule', async () => {
     const result = await recommend('通勤', { useLLM: true, providerMode: 'rule' })
 
-    expect(window.api.aiRecommendPlaylist).not.toHaveBeenCalled()
-    expect(result.draft.name).toBe('规则歌单')
+    expect(window.api.aiRecommendPlaylist).toHaveBeenCalledOnce()
+    expect(result.draft.name).toBe('LLM歌单')
   })
 
-  it('falls back to rule provider when llm provider fails', async () => {
-    window.api.aiRecommendPlaylist.mockRejectedValueOnce(new Error('llm error'))
-
-    const result = await recommend('通勤', { useLLM: true })
-
-    expect(result.draft.name).toBe('规则歌单')
-    expect(result.debug.fallback).toBe('rule')
-    expect(result.debug.llmErrorType).toBe('unknown')
-  })
-
-  it('falls back with timeout classification when llm request times out', async () => {
+  it('returns timeout fallback result when llm request times out', async () => {
     window.api.aiRecommendPlaylist.mockImplementationOnce(() => new Promise(() => {}))
 
-    const result = await recommend('深夜电子', { useLLM: true, timeoutMs: 20 })
+    const result = await recommend('深夜电子', {
+      useLLM: true,
+      timeoutMs: 20,
+      baseSongs: [{ id: 99, name: 'base-song', artist: 'artist-1' }]
+    })
 
-    expect(result.debug.fallback).toBe('rule')
+    expect(result.debug.fallback).toBe('timeout_guard')
     expect(result.debug.llmErrorType).toBe('timeout')
+    expect(result.draft.songs).toHaveLength(1)
   })
 
-  it('classifies auth errors from llm and falls back', async () => {
-    const authError = new Error('401 Unauthorized')
-    authError.status = 401
-    window.api.aiRecommendPlaylist.mockRejectedValueOnce(authError)
+  it('throws on non-timeout llm errors', async () => {
+    window.api.aiRecommendPlaylist.mockRejectedValueOnce(new Error('llm error'))
 
-    const result = await recommend('通勤', { useLLM: true })
+    await expect(recommend('通勤', { useLLM: true })).rejects.toThrow('llm error')
+  })
 
-    expect(result.debug.fallback).toBe('rule')
-    expect(result.debug.llmErrorType).toBe('auth')
+  it('throws when llm api bridge is unavailable', async () => {
+    globalThis.window = { api: {} }
+
+    await expect(recommend('通勤', { useLLM: true })).rejects.toThrow('LLM provider is unavailable')
   })
 })

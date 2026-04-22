@@ -4,7 +4,8 @@
     <n-message-provider>
       <n-dialog-provider>
         <n-notification-provider>
-          <router-view />
+          <AIPlaylistModal v-if="windowRole === 'ai'" />
+          <router-view v-else-if="windowRole === 'main'" />
         </n-notification-provider>
       </n-dialog-provider>
     </n-message-provider>
@@ -14,10 +15,14 @@
 <script setup>
 import { computed, ref, provide, onMounted, watchEffect } from 'vue'
 import { darkTheme, NConfigProvider } from 'naive-ui'
+import AIPlaylistModal from '@/components/ai/AIPlaylistModal.vue'
+import { useAiPlaylistStore } from '@/stores/aiPlaylistStore'
 
 const isDarkMode = ref(false)
+const windowRole = ref('unknown')
 const primaryColor = ref('#165DFF')
 const primaryHoverColor = ref('#4080FF')
+const aiPlaylistStore = useAiPlaylistStore()
 
 const PRIMARY_HOVER_COLOR_MAP = {
   '#165DFF': '#4080FF',
@@ -93,6 +98,18 @@ onMounted(() => {
     const savedHoverColor = localStorage.getItem('primary-hover-color')
     applyPrimaryTheme(savedColor, savedHoverColor)
   }
+
+  globalThis?.window?.api
+    ?.getWindowRole?.()
+    .then((role) => {
+      windowRole.value = role === 'ai' ? 'ai' : 'main'
+      if (windowRole.value === 'ai') {
+        aiPlaylistStore.openModal()
+      }
+    })
+    .catch(() => {
+      windowRole.value = 'main'
+    })
 })
 </script>
 

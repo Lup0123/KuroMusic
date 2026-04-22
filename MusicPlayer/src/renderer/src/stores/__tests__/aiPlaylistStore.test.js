@@ -57,14 +57,14 @@ describe('aiPlaylistStore', () => {
     expect(store.pendingDraftDiff).toEqual({ addedSongs: [], removedSongs: [] })
     expect(store.pendingDraftSelection).toEqual({ addedSongIds: [], removedSongIds: [] })
     expect(store.pendingApplyMode).toBe('standard')
-    expect(store.providerMode).toBe('auto')
+    expect(store.providerMode).toBe('llm')
     expect(store.sessions).toHaveLength(1)
     expect(store.currentSessionId).toBe(store.sessions[0].id)
   })
 
   it('persists and restores ai store snapshot from localStorage', () => {
     const snapshot = {
-      providerMode: 'rule',
+      providerMode: 'llm',
       recentPrompts: ['通勤', '夜跑'],
       generationMetrics: [{ prompt: '通勤', provider: 'rule', success: true, time: Date.now() }],
       sessions: [
@@ -92,7 +92,7 @@ describe('aiPlaylistStore', () => {
     const store = useAiPlaylistStore()
     store.restoreStoreState()
 
-    expect(store.providerMode).toBe('rule')
+    expect(store.providerMode).toBe('llm')
     expect(store.recentPrompts).toEqual(['通勤', '夜跑'])
     expect(store.currentSessionId).toBe('session-persist-1')
     expect(store.prompt).toBe('测试提示词')
@@ -149,17 +149,50 @@ describe('aiPlaylistStore', () => {
     expect(typeof store.chatMessages[0].id).toBe('string')
   })
 
+  it('returns message id and can update chat message by id', () => {
+    const store = useAiPlaylistStore()
+    const id = store.addChatMessage('assistant', '处理中', {
+      provider: 'llm',
+      type: 'status',
+      stage: 'pending'
+    })
+
+    const ok = store.updateChatMessageById(id, {
+      content: '处理完成',
+      type: 'recommendation',
+      meta: { stage: 'done' }
+    })
+
+    expect(ok).toBe(true)
+    expect(store.chatMessages[0].content).toBe('处理完成')
+    expect(store.chatMessages[0].type).toBe('recommendation')
+    expect(store.chatMessages[0].meta).toMatchObject({ stage: 'done' })
+  })
+
+  it('uses placeholder content for streaming and replaces on first chunk', () => {
+    const store = useAiPlaylistStore()
+    store.startStreamingAssistantMessage()
+    expect(store.chatMessages[0].content).toBe('思考中...')
+    expect(store.chatMessages[0].meta?.placeholder).toBe(true)
+
+    store.appendStreamingToken('第一段')
+    store.flushStreamingBuffer(true)
+
+    expect(store.chatMessages[0].content).toBe('第一段')
+    expect(store.chatMessages[0].meta?.placeholder).toBe(false)
+  })
+
   it('supports switching provider mode', () => {
     const store = useAiPlaylistStore()
 
     store.setProviderMode('rule')
-    expect(store.providerMode).toBe('rule')
+    expect(store.providerMode).toBe('llm')
 
     store.setProviderMode('llm')
     expect(store.providerMode).toBe('llm')
 
     store.setProviderMode('invalid')
-    expect(store.providerMode).toBe('auto')
+    expect(store.providerMode).toBe('llm')
   })
 
   it('tracks recent prompts in most-recent order without duplicates', async () => {
@@ -196,7 +229,7 @@ describe('aiPlaylistStore', () => {
     expect(lastContext).toMatchObject({
       maxSongs: 30,
       useLLM: true,
-      providerMode: 'auto'
+      providerMode: 'llm'
     })
     expect(Array.isArray(lastContext.messages)).toBe(true)
     expect(lastContext.messages.at(-1)).toMatchObject({ role: 'user', content: '学习' })
@@ -315,7 +348,7 @@ describe('aiPlaylistStore', () => {
     expect(providerAdapter.recommend).toHaveBeenCalledWith('通勤想听轻松中文歌', {
       maxSongs: 30,
       useLLM: true,
-      providerMode: 'auto',
+      providerMode: 'llm',
       messages: [{ role: 'user', content: '通勤想听轻松中文歌' }],
       baseSongs: []
     })
@@ -342,7 +375,7 @@ describe('aiPlaylistStore', () => {
     expect(providerAdapter.recommend).toHaveBeenCalledWith('夜跑电子乐', {
       maxSongs: 30,
       useLLM: true,
-      providerMode: 'auto',
+      providerMode: 'llm',
       messages: [{ role: 'user', content: '夜跑电子乐' }],
       baseSongs: []
     })
@@ -703,7 +736,7 @@ describe('aiPlaylistStore', () => {
     expect(store.pendingDraftSelection.removedSongIds).toEqual([])
   })
 
-  it('adds fallback status message when llm fails and rule fallback is used', async () => {
+  it('adds fallback status message when llm timeout guard is used', async () => {
     providerAdapter.recommend.mockResolvedValue({
       recommendations: [{ id: 'rule', title: '规则推荐' }],
       draft: {
@@ -712,8 +745,8 @@ describe('aiPlaylistStore', () => {
         songs: [{ id: 1, name: 'song-1' }]
       },
       debug: {
-        provider: 'rule',
-        fallback: 'rule',
+        provider: 'llm',
+        fallback: 'timeout_guard',
         llmErrorType: 'auth'
       }
     })
@@ -746,7 +779,7 @@ describe('aiPlaylistStore', () => {
           reason: 'rule',
           songs: [{ id: 2, name: 'song-2' }]
         },
-        debug: { provider: 'rule', fallback: 'rule', llmErrorType: 'timeout' }
+        debug: { provider: 'llm', fallback: 'timeout_guard', llmErrorType: 'timeout' }
       })
 
     const store = useAiPlaylistStore()
@@ -762,7 +795,7 @@ describe('aiPlaylistStore', () => {
     })
     expect(store.generationMetrics[1]).toMatchObject({
       prompt: '第二次',
-      provider: 'rule',
+      provider: 'llm',
       fallback: true,
       llmErrorType: 'timeout',
       success: true
@@ -786,7 +819,7 @@ describe('aiPlaylistStore', () => {
 
     expect(snapshot).toMatchObject({
       prompt: '导出测试',
-      providerMode: 'auto',
+      providerMode: 'llm',
       draftSongCount: 1
     })
     expect(Array.isArray(snapshot.chatMessages)).toBe(true)
@@ -842,5 +875,73 @@ describe('aiPlaylistStore', () => {
     expect(store.loading).toBe(false)
     expect(store.draftPlaylist.name).toBe('已有草稿')
     expect(store.error).toContain('已取消')
+  })
+
+  it('classifies network interruption as reconnectable stream error', () => {
+    const store = useAiPlaylistStore()
+
+    expect(store.shouldAutoReconnectStream({ code: 'network' })).toBe(true)
+    expect(store.shouldAutoReconnectStream({ code: 'timeout' })).toBe(true)
+    expect(store.shouldAutoReconnectStream({ message: 'fetch failed' })).toBe(true)
+    expect(store.shouldAutoReconnectStream({ code: 'http', message: 'HTTP 401' })).toBe(false)
+  })
+
+  it('retries chat stream automatically after network interruption', async () => {
+    vi.useFakeTimers()
+    const store = useAiPlaylistStore()
+    store.loading = true
+
+    const listeners = {
+      chunk: null,
+      end: null,
+      error: null
+    }
+
+    const api = {
+      onAiChatStreamChunk: vi.fn((cb) => {
+        listeners.chunk = cb
+        return () => {}
+      }),
+      onAiChatStreamEnd: vi.fn((cb) => {
+        listeners.end = cb
+        return () => {}
+      }),
+      onAiChatStreamError: vi.fn((cb) => {
+        listeners.error = cb
+        return () => {}
+      }),
+      aiChatStream: vi
+        .fn()
+        .mockImplementationOnce((payload) => {
+          listeners.error?.({
+            requestId: payload.requestId,
+            code: 'network',
+            message: 'fetch failed'
+          })
+          return Promise.resolve({
+            success: false,
+            requestId: payload.requestId,
+            errorCode: 'network'
+          })
+        })
+        .mockImplementationOnce((payload) => {
+          listeners.chunk?.({ requestId: payload.requestId, token: '继续输出' })
+          listeners.end?.({ requestId: payload.requestId, finishReason: 'stop' })
+          return Promise.resolve({ success: true, requestId: payload.requestId })
+        })
+    }
+
+    globalThis.window = { api }
+
+    const runPromise = store.startDiscussionStream('测试自动重连')
+    await vi.runOnlyPendingTimersAsync()
+    await runPromise
+
+    expect(api.aiChatStream).toHaveBeenCalledTimes(2)
+    expect(store.streaming).toBe(false)
+    expect(store.chatMessages.some((item) => String(item.content).includes('自动重连'))).toBe(true)
+    expect(store.chatMessages.some((item) => String(item.content).includes('继续输出'))).toBe(true)
+
+    vi.useRealTimers()
   })
 })

@@ -15,13 +15,13 @@ function getSongFailureReason(error) {
 function mapLlmErrorTypeToMessage(errorType) {
   switch (errorType) {
     case 'auth':
-      return 'AI服务鉴权失败，已切换到规则推荐。请检查设置中的 Alibaba API Key。'
+      return 'AI服务鉴权失败，请检查设置中的 Alibaba API Key。'
     case 'rate_limit':
-      return 'AI服务触发限流，已切换到规则推荐。稍后可重试。'
+      return 'AI服务触发限流，请稍后重试。'
     case 'timeout':
-      return 'AI请求超时，已切换到规则推荐。'
+      return 'AI请求超时，已启用兜底结果。'
     case 'network':
-      return 'AI网络请求失败，已切换到规则推荐。'
+      return 'AI网络请求失败，请检查网络后重试。'
     default:
       return ''
   }
@@ -171,9 +171,22 @@ export const useAiPlaylistStore = defineStore('aiPlaylist', {
       pendingApplyMode: 'standard',
       activeRequestId: 0,
       canceledRequestIds: [],
-      providerMode: 'auto',
+      providerMode: 'llm',
       recentPrompts: [],
       generationMetrics: [],
+      lastLlmTraceSummary: null,
+      chatMode: 'recommend',
+      streaming: false,
+      streamingMessageId: null,
+      streamBuffer: '',
+      streamFlushIntervalMs: 60,
+      lastStreamFlushAt: 0,
+      streamRequestId: '',
+      streamCleanup: [],
+      streamReconnectAttempt: 0,
+      streamReconnectTimer: null,
+      streamMaxReconnectAttempts: 2,
+      streamReconnectBaseDelayMs: 800,
       sessions: [initialSession],
       currentSessionId: initialSession.id,
       creating: false,
@@ -307,15 +320,20 @@ export const useAiPlaylistStore = defineStore('aiPlaylist', {
     },
 
     setProviderMode(mode) {
-      const allowedModes = new Set(['auto', 'llm', 'rule'])
-      this.providerMode = allowedModes.has(mode) ? mode : 'auto'
+      const allowedModes = new Set(['llm'])
+      this.providerMode = allowedModes.has(mode) ? mode : 'llm'
       this.persistStoreState()
+    },
+
+    setChatMode(mode) {
+      this.chatMode = mode === 'chat' ? 'chat' : 'recommend'
     },
 
     addChatMessage(role, content, meta = {}) {
       const { provider = 'rule', type = 'text', error = false, ...restMeta } = meta || {}
+      const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
       this.chatMessages.push({
-        id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        id,
         role,
         content: String(content ?? ''),
         time: Date.now(),
@@ -323,6 +341,278 @@ export const useAiPlaylistStore = defineStore('aiPlaylist', {
         type,
         error: Boolean(error),
         meta: restMeta
+      })
+      return id
+    },
+
+    updateChatMessageById(messageId, patch = {}) {
+      if (!messageId) return false
+      const target = this.chatMessages.find((item) => item.id === messageId)
+      if (!target) return false
+
+      const nextMeta = patch.meta ? { ...(target.meta || {}), ...(patch.meta || {}) } : target.meta
+
+      Object.assign(target, {
+        ...patch,
+        meta: nextMeta,
+        time: Date.now()
+      })
+      return true
+    },
+
+    startStreamingAssistantMessage() {
+      const messageId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+      this.chatMessages.push({
+        id: messageId,
+        role: 'assistant',
+        content: '思考中...',
+        time: Date.now(),
+        provider: 'llm',
+        type: 'streaming',
+        error: false,
+        meta: { placeholder: true }
+      })
+      this.streaming = true
+      this.streamingMessageId = messageId
+      this.streamBuffer = ''
+      this.lastStreamFlushAt = 0
+      return messageId
+    },
+
+    flushStreamingBuffer(force = false) {
+      if (!this.streamingMessageId || !this.streamBuffer) return
+      const now = Date.now()
+      if (!force && now - this.lastStreamFlushAt < this.streamFlushIntervalMs) return
+
+      const target = this.chatMessages.find((item) => item.id === this.streamingMessageId)
+      if (!target) return
+      if (target?.meta?.placeholder) {
+        target.content = ''
+        target.meta = {
+          ...(target.meta || {}),
+          placeholder: false
+        }
+      }
+      target.content = `${target.content || ''}${this.streamBuffer}`
+      target.time = now
+      this.streamBuffer = ''
+      this.lastStreamFlushAt = now
+    },
+
+    appendStreamingToken(token) {
+      this.streamBuffer += String(token || '')
+      this.flushStreamingBuffer(false)
+    },
+
+    finishStreamingMessage(meta = {}) {
+      this.flushStreamingBuffer(true)
+      const target = this.chatMessages.find((item) => item.id === this.streamingMessageId)
+      if (target) {
+        target.type = 'text'
+        target.meta = {
+          ...(target.meta || {}),
+          ...meta
+        }
+      }
+      this.streaming = false
+      this.streamingMessageId = null
+      this.streamBuffer = ''
+      this.lastStreamFlushAt = 0
+      this.streamRequestId = ''
+    },
+
+    clearStreamListeners() {
+      for (const off of this.streamCleanup) {
+        try {
+          off?.()
+        } catch {
+          // ignore
+        }
+      }
+      this.streamCleanup = []
+    },
+
+    clearStreamReconnectTimer() {
+      if (this.streamReconnectTimer) {
+        clearTimeout(this.streamReconnectTimer)
+        this.streamReconnectTimer = null
+      }
+    },
+
+    getStreamingAssistantContent() {
+      if (!this.streamingMessageId) return ''
+      const target = this.chatMessages.find((item) => item.id === this.streamingMessageId)
+      return String(target?.content || '')
+    },
+
+    shouldAutoReconnectStream(payload = {}) {
+      const code = String(payload?.code || payload?.errorCode || '').toLowerCase()
+      if (code === 'timeout' || code === 'network') return true
+
+      const message = String(payload?.message || payload?.error || '').toLowerCase()
+      return (
+        message.includes('network') ||
+        message.includes('fetch failed') ||
+        message.includes('timed out') ||
+        message.includes('timeout')
+      )
+    },
+
+    getStreamReconnectDelayMs(attempt) {
+      const safeAttempt = Math.max(1, Number(attempt) || 1)
+      const delay = this.streamReconnectBaseDelayMs * 2 ** (safeAttempt - 1)
+      return Math.min(4000, delay)
+    },
+
+    async startDiscussionStream(prompt) {
+      const baseRequestId = `chat-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+      this.clearStreamListeners()
+      this.clearStreamReconnectTimer()
+      this.streamReconnectAttempt = 0
+      this.startStreamingAssistantMessage()
+
+      return new Promise((resolve, reject) => {
+        let settled = false
+
+        const finishOk = (result) => {
+          if (settled) return
+          settled = true
+          this.clearStreamListeners()
+          this.clearStreamReconnectTimer()
+          this.streamReconnectAttempt = 0
+          resolve(result)
+        }
+
+        const finishError = (message, payload = {}) => {
+          if (settled) return
+          settled = true
+          this.finishStreamingMessage({
+            error: true,
+            code: payload?.code || payload?.errorCode || ''
+          })
+          this.error = String(message || 'AI 对话失败')
+          this.addChatMessage('assistant', this.error, {
+            provider: 'llm',
+            type: 'error',
+            error: true,
+            reason: this.error
+          })
+          this.clearStreamListeners()
+          this.clearStreamReconnectTimer()
+          this.streamReconnectAttempt = 0
+          reject(new Error(this.error))
+        }
+
+        const startAttempt = async () => {
+          if (settled || !this.loading) return
+
+          const attempt = this.streamReconnectAttempt
+          const requestId =
+            attempt > 0 ? `${baseRequestId}-retry-${attempt}` : `${baseRequestId}-attempt-0`
+          this.streamRequestId = requestId
+          this.clearStreamListeners()
+
+          const offChunk = globalThis?.window?.api?.onAiChatStreamChunk?.((payload) => {
+            if (!payload || payload.requestId !== this.streamRequestId) return
+            this.appendStreamingToken(payload.token)
+          })
+
+          const offEnd = globalThis?.window?.api?.onAiChatStreamEnd?.((payload) => {
+            if (!payload || payload.requestId !== this.streamRequestId) return
+            this.finishStreamingMessage({ finishReason: payload.finishReason || 'stop' })
+            finishOk({ success: true, requestId: payload.requestId })
+          })
+
+          const offError = globalThis?.window?.api?.onAiChatStreamError?.((payload) => {
+            if (!payload || payload.requestId !== this.streamRequestId || settled) return
+
+            const canRetry =
+              this.shouldAutoReconnectStream(payload) &&
+              this.streamReconnectAttempt < this.streamMaxReconnectAttempts &&
+              this.loading
+
+            if (canRetry) {
+              this.streamReconnectAttempt += 1
+              const current = this.streamReconnectAttempt
+              const delay = this.getStreamReconnectDelayMs(current)
+              this.addChatMessage(
+                'assistant',
+                `网络中断，正在自动重连（${current}/${this.streamMaxReconnectAttempts}）...`,
+                {
+                  provider: 'llm',
+                  type: 'status',
+                  reason: 'stream_reconnect'
+                }
+              )
+              this.clearStreamListeners()
+              this.clearStreamReconnectTimer()
+              this.streamReconnectTimer = setTimeout(() => {
+                this.streamReconnectTimer = null
+                startAttempt()
+              }, delay)
+              return
+            }
+
+            finishError(String(payload.message || 'AI 对话失败'), payload)
+          })
+
+          this.streamCleanup = [offChunk, offEnd, offError].filter(Boolean)
+
+          try {
+            const resumeFrom = this.getStreamingAssistantContent().slice(-240)
+            const result = await globalThis.window.api.aiChatStream({
+              requestId,
+              prompt,
+              timeoutMs: 35000,
+              resumeFrom,
+              messages: this.chatMessages
+                .filter((item) => item?.role === 'user' || item?.role === 'assistant')
+                .map((item) => ({ role: item.role, content: item.content }))
+            })
+
+            if (!result?.success && result?.requestId === this.streamRequestId) {
+              const canRetry =
+                this.shouldAutoReconnectStream(result) &&
+                this.streamReconnectAttempt < this.streamMaxReconnectAttempts &&
+                this.loading
+              if (!canRetry) {
+                finishError(String(result?.error || 'AI 对话失败'), result)
+              }
+            }
+          } catch (error) {
+            if (!settled) {
+              const payload = { code: 'network', message: error?.message || 'AI 对话失败' }
+              const canRetry =
+                this.shouldAutoReconnectStream(payload) &&
+                this.streamReconnectAttempt < this.streamMaxReconnectAttempts &&
+                this.loading
+              if (canRetry) {
+                this.streamReconnectAttempt += 1
+                const current = this.streamReconnectAttempt
+                const delay = this.getStreamReconnectDelayMs(current)
+                this.addChatMessage(
+                  'assistant',
+                  `网络中断，正在自动重连（${current}/${this.streamMaxReconnectAttempts}）...`,
+                  {
+                    provider: 'llm',
+                    type: 'status',
+                    reason: 'stream_reconnect'
+                  }
+                )
+                this.clearStreamListeners()
+                this.clearStreamReconnectTimer()
+                this.streamReconnectTimer = setTimeout(() => {
+                  this.streamReconnectTimer = null
+                  startAttempt()
+                }, delay)
+              } else {
+                finishError(payload.message, payload)
+              }
+            }
+          }
+        }
+
+        startAttempt()
       })
     },
 
@@ -352,14 +642,55 @@ export const useAiPlaylistStore = defineStore('aiPlaylist', {
         this.addChatMessage('user', text)
       }
 
+      if (this.chatMode === 'chat') {
+        try {
+          const streamResult = await this.startDiscussionStream(text)
+          if (!streamResult?.success) {
+            const message = String(streamResult?.error || 'AI 对话失败')
+            this.error = message
+            return { success: false, error: message }
+          }
+          return { success: true, mode: 'chat' }
+        } catch (error) {
+          const message = getErrorMessage(error)
+          this.error = message
+          return { success: false, error: message }
+        } finally {
+          this.syncToSession()
+          if (requestId === this.activeRequestId) {
+            this.loading = false
+          }
+          this.canceledRequestIds = this.canceledRequestIds.filter((id) => id !== requestId)
+        }
+      }
+
       try {
+        const pendingRecommendationMessageId = this.addChatMessage(
+          'assistant',
+          '收到，正在为你整理歌单候选...',
+          {
+            provider: 'llm',
+            type: 'status',
+            reason: 'recommend_pending'
+          }
+        )
+
         const isAdjustment =
           this.chatMessages.filter((item) => item.role === 'user').length > 1 &&
           Array.isArray(this.draftPlaylist?.songs) &&
           this.draftPlaylist.songs.length > 0
 
         const llmMessages = this.chatMessages
-          .slice(-8)
+          .filter((item) => {
+            const type = String(item?.type || 'text')
+            const content = String(item?.content || '')
+
+            if (type === 'status' || type === 'error') return false
+            if (content.startsWith('已应用本次调整')) return false
+            if (content.startsWith('LLM原始错误')) return false
+            return item?.role === 'user' || item?.role === 'assistant'
+          })
+          .slice(-6)
           .map((item) => ({ role: item.role, content: item.content }))
 
         const result = await providerAdapter.recommend(text, {
@@ -414,30 +745,35 @@ export const useAiPlaylistStore = defineStore('aiPlaylist', {
         const metric = {
           id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
           prompt: text,
-          provider: result?.debug?.provider || 'rule',
-          fallback: result?.debug?.fallback === 'rule',
+          provider: result?.debug?.provider || 'llm',
+          fallback: Boolean(result?.debug?.fallback),
           llmErrorType: result?.debug?.llmErrorType || '',
           success: Boolean(draftForMessage?.songs?.length),
           generatedSongCount: draftForMessage?.songs?.length || 0,
           time: Date.now()
         }
         this.generationMetrics = [...this.generationMetrics.slice(-19), metric]
+        this.lastLlmTraceSummary = result?.debug?.llmTrace || null
 
         const assistantText = draftForMessage?.songs?.length
           ? `已根据你的描述生成「${draftForMessage.name}」，共 ${draftForMessage.songs.length} 首歌。`
           : '我暂时没有找到合适歌曲，可以换个描述再试一次。'
-        this.addChatMessage('assistant', assistantText, {
-          provider: result?.debug?.provider || 'rule',
+        this.updateChatMessageById(pendingRecommendationMessageId, {
+          content: assistantText,
+          provider: result?.debug?.provider || 'llm',
           type: 'recommendation',
-          intent: result?.debug?.intent || '',
-          reason: result?.debug?.reason || ''
+          error: false,
+          meta: {
+            intent: result?.debug?.intent || '',
+            reason: result?.debug?.reason || ''
+          }
         })
 
-        if (result?.debug?.fallback === 'rule') {
+        if (result?.debug?.fallback) {
           const fallbackMessage = mapLlmErrorTypeToMessage(result?.debug?.llmErrorType)
           if (fallbackMessage) {
             this.addChatMessage('assistant', fallbackMessage, {
-              provider: 'rule',
+              provider: 'llm',
               type: 'status',
               reason: result?.debug?.llmErrorType || 'unknown'
             })
@@ -445,7 +781,7 @@ export const useAiPlaylistStore = defineStore('aiPlaylist', {
 
           if (result?.debug?.llmErrorMessage) {
             this.addChatMessage('assistant', `LLM原始错误：${result.debug.llmErrorMessage}`, {
-              provider: 'rule',
+              provider: 'llm',
               type: 'status',
               reason: result?.debug?.llmErrorType || 'unknown'
             })
@@ -482,7 +818,7 @@ export const useAiPlaylistStore = defineStore('aiPlaylist', {
         this.recommendations = []
         this.draftPlaylist = null
         this.addChatMessage('assistant', message, {
-          provider: 'rule',
+          provider: 'llm',
           type: 'error',
           error: true,
           reason: message
@@ -510,6 +846,7 @@ export const useAiPlaylistStore = defineStore('aiPlaylist', {
         pendingDraftSongCount: this.pendingDraftPlaylist?.songs?.length || 0,
         chatMessages: this.chatMessages.slice(-20),
         generationMetrics: [...this.generationMetrics],
+        lastLlmTraceSummary: this.lastLlmTraceSummary,
         recentPrompts: [...this.recentPrompts],
         lastCreateResult: this.lastCreateResult
       }
@@ -520,6 +857,7 @@ export const useAiPlaylistStore = defineStore('aiPlaylist', {
         providerMode: this.providerMode,
         recentPrompts: this.recentPrompts,
         generationMetrics: this.generationMetrics,
+        lastLlmTraceSummary: this.lastLlmTraceSummary,
         sessions: this.sessions,
         currentSessionId: this.currentSessionId
       }
@@ -536,15 +874,14 @@ export const useAiPlaylistStore = defineStore('aiPlaylist', {
 
       this.sessions = sessions
       this.currentSessionId = restored.currentSessionId || sessions[0].id
-      this.providerMode = ['auto', 'llm', 'rule'].includes(restored.providerMode)
-        ? restored.providerMode
-        : 'auto'
+      this.providerMode = ['auto', 'llm', 'rule'].includes(restored.providerMode) ? 'llm' : 'llm'
       this.recentPrompts = Array.isArray(restored.recentPrompts)
         ? restored.recentPrompts.slice(0, 10)
         : []
       this.generationMetrics = Array.isArray(restored.generationMetrics)
         ? restored.generationMetrics.slice(-20)
         : []
+      this.lastLlmTraceSummary = restored.lastLlmTraceSummary || null
       this.syncFromSession()
       return true
     },
@@ -572,10 +909,15 @@ export const useAiPlaylistStore = defineStore('aiPlaylist', {
       if (!this.canceledRequestIds.includes(this.activeRequestId)) {
         this.canceledRequestIds = [...this.canceledRequestIds, this.activeRequestId]
       }
+      this.clearStreamReconnectTimer()
+      this.clearStreamListeners()
+      if (this.streaming) {
+        this.finishStreamingMessage({ canceled: true })
+      }
       this.loading = false
       this.error = '当前 AI 生成已取消'
       this.addChatMessage('assistant', '已取消本次生成请求。', {
-        provider: 'rule',
+        provider: 'llm',
         type: 'status',
         reason: 'user_canceled'
       })

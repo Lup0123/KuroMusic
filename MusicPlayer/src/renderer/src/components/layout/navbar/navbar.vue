@@ -33,22 +33,71 @@
       </n-button>
 
       <!-- 用户按钮 -->
-      <n-dropdown
+      <n-popover
         v-if="isLoggedIn"
+        v-model:show="showUserPopover"
         trigger="click"
-        :options="userMenuOptions"
-        @select="handleUserMenuSelect"
+        placement="bottom-end"
+        :show-arrow="false"
       >
-        <n-avatar
-          v-if="userInfo?.avatarUrl"
-          round
-          size="large"
-          class="user-avatar no-drag"
-          style="cursor: pointer"
-          :src="userInfo.avatarUrl"
-        >
-        </n-avatar>
-      </n-dropdown>
+        <template #trigger>
+          <div class="user-menu-trigger no-drag">
+            <n-avatar
+              v-if="userInfo?.avatarUrl"
+              round
+              size="large"
+              class="user-avatar"
+              :src="userInfo.avatarUrl"
+            />
+            <n-icon class="trigger-arrow" size="14"><ChevronDownOutline /></n-icon>
+          </div>
+        </template>
+
+        <div class="user-profile-card no-drag">
+          <div class="profile-top">
+            <n-avatar round :size="56" :src="userInfo?.avatarUrl" />
+            <div class="profile-main">
+              <div class="nickname">{{ userInfo?.nickname || '用户' }}</div>
+              <div class="user-meta">UID {{ userInfo?.userId || '-' }}</div>
+              <div class="profile-tags">
+                <n-tag v-if="userVipTag" size="small" round type="warning" class="vip-tag-chip">
+                  {{ userVipTag }}
+                </n-tag>
+                <n-tag size="small" round class="plain-chip"
+                  >等级 {{ userInfo?.level ?? '-' }}</n-tag
+                >
+              </div>
+            </div>
+          </div>
+
+          <div class="profile-stats">
+            <div class="stat-item">
+              <span class="stat-value">{{ formatProfileCount(userInfo?.follows) }}</span>
+              <span class="stat-label">关注</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-value">{{ formatProfileCount(userInfo?.followeds) }}</span>
+              <span class="stat-label">粉丝</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-value">{{ formatProfileCount(userInfo?.playlistCount) }}</span>
+              <span class="stat-label">歌单</span>
+            </div>
+          </div>
+
+          <div class="profile-signature">{{ userInfo?.signature || '听点喜欢的，过好今天。' }}</div>
+
+          <div class="user-quick-tip">
+            <span class="tip-dot"></span><span>登录态已同步，支持云端歌单管理</span>
+          </div>
+
+          <div class="user-popover-actions">
+            <n-button type="error" tertiary block @click="handleLogoutFromPopover"
+              >退出登录</n-button
+            >
+          </div>
+        </div>
+      </n-popover>
       <n-button v-else text size="large" class="no-drag" @click="showLoginModal = true">
         <template #icon>
           <n-icon><PersonOutline /></n-icon>
@@ -281,18 +330,19 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, computed, inject, h } from 'vue'
+import { ref, onMounted, onUnmounted, computed, inject } from 'vue'
 import { useRouter } from 'vue-router'
 import { useSearchStore } from '@/stores/searchStore'
 import { useUserStore } from '@/stores/userStore'
 import { storeToRefs } from 'pinia'
-import { useMessage } from 'naive-ui'
+import { NIcon, useMessage } from 'naive-ui'
 import SettingDrawer from '@/components/content/setting/setting.vue'
 import { ROUTE_NAMES } from '@/router/routeNames'
 import {
   SearchOutline,
   SettingsOutline,
   PersonOutline,
+  ChevronDownOutline,
   RemoveOutline,
   ExpandOutline,
   CloseOutline,
@@ -334,31 +384,18 @@ const userVipTag = computed(() => {
 const searchKeyword = ref('')
 const isDarkMode = computed(() => isDarkModeInjected?.value ?? false)
 
-// 用户菜单选项
-const userMenuOptions = computed(() => [
-  {
-    key: 'user-info',
-    type: 'render',
-    render: () =>
-      h('div', { class: 'user-info-dropdown' }, [
-        h('img', {
-          src: userInfo.value?.avatarUrl,
-          style: 'width: 48px; height: 48px; border-radius: 50%'
-        }),
-        h('div', { class: 'user-detail' }, [
-          h('div', { class: 'nickname' }, userInfo.value?.nickname || '用户'),
-          userVipTag.value ? h('div', { class: `vip-tag vip-tag--black` }, userVipTag.value) : null
-        ])
-      ])
-  },
-  { type: 'divider' },
-  { label: '退出登录', key: 'logout', icon: () => h('span', { style: 'margin-right: 8px' }, '↩') }
-])
+const formatProfileCount = (value) => {
+  const n = Number(value)
+  if (!Number.isFinite(n) || n < 0) return '--'
+  if (n >= 10000) return `${(n / 10000).toFixed(1)}w`
+  return String(n)
+}
 
-const handleUserMenuSelect = (key) => {
-  if (key === 'logout') {
-    handleLogout()
-  }
+const showUserPopover = ref(false)
+
+const handleLogoutFromPopover = async () => {
+  await handleLogout()
+  showUserPopover.value = false
 }
 
 // 登录相关状态
@@ -653,40 +690,194 @@ onUnmounted(() => {
   }
 }
 
-.user-info-dropdown {
-  display: flex;
+.user-menu-trigger {
+  display: inline-flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px 4px;
+  gap: 8px;
+  padding: 4px 10px 4px 4px;
+  border-radius: 999px;
+  cursor: pointer;
+  background: color-mix(in srgb, var(--n-color) 85%, transparent);
+  border: 1px solid color-mix(in srgb, var(--n-border-color) 70%, transparent);
+  transition: all 0.25s ease;
 
-  .user-detail {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
+  &:hover {
+    background: color-mix(in srgb, var(--n-color-modal) 90%, transparent);
+    border-color: color-mix(in srgb, var(--n-primary-color) 30%, var(--n-border-color));
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
 
-    .nickname {
-      font-size: 14px;
-      font-weight: 600;
-    }
-
-    .vip-tag {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: fit-content;
-      font-size: 11px;
-      line-height: 1;
-      padding: 3px 8px;
-      border-radius: 999px;
-      font-weight: 700;
-
-      &.vip-tag--black {
-        color: #8a5a00;
-        background: linear-gradient(135deg, #ffeab6 0%, #ffd67e 100%);
-        border: 1px solid #f0c25b;
-      }
+    .trigger-arrow {
+      color: var(--n-primary-color);
+      transform: translateY(1px);
     }
   }
+}
+
+.trigger-arrow {
+  color: var(--n-text-color-3);
+  transition: all 0.2s ease;
+}
+
+:deep(.user-profile-card) {
+  width: 100%;
+  min-width: 250px;
+  padding: 10px;
+  border-radius: 12px;
+  background:
+    radial-gradient(
+      circle at 12% 16%,
+      color-mix(in srgb, var(--n-primary-color) 14%, transparent),
+      transparent 48%
+    ),
+    linear-gradient(
+      155deg,
+      color-mix(in srgb, var(--n-color-modal) 92%, transparent),
+      var(--n-color)
+    );
+  border: 1px solid color-mix(in srgb, var(--n-primary-color) 14%, var(--n-border-color));
+}
+
+:deep(.profile-top) {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+
+  :deep(.n-avatar) {
+    box-shadow:
+      0 0 0 2px color-mix(in srgb, var(--n-primary-color) 24%, transparent),
+      0 8px 18px rgba(0, 0, 0, 0.16);
+  }
+}
+
+:deep(.profile-main) {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+:deep(.profile-tags) {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+:deep(.nickname) {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+:deep(.user-meta) {
+  font-size: 12px;
+  color: var(--n-text-color-3);
+  font-variant-numeric: tabular-nums;
+}
+
+:deep(.vip-tag-chip) {
+  :deep(.n-tag__content) {
+    font-weight: 700;
+  }
+}
+
+:deep(.plain-chip) {
+  :deep(.n-tag__content) {
+    color: var(--n-text-color-2);
+  }
+}
+
+:deep(.profile-stats) {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed color-mix(in srgb, var(--n-border-color) 90%, transparent);
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+:deep(.stat-item) {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+:deep(.stat-value) {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--n-text-color);
+  font-variant-numeric: tabular-nums;
+}
+
+:deep(.stat-label) {
+  font-size: 11px;
+  color: var(--n-text-color-3);
+}
+
+:deep(.profile-signature) {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed color-mix(in srgb, var(--n-border-color) 90%, transparent);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+:deep(.user-quick-tip) {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--n-text-color-3);
+  padding: 6px 12px 8px;
+}
+
+:deep(.tip-dot) {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--n-success-color);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--n-success-color) 20%, transparent);
+}
+
+:deep(.n-dropdown-menu) {
+  border-radius: 14px;
+  padding: 8px;
+  min-width: 220px;
+  border: 1px solid color-mix(in srgb, var(--n-border-color) 85%, transparent);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.16);
+}
+
+:deep(.n-dropdown-option) {
+  border-radius: 10px;
+}
+
+:deep(.n-dropdown-option-body) {
+  padding: 10px 12px;
+}
+
+:deep(.n-dropdown-option--disabled) {
+  cursor: default;
+}
+
+:deep(.n-dropdown-divider) {
+  margin: 8px 4px;
+}
+
+:deep(.dropdown-action) {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+:deep(.dropdown-action.danger) {
+  color: #d03050;
 }
 
 // 登录弹窗

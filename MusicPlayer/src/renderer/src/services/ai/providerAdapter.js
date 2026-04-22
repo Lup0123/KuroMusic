@@ -1,5 +1,3 @@
-import { recommendByRule } from './ruleProvider'
-
 function toPlainJson(value, fallback) {
   try {
     const serialized = JSON.stringify(value)
@@ -80,40 +78,59 @@ export function assertProviderResultShape(result) {
   return result
 }
 
-export async function recommend(prompt, context = {}) {
-  const providerMode = context?.providerMode || 'auto'
-  const shouldUseLLM = providerMode === 'llm' || (providerMode === 'auto' && context?.useLLM)
+function buildTimeoutFallbackResult(prompt, context = {}, error) {
+  const baseSongs = toPlainJson(context?.baseSongs, []).filter((song) => song?.id)
+  const safePrompt = String(prompt || '').trim()
 
-  if (shouldUseLLM && typeof globalThis?.window?.api?.aiRecommendPlaylist === 'function') {
-    try {
-      const ipcContext = buildIpcLlmContext(context)
-      const llmResult = await withTimeout(
-        globalThis.window.api.aiRecommendPlaylist(prompt, ipcContext),
-        Number(ipcContext?.timeoutMs) || 35000
-      )
-
-      if (llmResult && llmResult.success === false) {
-        const err = new Error(llmResult.error || 'LLM provider request failed')
-        err.status = llmResult.status
-        throw err
+  return {
+    recommendations: [
+      {
+        id: 'llm-timeout-guard',
+        title: 'AI 请求超时，已启用兜底结果',
+        reason: '请求超时后保留当前草稿，避免丢失上下文',
+        songs: baseSongs.slice(0, 20)
       }
-
-      return assertProviderResultShape(llmResult)
-    } catch (error) {
-      const ruleResult = await recommendByRule(prompt, context)
-      const normalizedRuleResult = {
-        ...ruleResult,
-        debug: {
-          ...(ruleResult?.debug || {}),
-          fallback: 'rule',
-          llmErrorType: classifyLlmError(error),
-          llmErrorMessage: String(error?.message || '')
-        }
-      }
-      return assertProviderResultShape(normalizedRuleResult)
+    ],
+    draft: {
+      name: context?.draftName || 'AI超时兜底歌单',
+      reason: safePrompt
+        ? `请求超时，已基于当前草稿兜底（原请求：${safePrompt.slice(0, 40)}）`
+        : '请求超时，已基于当前草稿兜底',
+      songs: baseSongs
+    },
+    debug: {
+      provider: 'llm',
+      fallback: 'timeout_guard',
+      llmErrorType: 'timeout',
+      llmErrorMessage: String(error?.message || '')
     }
   }
+}
 
-  const result = await recommendByRule(prompt, context)
-  return assertProviderResultShape(result)
+export async function recommend(prompt, context = {}) {
+  if (typeof globalThis?.window?.api?.aiRecommendPlaylist !== 'function') {
+    throw new Error('LLM provider is unavailable')
+  }
+
+  try {
+    const ipcContext = buildIpcLlmContext(context)
+    const llmResult = await withTimeout(
+      globalThis.window.api.aiRecommendPlaylist(prompt, ipcContext),
+      Number(ipcContext?.timeoutMs) || 35000
+    )
+
+    if (llmResult && llmResult.success === false) {
+      const err = new Error(llmResult.error || 'LLM provider request failed')
+      err.status = llmResult.status
+      throw err
+    }
+
+    return assertProviderResultShape(llmResult)
+  } catch (error) {
+    const llmErrorType = classifyLlmError(error)
+    if (llmErrorType === 'timeout') {
+      return assertProviderResultShape(buildTimeoutFallbackResult(prompt, context, error))
+    }
+    throw error
+  }
 }

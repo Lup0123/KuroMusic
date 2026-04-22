@@ -142,7 +142,7 @@
         <div class="setting-section version-info">
           <n-space vertical :size="4">
             <div class="version-item">
-              <span class="label">应用版本：</span><span class="value">v1.1.0</span>
+              <span class="label">应用版本：</span><span class="value">v1.2.0</span>
             </div>
             <div class="version-item">
               <span class="label">Developer:</span><span class="value">sluq</span>
