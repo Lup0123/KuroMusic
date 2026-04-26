@@ -60,215 +60,215 @@
       class="search-content"
       @scroll="handleContentScroll"
     >
-      <!-- 加载中 -->
-      <div v-if="loading" class="loading-container">
-        <n-spin size="large" />
-        <p class="loading-text">搜索中...</p>
-      </div>
+      <StateView
+        :loading="loading"
+        :empty="!loading && isSupportedTab && currentResults.length === 0"
+        loading-text="搜索中..."
+        empty-text="暂无搜索结果"
+      >
+        <!-- 单曲列表 -->
+        <div v-if="activeTab === 'songs'" class="songs-result-container">
+          <!-- 列表头部 -->
+          <div class="list-header">
+            <div class="header-col col-index">#</div>
+            <div class="header-col col-title">标题</div>
+            <div class="header-col col-album">专辑</div>
+            <div class="header-col col-actions">喜欢</div>
+            <div class="header-col col-duration">时长</div>
+          </div>
 
-      <!-- 无结果 -->
-      <n-empty
-        v-else-if="!loading && isSupportedTab && currentResults.length === 0"
-        description="暂无搜索结果"
-        class="empty-result"
-      />
+          <!-- 歌曲列表 -->
+          <div class="songs-list">
+            <div
+              v-for="(song, index) in currentResults"
+              :key="song.id"
+              class="song-row"
+              :class="{
+                active: currentSong?.id === song.id,
+                playing: currentSong?.id === song.id && isPlaying
+              }"
+              @dblclick="playSong(song)"
+            >
+              <!-- 搴忓彿/鎾斁鎸夐挳 -->
+              <div class="col-index">
+                <span class="row-number">{{ indexMethod(index) }}</span>
+                <div class="play-overlay">
+                  <n-button text class="play-btn" size="small" @click.stop="playSong(song)">
+                    <template #icon>
+                      <n-icon size="22">
+                        <PlaySharp v-if="currentSong?.id !== song.id || !isPlaying" />
+                        <PauseSharp v-else />
+                      </n-icon>
+                    </template>
+                  </n-button>
+                </div>
+              </div>
 
-      <!-- 单曲列表 -->
-      <div v-else-if="activeTab === 'songs'" class="songs-result-container">
-        <!-- 列表头部 -->
-        <div class="list-header">
-          <div class="header-col col-index">#</div>
-          <div class="header-col col-title">标题</div>
-          <div class="header-col col-album">专辑</div>
-          <div class="header-col col-actions">喜欢</div>
-          <div class="header-col col-duration">时长</div>
-        </div>
+              <!-- 歌曲信息 -->
+              <div class="col-title">
+                <div class="song-cover">
+                  <AppCover :src="song.albumCover" :width="40" :height="40" :size="80">
+                    <template #fallback>
+                      <div class="cover-placeholder">
+                        <n-icon><MusicalNotesOutline /></n-icon>
+                      </div>
+                    </template>
+                  </AppCover>
+                  <div v-if="currentSong?.id === song.id && isPlaying" class="cover-play-icon">
+                    <n-icon><VolumeHighOutline /></n-icon>
+                  </div>
+                </div>
+                <div class="song-info">
+                  <div class="song-name-wrapper">
+                    <span class="song-name" :title="song.name">{{ song.name }}</span>
+                    <div class="song-tags">
+                      <n-tag v-if="song.fee === 1 || song.fee === 4" type="error" size="small"
+                        >VIP</n-tag
+                      >
+                      <n-tag v-if="song.mvId" type="info" size="small">MV</n-tag>
+                    </div>
+                  </div>
+                  <div
+                    class="song-artist"
+                    :title="song.artist + (song.alias ? ' - ' + song.alias : '')"
+                  >
+                    {{ song.artist }}
+                    <span v-if="song.alias" class="song-alias">{{ song.alias }}</span>
+                  </div>
+                </div>
+              </div>
 
-        <!-- 歌曲列表 -->
-        <div class="songs-list">
-          <div
-            v-for="(song, index) in currentResults"
-            :key="song.id"
-            class="song-row"
-            :class="{
-              active: currentSong?.id === song.id,
-              playing: currentSong?.id === song.id && isPlaying
-            }"
-            @dblclick="playSong(song)"
-          >
-            <!-- 搴忓彿/鎾斁鎸夐挳 -->
-            <div class="col-index">
-              <span class="row-number">{{ indexMethod(index) }}</span>
-              <div class="play-overlay">
-                <n-button text class="play-btn" size="small" @click.stop="playSong(song)">
+              <!-- 专辑 -->
+              <div class="col-album" :title="song.album">
+                {{ song.album }}
+              </div>
+
+              <!-- 喜欢按钮 -->
+              <div class="col-actions">
+                <n-button
+                  text
+                  size="small"
+                  class="action-btn add-btn"
+                  @click.stop="addSongToPlaylist(song)"
+                >
                   <template #icon>
-                    <n-icon size="22">
-                      <PlaySharp v-if="currentSong?.id !== song.id || !isPlaying" />
-                      <PauseSharp v-else />
+                    <n-icon size="20"><FolderOpenOutline /></n-icon>
+                  </template>
+                </n-button>
+                <n-button
+                  text
+                  size="small"
+                  class="action-btn like-btn"
+                  @click.stop="toggleLike(song)"
+                >
+                  <template #icon>
+                    <n-icon size="20">
+                      <Heart v-if="song.liked" class="liked-icon" />
+                      <HeartOutline v-else />
                     </n-icon>
                   </template>
                 </n-button>
               </div>
-            </div>
 
-            <!-- 歌曲信息 -->
-            <div class="col-title">
-              <div class="song-cover">
-                <AppCover :src="song.albumCover" :width="40" :height="40" :size="80">
+              <!-- 时长 -->
+              <div class="col-duration">
+                {{ song.duration }}
+              </div>
+            </div>
+          </div>
+
+          <!-- 分页 -->
+          <div class="pagination-wrapper">
+            <n-pagination
+              v-model:page="currentPage"
+              :page-size="pageSize"
+              :item-count="totalCount"
+              show-quick-jumper
+              @update:page="handleCurrentChange"
+            />
+          </div>
+        </div>
+
+        <!-- 歌手列表 -->
+        <div v-else-if="activeTab === 'artists'" class="artists-result-container">
+          <div class="artists-list">
+            <div
+              v-for="artist in currentResults"
+              :key="artist.id"
+              class="artist-card"
+              title="点击查看歌手详情"
+              @click="handleArtistCardClick(artist)"
+            >
+              <div class="artist-avatar">
+                <AppCover :src="artist.picUrl" :width="72" :height="72" :size="144" :radius="999">
                   <template #fallback>
-                    <div class="cover-placeholder">
-                      <n-icon><MusicalNotesOutline /></n-icon>
+                    <div class="avatar-placeholder">
+                      <n-icon><PersonOutline /></n-icon>
                     </div>
                   </template>
                 </AppCover>
-                <div v-if="currentSong?.id === song.id && isPlaying" class="cover-play-icon">
-                  <n-icon><VolumeHighOutline /></n-icon>
+              </div>
+              <div class="artist-main">
+                <div class="artist-name" :title="artist.name">
+                  {{ artist.name || '未知歌手' }}
+                </div>
+                <div v-if="artist.alias" class="artist-alias" :title="artist.alias">
+                  {{ artist.alias }}
+                </div>
+                <div class="artist-meta">
+                  <span>粉丝 {{ formatCount(artist.fanCount) }}</span>
+                  <span>单曲 {{ artist.musicSize || 0 }}</span>
+                  <span>专辑 {{ artist.albumSize || 0 }}</span>
                 </div>
               </div>
-              <div class="song-info">
-                <div class="song-name-wrapper">
-                  <span class="song-name" :title="song.name">{{ song.name }}</span>
-                  <div class="song-tags">
-                    <n-tag v-if="song.fee === 1 || song.fee === 4" type="error" size="small"
-                      >VIP</n-tag
-                    >
-                    <n-tag v-if="song.mvId" type="info" size="small">MV</n-tag>
-                  </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 歌单列表 -->
+        <div v-else-if="activeTab === 'playlists'" class="playlists-result-container">
+          <div class="playlists-list">
+            <div
+              v-for="playlist in currentResults"
+              :key="playlist.id"
+              class="playlist-card"
+              @click="handlePlaylistCardClick(playlist)"
+            >
+              <div class="playlist-cover">
+                <AppCover :src="playlist.coverImgUrl" :width="88" :height="88" :size="176">
+                  <template #fallback>
+                    <div class="playlist-placeholder">
+                      <n-icon><FolderOutline /></n-icon>
+                    </div>
+                  </template>
+                </AppCover>
+              </div>
+              <div class="playlist-main">
+                <div class="playlist-name" :title="playlist.name">
+                  {{ playlist.name || '未命名歌单' }}
+                </div>
+                <div class="playlist-meta">
+                  <span>播放 {{ formatCount(playlist.playCount) }}</span>
+                  <span>曲目 {{ playlist.trackCount || 0 }}</span>
+                  <span v-if="playlist.creatorName">创建者 {{ playlist.creatorName }}</span>
                 </div>
                 <div
-                  class="song-artist"
-                  :title="song.artist + (song.alias ? ' - ' + song.alias : '')"
+                  v-if="playlist.description"
+                  class="playlist-desc"
+                  :title="playlist.description"
                 >
-                  {{ song.artist }}
-                  <span v-if="song.alias" class="song-alias">{{ song.alias }}</span>
+                  {{ playlist.description }}
                 </div>
               </div>
             </div>
-
-            <!-- 专辑 -->
-            <div class="col-album" :title="song.album">
-              {{ song.album }}
-            </div>
-
-            <!-- 喜欢按钮 -->
-            <div class="col-actions">
-              <n-button
-                text
-                size="small"
-                class="action-btn add-btn"
-                @click.stop="addSongToPlaylist(song)"
-              >
-                <template #icon>
-                  <n-icon size="20"><FolderOpenOutline /></n-icon>
-                </template>
-              </n-button>
-              <n-button
-                text
-                size="small"
-                class="action-btn like-btn"
-                @click.stop="toggleLike(song)"
-              >
-                <template #icon>
-                  <n-icon size="20">
-                    <Heart v-if="song.liked" class="liked-icon" />
-                    <HeartOutline v-else />
-                  </n-icon>
-                </template>
-              </n-button>
-            </div>
-
-            <!-- 时长 -->
-            <div class="col-duration">
-              {{ song.duration }}
-            </div>
           </div>
         </div>
 
-        <!-- 分页 -->
-        <div class="pagination-wrapper">
-          <n-pagination
-            v-model:page="currentPage"
-            :page-size="pageSize"
-            :item-count="totalCount"
-            show-quick-jumper
-            @update:page="handleCurrentChange"
-          />
+        <!-- 其他标签页 -->
+        <div v-else class="other-tab-content">
+          <n-empty description="该功能开发中..." />
         </div>
-      </div>
-
-      <!-- 歌手列表 -->
-      <div v-else-if="activeTab === 'artists'" class="artists-result-container">
-        <div class="artists-list">
-          <div
-            v-for="artist in currentResults"
-            :key="artist.id"
-            class="artist-card"
-            title="点击查看歌手详情"
-            @click="handleArtistCardClick(artist)"
-          >
-            <div class="artist-avatar">
-              <AppCover :src="artist.picUrl" :width="72" :height="72" :size="144" :radius="999">
-                <template #fallback>
-                  <div class="avatar-placeholder">
-                    <n-icon><PersonOutline /></n-icon>
-                  </div>
-                </template>
-              </AppCover>
-            </div>
-            <div class="artist-main">
-              <div class="artist-name" :title="artist.name">{{ artist.name || '未知歌手' }}</div>
-              <div v-if="artist.alias" class="artist-alias" :title="artist.alias">
-                {{ artist.alias }}
-              </div>
-              <div class="artist-meta">
-                <span>粉丝 {{ formatCount(artist.fanCount) }}</span>
-                <span>单曲 {{ artist.musicSize || 0 }}</span>
-                <span>专辑 {{ artist.albumSize || 0 }}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- 歌单列表 -->
-      <div v-else-if="activeTab === 'playlists'" class="playlists-result-container">
-        <div class="playlists-list">
-          <div
-            v-for="playlist in currentResults"
-            :key="playlist.id"
-            class="playlist-card"
-            @click="handlePlaylistCardClick(playlist)"
-          >
-            <div class="playlist-cover">
-              <AppCover :src="playlist.coverImgUrl" :width="88" :height="88" :size="176">
-                <template #fallback>
-                  <div class="playlist-placeholder">
-                    <n-icon><FolderOutline /></n-icon>
-                  </div>
-                </template>
-              </AppCover>
-            </div>
-            <div class="playlist-main">
-              <div class="playlist-name" :title="playlist.name">
-                {{ playlist.name || '未命名歌单' }}
-              </div>
-              <div class="playlist-meta">
-                <span>播放 {{ formatCount(playlist.playCount) }}</span>
-                <span>曲目 {{ playlist.trackCount || 0 }}</span>
-                <span v-if="playlist.creatorName">创建者 {{ playlist.creatorName }}</span>
-              </div>
-              <div v-if="playlist.description" class="playlist-desc" :title="playlist.description">
-                {{ playlist.description }}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- 其他标签页 -->
-      <div v-else class="other-tab-content">
-        <n-empty description="该功能开发中..." />
-      </div>
+      </StateView>
     </div>
 
     <!-- 未搜索提示 -->
@@ -329,7 +329,6 @@
 
 <script setup>
 import { ref, computed, watch, onMounted, toRaw } from 'vue'
-import { useMessage } from 'naive-ui'
 import { useRouter } from 'vue-router'
 import {
   SearchOutline,
@@ -352,15 +351,17 @@ import { useSongStore } from '@/stores/songStore'
 import { usePlaylistStore } from '@/stores/playlistStore'
 import { ROUTE_NAMES } from '@/router/routeNames'
 import AppCover from '@/components/common/AppCover.vue'
+import StateView from '@/components/common/StateView.vue'
+import { useAppFeedback } from '@/composables/useAppFeedback'
 import { storeToRefs } from 'pinia'
 
-const message = useMessage()
+const feedback = useAppFeedback()
 const router = useRouter()
 
 const searchStore = useSearchStore()
 const { searchKeyword, searchResults, activeTab, hasSearched, loading } = storeToRefs(searchStore)
 
-const { setSearchResults, setSearchKeyword, setActiveTab, setHasSearched, setLoading } = searchStore
+const { setSearchResults, setActiveTab, setHasSearched, setLoading } = searchStore
 
 const songStore = useSongStore()
 const { currentSong, isPlaying } = storeToRefs(songStore)
@@ -426,12 +427,12 @@ const performSearch = async (keyword, page = 1, targetTab = activeTab.value) => 
     if (results && response) {
       setSearchResults(results, targetTab)
     } else {
-      message.error('搜索失败，请重试')
+      feedback.error('搜索失败，请重试')
       setSearchResults({}, targetTab)
     }
   } catch (error) {
     console.error('搜索错误:', error)
-    message.error('搜索出错，请稍后重试')
+    feedback.error('搜索出错，请稍后重试')
     setSearchResults({}, targetTab)
   } finally {
     setLoading(false)
@@ -598,12 +599,12 @@ const playSong = async (song) => {
         dt: song.durationMs
       }
       play(fullSong)
-      message.success(`开始播放 ${song.name}`)
+      feedback.success(`开始播放 ${song.name}`)
     } else {
-      message.error('无法获取播放链接')
+      feedback.error('无法获取播放链接')
     }
   } catch (error) {
-    message.error('获取播放链接失败')
+    feedback.error('获取播放链接失败')
     console.error('播放错误:', error)
   }
 }
@@ -615,13 +616,13 @@ const toggleLike = async (song) => {
     const success = await playlistStore.toggleLikeSong(song.id, newLikedState)
     if (success) {
       song.liked = newLikedState
-      message.success(newLikedState ? '已添加到我喜欢的音乐' : '已取消喜欢')
+      feedback.success(newLikedState ? '已添加到我喜欢的音乐' : '已取消喜欢')
     } else {
-      message.error('操作失败，请重试')
+      feedback.error('操作失败，请重试')
     }
   } catch (error) {
     console.error('喜欢操作失败:', error)
-    message.error('操作失败: ' + error.message)
+    feedback.errorWith(error, '操作失败，请重试')
   }
 }
 
@@ -629,7 +630,7 @@ const playAll = async () => {
   if (currentResults.value.length > 0) {
     const firstSong = currentResults.value[0]
     await playSong(firstSong)
-    message.success(`开始播放全部 ${currentResults.value.length} 首歌曲`)
+    feedback.success(`开始播放全部 ${currentResults.value.length} 首歌曲`)
   }
 }
 
@@ -662,7 +663,7 @@ const selectPlaylist = (playlistId) => {
 
 const handleAddToPlaylist = async () => {
   if (!selectedPlaylistId.value) {
-    message.warning('请选择一个歌单')
+    feedback.warning('请选择一个歌单')
     return false
   }
 
@@ -685,7 +686,7 @@ const handleAddToPlaylist = async () => {
         )
         if (success) successCount++
       }
-      message.success(`成功添加 ${successCount} 首歌曲到歌单`)
+      feedback.success(`成功添加 ${successCount} 首歌曲到歌单`)
       await playlistStore.loadLocalPlaylists()
       isCollectAll.value = false
       selectedPlaylistId.value = null
@@ -693,7 +694,7 @@ const handleAddToPlaylist = async () => {
       return true
     } else {
       if (!currentSongToAdd.value) {
-        message.error('没有选择要添加的歌曲')
+        feedback.error('没有选择要添加的歌曲')
         return false
       }
 
@@ -703,20 +704,20 @@ const handleAddToPlaylist = async () => {
       )
 
       if (success) {
-        message.success('添加成功')
+        feedback.success('添加成功')
         await playlistStore.loadLocalPlaylists()
         currentSongToAdd.value = null
         selectedPlaylistId.value = null
         addToPlaylistModalVisible.value = false
         return true
       } else {
-        message.warning('歌曲已存在于该歌单中')
+        feedback.warning('歌曲已存在于该歌单中')
         return false
       }
     }
   } catch (error) {
     console.error('添加歌曲到歌单失败:', error)
-    message.error('添加失败: ' + error.message)
+    feedback.errorWith(error, '添加失败，请稍后重试')
     return false
   }
 }
@@ -747,7 +748,7 @@ const getPlaylistCover = (playlist) => {
 
 const handleCreateNewPlaylist = () => {
   addToPlaylistModalVisible.value = false
-  message.info('请在侧边栏创建新歌单')
+  feedback.info('请在侧边栏创建新歌单')
 }
 </script>
 

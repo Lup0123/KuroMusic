@@ -213,7 +213,7 @@
                 </div>
               </div>
 
-              <div class="col-duration">{{ getSongDurationLabel(item.song) }}</div>
+              <div class="col-duration"><SongDurationText :song="item.song" /></div>
             </div>
           </div>
         </div>
@@ -272,7 +272,7 @@
 import { ref, onMounted, onBeforeUnmount, toRaw, watch, computed, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useVirtualizer } from '@tanstack/vue-virtual'
-import { useMessage, useDialog } from 'naive-ui'
+import { useDialog } from 'naive-ui'
 import {
   PlaySharp,
   DownloadOutline,
@@ -292,12 +292,14 @@ import { usePlaylistStore } from '@/stores/playlistStore'
 import { useIndexStore } from '@/stores/indexStore'
 import { useSongStore } from '@/stores/songStore'
 import { storeToRefs } from 'pinia'
-import { formatDate, formatDuration } from '@/utils/utils'
+import { formatDate } from '@/utils/utils'
 import { downloadSong, downloadSongs } from '@/utils/downloadUtils'
 import { ROUTE_NAMES } from '@/router/routeNames'
 import AppCover from '@/components/common/AppCover.vue'
+import SongDurationText from '@/components/common/SongDurationText.vue'
+import { useAppFeedback } from '@/composables/useAppFeedback'
 
-const message = useMessage()
+const feedback = useAppFeedback()
 const dialog = useDialog()
 
 const isScrolled = ref(false)
@@ -372,14 +374,6 @@ const virtualRowItems = computed(() =>
     .filter((item) => Boolean(item.song))
 )
 
-const getSongDurationLabel = (song) => {
-  const value = song?.duration
-  if (typeof value === 'string' && value.includes(':')) return value
-
-  const durationMs = Number(song?.dt ?? song?.durationMs ?? value)
-  return formatDuration(durationMs)
-}
-
 const handleScroll = (e) => {
   const scrollTop = e.target.scrollTop
   isScrolled.value = scrollTop > 220
@@ -398,20 +392,20 @@ const playAll = () => {
     playlistStore.setCurrentPlaylistSongs(songs.value)
     const success = playlistStore.playCurrentPlaylist()
     if (success) {
-      message.success('开始播放全部歌曲')
+      feedback.success('开始播放全部歌曲')
     }
   }
 }
 
 const downloadAll = async () => {
   if (songs.value.length === 0) {
-    message.warning('歌单为空')
+    feedback.warning('歌单为空')
     return
   }
 
   const onlineSongs = songs.value.filter((song) => !song.url && !song.path)
   if (onlineSongs.length === 0) {
-    message.warning('没有可下载的在线歌曲')
+    feedback.warning('没有可下载的在线歌曲')
     return
   }
 
@@ -439,13 +433,13 @@ const toggleLike = async (song) => {
     const success = await playlistStore.toggleLikeSong(song.id, newLikedState)
     if (success) {
       song.liked = newLikedState
-      message.success(newLikedState ? '已添加到我喜欢的音乐' : '已取消喜欢')
+      feedback.success(newLikedState ? '已添加到我喜欢的音乐' : '已取消喜欢')
     } else {
-      message.error('操作失败，请重试')
+      feedback.error('操作失败，请重试')
     }
   } catch (error) {
     console.error('喜欢操作失败:', error)
-    message.error('操作失败: ' + error.message)
+    feedback.errorWith(error, '操作失败，请重试')
   }
 }
 
@@ -464,14 +458,14 @@ const deleteSongFromPlaylist = async (song) => {
           if (songs.value.length > 0 && songs.value[0].cover) {
             playlist.value.cover = songs.value[0].cover
           }
-          message.success('删除成功')
+          feedback.success('删除成功')
           await playlistStore.loadLocalPlaylists()
         } else {
-          message.error('删除失败')
+          feedback.error('删除失败')
         }
       } catch (error) {
         console.error('删除歌曲失败:', error)
-        message.error('删除失败: ' + error.message)
+        feedback.errorWith(error, '删除失败，请稍后重试')
       }
     }
   })
@@ -489,12 +483,12 @@ const selectPlaylist = (playlistId) => {
 
 const handleAddToPlaylist = async () => {
   if (!selectedPlaylistId.value) {
-    message.warning('请选择一个歌单')
+    feedback.warning('请选择一个歌单')
     return false
   }
 
   if (!currentSongToAdd.value) {
-    message.error('没有选择要添加的歌曲')
+    feedback.error('没有选择要添加的歌曲')
     return false
   }
 
@@ -505,19 +499,19 @@ const handleAddToPlaylist = async () => {
     const success = await playlistStore.addSongToLocalPlaylist(playlistId, songToAdd)
 
     if (success) {
-      message.success('添加成功')
+      feedback.success('添加成功')
       await playlistStore.loadLocalPlaylists()
       currentSongToAdd.value = null
       selectedPlaylistId.value = null
       addToPlaylistModalVisible.value = false
       return true
     } else {
-      message.warning('歌曲已存在于该歌单中')
+      feedback.warning('歌曲已存在于该歌单中')
       return false
     }
   } catch (error) {
     console.error('添加歌曲到歌单失败:', error)
-    message.error('添加失败: ' + error.message)
+    feedback.errorWith(error, '添加失败，请稍后重试')
     return false
   }
 }
@@ -530,7 +524,7 @@ const handleCancelAddToPlaylist = () => {
 
 const handleCreateNewPlaylist = () => {
   addToPlaylistModalVisible.value = false
-  message.info('请在侧边栏创建新歌单')
+  feedback.info('请在侧边栏创建新歌单')
 }
 
 const getPlaylistCover = (playlist) => {
@@ -551,7 +545,7 @@ const getPlaylistCover = (playlist) => {
 
 const toggleFavorite = async () => {
   if (playlist.value.isLocal) {
-    message.warning('本地歌单无需收藏')
+    feedback.warning('本地歌单无需收藏')
     return
   }
 
@@ -560,9 +554,9 @@ const toggleFavorite = async () => {
       const success = await playlistStore.removeFromFavoritePlaylist(playlist.value.id)
       if (success) {
         isFavorited.value = false
-        message.success('已取消收藏')
+        feedback.success('已取消收藏')
       } else {
-        message.error('取消收藏失败')
+        feedback.error('取消收藏失败')
       }
     } else {
       const success = await playlistStore.addToFavoritePlaylist({
@@ -575,14 +569,14 @@ const toggleFavorite = async () => {
       })
       if (success) {
         isFavorited.value = true
-        message.success('收藏成功')
+        feedback.success('收藏成功')
       } else {
-        message.warning('该歌单已收藏')
+        feedback.warning('该歌单已收藏')
       }
     }
   } catch (error) {
     console.error('收藏操作失败:', error)
-    message.error('操作失败')
+    feedback.error('操作失败')
   }
 }
 

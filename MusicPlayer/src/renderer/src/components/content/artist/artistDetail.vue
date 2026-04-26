@@ -35,14 +35,14 @@
           </n-button>
         </div>
 
-        <div v-if="loadingSongs" class="section-loading">
-          <n-spin size="small" />
-          <span>加载中...</span>
-        </div>
-
-        <n-empty v-else-if="hotSongs.length === 0" size="small" description="暂无热门单曲数据" />
-
-        <div v-else class="song-list">
+        <StateView :loading="loadingSongs" :empty="!loadingSongs && hotSongs.length === 0" empty-text="暂无热门单曲数据">
+          <template #loading>
+            <div class="section-loading">
+              <n-spin size="small" />
+              <span>加载中...</span>
+            </div>
+          </template>
+          <div class="song-list">
           <div
             v-for="(song, index) in hotSongs"
             :key="song.id"
@@ -54,9 +54,10 @@
               <div class="song-name">{{ song.name }}</div>
               <div class="song-sub">{{ song.album || '未知专辑' }}</div>
             </div>
-            <span class="song-duration">{{ song.duration }}</span>
+            <span class="song-duration"><SongDurationText :song="song" /></span>
           </div>
-        </div>
+          </div>
+        </StateView>
       </section>
 
       <section class="section-card">
@@ -65,14 +66,14 @@
           <span class="section-count">{{ albums.length }} 张</span>
         </div>
 
-        <div v-if="loadingAlbums" class="section-loading">
-          <n-spin size="small" />
-          <span>加载中...</span>
-        </div>
-
-        <n-empty v-else-if="albums.length === 0" size="small" description="暂无专辑数据" />
-
-        <div v-else class="album-list">
+        <StateView :loading="loadingAlbums" :empty="!loadingAlbums && albums.length === 0" empty-text="暂无专辑数据">
+          <template #loading>
+            <div class="section-loading">
+              <n-spin size="small" />
+              <span>加载中...</span>
+            </div>
+          </template>
+          <div class="album-list">
           <div v-for="album in albums" :key="album.id" class="album-row" @click="goToAlbum(album)">
             <AppCover :src="album.cover" :width="52" :height="52" :size="104" :radius="8" />
             <div class="album-main">
@@ -83,7 +84,8 @@
               </div>
             </div>
           </div>
-        </div>
+          </div>
+        </StateView>
       </section>
     </div>
   </div>
@@ -92,15 +94,18 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useMessage } from 'naive-ui'
 import { useSongStore } from '@/stores/songStore'
 import { usePlaylistStore } from '@/stores/playlistStore'
 import { ROUTE_NAMES } from '@/router/routeNames'
 import AppCover from '@/components/common/AppCover.vue'
+import SongDurationText from '@/components/common/SongDurationText.vue'
+import StateView from '@/components/common/StateView.vue'
+import { useAppFeedback } from '@/composables/useAppFeedback'
+import { formatDuration } from '@/utils/utils'
 
 const route = useRoute()
 const router = useRouter()
-const message = useMessage()
+const feedback = useAppFeedback()
 const songStore = useSongStore()
 const playlistStore = usePlaylistStore()
 
@@ -129,14 +134,6 @@ const formatCount = (value) => {
   return `${count}`
 }
 
-const formatDuration = (ms) => {
-  if (!ms) return '00:00'
-  const totalSec = Math.floor(ms / 1000)
-  const min = String(Math.floor(totalSec / 60)).padStart(2, '0')
-  const sec = String(totalSec % 60).padStart(2, '0')
-  return `${min}:${sec}`
-}
-
 const formatDate = (timestamp) => {
   if (!timestamp) return '未知时间'
   const date = new Date(timestamp)
@@ -161,7 +158,7 @@ const loadHotSongs = async () => {
     }))
   } catch (error) {
     console.error('加载歌手热门单曲失败:', error)
-    message.error('加载热门单曲失败')
+    feedback.error('加载热门单曲失败')
     hotSongs.value = []
   } finally {
     loadingSongs.value = false
@@ -183,7 +180,7 @@ const loadAlbums = async () => {
     }))
   } catch (error) {
     console.error('加载歌手专辑失败:', error)
-    message.error('加载专辑失败')
+    feedback.error('加载专辑失败')
     albums.value = []
   } finally {
     loadingAlbums.value = false
@@ -197,21 +194,21 @@ const playSong = async (song) => {
     const response = await window.api.getSongUrl(song.id, quality)
     const url = response?.body?.data?.[0]?.url
     if (!url) {
-      message.warning('该歌曲暂时无法播放')
+      feedback.warning('该歌曲暂时无法播放')
       return
     }
 
     songStore.play({ ...song, cover: song.albumCover || artist.value.avatar, url })
-    message.success(`开始播放 ${song.name}`)
+    feedback.success(`开始播放 ${song.name}`)
   } catch (error) {
     console.error('播放失败:', error)
-    message.error('播放失败，请重试')
+    feedback.error('播放失败，请重试')
   }
 }
 
 const playAllSongs = () => {
   if (hotSongs.value.length === 0) {
-    message.warning('暂无可播放歌曲')
+    feedback.warning('暂无可播放歌曲')
     return
   }
 
@@ -227,7 +224,7 @@ const playAllSongs = () => {
 
   songStore.replacePlaylist(normalizedSongs)
   songStore.playFromIndex(0)
-  message.success(`开始播放 ${normalizedSongs.length} 首热门单曲`)
+  feedback.success(`开始播放 ${normalizedSongs.length} 首热门单曲`)
 }
 
 const goToAlbum = (album) => {

@@ -360,7 +360,16 @@ function sanitizeRenderedHtml(html = '') {
     const root = doc.body.firstElementChild
     if (!root) return ''
 
-    const blockedTags = new Set(['script', 'style', 'iframe', 'object', 'embed', 'link', 'meta', 'base'])
+    const blockedTags = new Set([
+      'script',
+      'style',
+      'iframe',
+      'object',
+      'embed',
+      'link',
+      'meta',
+      'base'
+    ])
     const elements = root.querySelectorAll('*')
 
     for (const element of elements) {
@@ -482,7 +491,10 @@ const estimatedFinalCount = computed(() => {
 })
 
 const recentPromptOptions = computed(() =>
-  (aiStore.recentPrompts || []).map((prompt, index) => ({ label: prompt, key: String(index) }))
+  (aiStore.recentPrompts || []).map((prompt, index) => ({
+    label: prompt,
+    key: String(index)
+  }))
 )
 
 // Scroll to bottom when messages update

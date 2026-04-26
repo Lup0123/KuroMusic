@@ -543,7 +543,7 @@ if (!gotLock) {
       return { success: true }
     })
 
-  ipcMain.handle('focus-ai-window', async () => {
+    ipcMain.handle('focus-ai-window', async () => {
       if (!aiWindow || aiWindow.isDestroyed()) {
         return { success: false, reason: 'ai_window_not_found' }
       }
@@ -553,7 +553,7 @@ if (!gotLock) {
       return { success: true }
     })
 
-  ipcMain.handle('close-ai-window', async () => {
+    ipcMain.handle('close-ai-window', async () => {
       if (!aiWindow || aiWindow.isDestroyed()) {
         return { success: true }
       }

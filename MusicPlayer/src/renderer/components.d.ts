@@ -66,7 +66,9 @@ declare module 'vue' {
     RouterView: typeof import('vue-router')['RouterView']
     Setting: typeof import('./src/components/content/setting/setting.vue')['default']
     Sidebar: typeof import('./src/components/layout/sidebar/sidebar.vue')['default']
+    SongDurationText: typeof import('./src/components/common/SongDurationText.vue')['default']
     Songlist: typeof import('./src/components/content/playlist/songlist.vue')['default']
     Songsearch: typeof import('./src/components/content/songsearch/songsearch.vue')['default']
+    StateView: typeof import('./src/components/common/StateView.vue')['default']
   }
 }
