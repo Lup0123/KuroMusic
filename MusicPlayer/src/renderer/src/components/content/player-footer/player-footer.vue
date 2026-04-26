@@ -120,7 +120,7 @@ import { storeToRefs } from 'pinia'
 import { useSongStore } from '@/stores/songStore'
 import { usePlaylistStore } from '@/stores/playlistStore'
 import { useUserStore } from '@/stores/userStore'
-import { useMessage } from 'naive-ui'
+import { useAppFeedback } from '@/composables/useAppFeedback'
 import {
   Heart,
   HeartOutline,
@@ -138,7 +138,7 @@ import { downloadSong } from '@/utils/downloadUtils'
 import AppCover from '@/components/common/AppCover.vue'
 
 const router = useRouter()
-const message = useMessage()
+const feedback = useAppFeedback()
 const songStore = useSongStore()
 const playlistStore = usePlaylistStore()
 const userStore = useUserStore()
@@ -175,12 +175,12 @@ const isCurrentSongLiked = computed(() => {
 
 const handleToggleLike = async () => {
   if (!currentSong.value?.id) {
-    message.warning('当前没有播放歌曲')
+    feedback.warning('当前没有播放歌曲')
     return
   }
 
   if (!isLoggedIn.value) {
-    message.warning('请先登录后再操作')
+    feedback.warning('请先登录后再操作')
     return
   }
 
@@ -192,7 +192,7 @@ const handleToggleLike = async () => {
     const success = await playlistStore.toggleLikeSong(currentSong.value.id, nextLiked)
 
     if (!success) {
-      message.error('操作失败，请重试')
+      feedback.error('操作失败，请重试')
       return
     }
 
@@ -201,10 +201,10 @@ const handleToggleLike = async () => {
       targetSong.liked = nextLiked
     }
 
-    message.success(nextLiked ? '已添加到我喜欢的音乐' : '已取消喜欢')
+    feedback.success(nextLiked ? '已添加到我喜欢的音乐' : '已取消喜欢')
   } catch (error) {
     console.error('喜欢操作失败:', error)
-    message.error('操作失败，请重试')
+    feedback.error('操作失败，请重试')
   } finally {
     isLikeUpdating.value = false
   }
@@ -212,7 +212,7 @@ const handleToggleLike = async () => {
 
 const handleDownload = async () => {
   if (!currentSong.value.id) {
-    message.warning('当前没有播放歌曲')
+    feedback.warning('当前没有播放歌曲')
     return
   }
   isDownloading.value = true
@@ -225,7 +225,7 @@ const handleDownload = async () => {
 
 const goToLyric = () => {
   if (!currentSong.value.id) {
-    message.warning('当前没有播放歌曲')
+    feedback.warning('当前没有播放歌曲')
     return
   }
   const currentRoute = router.currentRoute.value
@@ -260,12 +260,12 @@ watch(
         audioRef.value.load()
         if (isPlaying.value) await audioRef.value.play()
       } else {
-        message.error('无法获取歌曲播放地址')
+        feedback.error('无法获取歌曲播放地址')
         songStore.setPlaying(false)
       }
     } catch (error) {
       console.error('加载歌曲失败:', error)
-      message.error('歌曲加载失败')
+      feedback.error('歌曲加载失败')
       songStore.setPlaying(false)
     }
   },
@@ -291,7 +291,7 @@ const handleEnded = () => {
 }
 const handleError = (e) => {
   console.error('音频加载错误:', e)
-  message.error('音频加载失败，尝试播放下一首')
+  feedback.error('音频加载失败，尝试播放下一首')
   songStore.setPlaying(false)
   setTimeout(() => playNext(), 1000)
 }

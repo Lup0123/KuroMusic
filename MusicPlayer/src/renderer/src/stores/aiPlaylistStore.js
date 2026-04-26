@@ -146,6 +146,22 @@ function safeWriteStoreState(payload) {
   }
 }
 
+function requestVisualFrame(callback) {
+  if (typeof globalThis?.requestAnimationFrame === 'function') {
+    return globalThis.requestAnimationFrame(callback)
+  }
+  return setTimeout(() => callback(Date.now()), 16)
+}
+
+function cancelVisualFrame(handle) {
+  if (handle == null) return
+  if (typeof globalThis?.cancelAnimationFrame === 'function') {
+    globalThis.cancelAnimationFrame(handle)
+    return
+  }
+  clearTimeout(handle)
+}
+
 export const useAiPlaylistStore = defineStore('aiPlaylist', {
   state: () => {
     const initialSession = createSessionState()
@@ -179,8 +195,10 @@ export const useAiPlaylistStore = defineStore('aiPlaylist', {
       streaming: false,
       streamingMessageId: null,
       streamBuffer: '',
-      streamFlushIntervalMs: 60,
+      streamFlushIntervalMs: 24,
       lastStreamFlushAt: 0,
+      streamFlushScheduled: false,
+      streamFlushFrameHandle: null,
       streamRequestId: '',
       streamCleanup: [],
       streamReconnectAttempt: 0,
@@ -376,13 +394,39 @@ export const useAiPlaylistStore = defineStore('aiPlaylist', {
       this.streamingMessageId = messageId
       this.streamBuffer = ''
       this.lastStreamFlushAt = 0
+      this.streamFlushScheduled = false
+      this.streamFlushFrameHandle = null
       return messageId
+    },
+
+    cancelScheduledStreamFlush() {
+      if (this.streamFlushFrameHandle != null) {
+        cancelVisualFrame(this.streamFlushFrameHandle)
+      }
+      this.streamFlushFrameHandle = null
+      this.streamFlushScheduled = false
+    },
+
+    scheduleStreamFlush() {
+      if (this.streamFlushScheduled || !this.streamingMessageId) return
+      this.streamFlushScheduled = true
+      this.streamFlushFrameHandle = requestVisualFrame(() => {
+        this.streamFlushScheduled = false
+        this.streamFlushFrameHandle = null
+        this.flushStreamingBuffer(false)
+        if (this.streamBuffer) {
+          this.scheduleStreamFlush()
+        }
+      })
     },
 
     flushStreamingBuffer(force = false) {
       if (!this.streamingMessageId || !this.streamBuffer) return
       const now = Date.now()
-      if (!force && now - this.lastStreamFlushAt < this.streamFlushIntervalMs) return
+      if (!force && now - this.lastStreamFlushAt < this.streamFlushIntervalMs) {
+        this.scheduleStreamFlush()
+        return
+      }
 
       const target = this.chatMessages.find((item) => item.id === this.streamingMessageId)
       if (!target) return
@@ -401,10 +445,11 @@ export const useAiPlaylistStore = defineStore('aiPlaylist', {
 
     appendStreamingToken(token) {
       this.streamBuffer += String(token || '')
-      this.flushStreamingBuffer(false)
+      this.scheduleStreamFlush()
     },
 
     finishStreamingMessage(meta = {}) {
+      this.cancelScheduledStreamFlush()
       this.flushStreamingBuffer(true)
       const target = this.chatMessages.find((item) => item.id === this.streamingMessageId)
       if (target) {
@@ -418,6 +463,8 @@ export const useAiPlaylistStore = defineStore('aiPlaylist', {
       this.streamingMessageId = null
       this.streamBuffer = ''
       this.lastStreamFlushAt = 0
+      this.streamFlushScheduled = false
+      this.streamFlushFrameHandle = null
       this.streamRequestId = ''
     },
 
@@ -911,6 +958,7 @@ export const useAiPlaylistStore = defineStore('aiPlaylist', {
       }
       this.clearStreamReconnectTimer()
       this.clearStreamListeners()
+      this.cancelScheduledStreamFlush()
       if (this.streaming) {
         this.finishStreamingMessage({ canceled: true })
       }

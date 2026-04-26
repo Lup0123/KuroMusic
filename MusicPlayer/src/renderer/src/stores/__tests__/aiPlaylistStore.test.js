@@ -170,16 +170,32 @@ describe('aiPlaylistStore', () => {
   })
 
   it('uses placeholder content for streaming and replaces on first chunk', () => {
+    vi.useFakeTimers()
     const store = useAiPlaylistStore()
     store.startStreamingAssistantMessage()
     expect(store.chatMessages[0].content).toBe('思考中...')
     expect(store.chatMessages[0].meta?.placeholder).toBe(true)
 
     store.appendStreamingToken('第一段')
+    vi.advanceTimersByTime(40)
     store.flushStreamingBuffer(true)
 
     expect(store.chatMessages[0].content).toBe('第一段')
     expect(store.chatMessages[0].meta?.placeholder).toBe(false)
+    vi.useRealTimers()
+  })
+
+  it('schedules streaming flush with visual frame and can cancel it', () => {
+    vi.useFakeTimers()
+    const store = useAiPlaylistStore()
+    store.startStreamingAssistantMessage()
+
+    store.appendStreamingToken('A')
+    expect(store.streamFlushScheduled).toBe(true)
+    store.cancelScheduledStreamFlush()
+    expect(store.streamFlushScheduled).toBe(false)
+
+    vi.useRealTimers()
   })
 
   it('supports switching provider mode', () => {

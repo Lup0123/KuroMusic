@@ -3,6 +3,7 @@
     v-model:show="aiPlaylistStore.visible"
     class="ai-chat-modal"
     :class="{ 'ai-window-mode': isAiWindow }"
+    content-scrollable
     preset="card"
     size="huge"
     :bordered="false"
@@ -18,7 +19,11 @@
       <div class="chat-header" @dblclick="onHeaderDblClick">
         <div class="header-title">AI 助手</div>
         <div class="header-actions">
-          <n-radio-group size="small" :value="aiStore.chatMode" @update:value="onChatModeChange">
+          <n-radio-group
+            size="small"
+            :value="aiStore.chatMode"
+            @update:value="onChatModeChange"
+          >
             <n-radio-button value="chat">对话讨论</n-radio-button>
             <n-radio-button value="recommend">直接推荐</n-radio-button>
           </n-radio-group>
@@ -43,7 +48,8 @@
             <n-button size="small" quaternary circle @click="onAiWindowMaximize">
               <template #icon
                 ><n-icon
-                  ><component :is="isAiWindowMaximized ? ContractOutline : CropOutline" /></n-icon
+                  ><component
+                    :is="isAiWindowMaximized ? ContractOutline : CropOutline" /></n-icon
               ></template>
             </n-button>
             <n-button size="small" quaternary circle @click="onAiWindowClose">
@@ -106,19 +112,31 @@
             >
               <n-radio-button value="chat"
                 >对话
-                <span class="tab-count">({{ aiStore.chatMessages.length }})</span></n-radio-button
+                <span class="tab-count"
+                  >({{ aiStore.chatMessages.length }})</span
+                ></n-radio-button
               >
               <n-radio-button value="diff"
                 >Diff
                 <span class="tab-count"
-                  >({{ pendingDiff.addedSongs.length + pendingDiff.removedSongs.length }})</span
+                  >({{
+                    pendingDiff.addedSongs.length + pendingDiff.removedSongs.length
+                  }})</span
                 ></n-radio-button
               >
             </n-radio-group>
-            <n-button size="small" tertiary :disabled="!canRollback" @click="onRollbackDraft"
+            <n-button
+              size="small"
+              tertiary
+              :disabled="!canRollback"
+              @click="onRollbackDraft"
               >回滚</n-button
             >
-            <n-button size="small" secondary :disabled="!hasPendingDraft" @click="onApplyOnlyAdded"
+            <n-button
+              size="small"
+              secondary
+              :disabled="!hasPendingDraft"
+              @click="onApplyOnlyAdded"
               >仅加新歌</n-button
             >
             <n-button
@@ -138,14 +156,16 @@
             >
 
             <div class="summary-badges">
-              <span class="draft-name">{{ draftName || 'AI 草稿歌单' }}</span>
+              <span class="draft-name">{{ draftName || "AI 草稿歌单" }}</span>
               <n-tag size="small" type="success" :bordered="false" round
                 >+{{ pendingDiff.addedSongs.length }}</n-tag
               >
               <n-tag size="small" type="warning" :bordered="false" round
                 >-{{ pendingDiff.removedSongs.length }}</n-tag
               >
-              <n-tag size="small" :bordered="false" round>共{{ draftSongs.length }}</n-tag>
+              <n-tag size="small" :bordered="false" round
+                >共{{ draftSongs.length }}</n-tag
+              >
             </div>
           </div>
 
@@ -163,7 +183,10 @@
                 >
                   <div class="message-content-block">
                     <div class="message-bubble" :class="`bubble-${messageItem.role}`">
-                      <div class="markdown-body" v-html="renderMessage(messageItem.content)"></div>
+                      <div
+                        class="markdown-body"
+                        v-html="renderMessage(messageItem.content)"
+                      ></div>
                     </div>
                     <div class="message-time">{{ formatChatTime(messageItem.time) }}</div>
                   </div>
@@ -175,15 +198,23 @@
           <section v-show="activeWorkspaceTab === 'diff'" class="diff-section">
             <template v-if="aiStore.chatMode === 'chat'">
               <div class="diff-chat-placeholder">
-                <n-empty description="讨论模式下不直接改动歌单，切换“直接推荐”后可查看变更" />
+                <n-empty
+                  description="讨论模式下不直接改动歌单，切换“直接推荐”后可查看变更"
+                />
               </div>
             </template>
 
             <template v-else>
               <div class="diff-toolbar">
                 <n-tabs v-model:value="activeDiffTab" type="segment" size="small">
-                  <n-tab-pane name="added" :tab="`新增 (${pendingDiff.addedSongs.length})`" />
-                  <n-tab-pane name="removed" :tab="`移除 (${pendingDiff.removedSongs.length})`" />
+                  <n-tab-pane
+                    name="added"
+                    :tab="`新增 (${pendingDiff.addedSongs.length})`"
+                  />
+                  <n-tab-pane
+                    name="removed"
+                    :tab="`移除 (${pendingDiff.removedSongs.length})`"
+                  />
                   <n-tab-pane name="kept" :tab="`保留 (${keptSongs.length})`" />
                 </n-tabs>
 
@@ -195,9 +226,15 @@
                     placeholder="筛选歌曲"
                     class="song-filter-input"
                   />
-                  <n-button size="tiny" tertiary @click="onSelectAllCurrentTab">全选</n-button>
-                  <n-button size="tiny" tertiary @click="onClearCurrentTab">清空</n-button>
-                  <n-button size="tiny" tertiary @click="onInvertCurrentTab">反选</n-button>
+                  <n-button size="tiny" tertiary @click="onSelectAllCurrentTab"
+                    >全选</n-button
+                  >
+                  <n-button size="tiny" tertiary @click="onClearCurrentTab"
+                    >清空</n-button
+                  >
+                  <n-button size="tiny" tertiary @click="onInvertCurrentTab"
+                    >反选</n-button
+                  >
                 </div>
               </div>
 
@@ -231,7 +268,7 @@
                     <div class="song-meta">
                       <div class="song-name">{{ song.name }}</div>
                       <div class="song-sub">
-                        {{ song.artist || '未知艺术家' }} · {{ song.album || '未知专辑' }}
+                        {{ song.artist || "未知艺术家" }} · {{ song.album || "未知专辑" }}
                       </div>
                     </div>
                     <div class="song-duration">{{ getSongDurationLabel(song) }}</div>
@@ -251,8 +288,8 @@
         >
           <div class="action-summary">
             <span class="action-subtitle">
-              预计最终 {{ estimatedFinalCount }} 首 (新增 {{ selectionSummary.added }} / 移除
-              {{ selectionSummary.removed }})
+              预计最终 {{ estimatedFinalCount }} 首 (新增 {{ selectionSummary.added }} /
+              移除 {{ selectionSummary.removed }})
             </span>
           </div>
           <div class="action-buttons"></div>
@@ -304,9 +341,13 @@
           </div>
           <div class="input-footer">
             <div class="debug-actions">
-              <n-button text size="tiny" @click="onExportDebugSnapshot">复制快照</n-button>
+              <n-button text size="tiny" @click="onExportDebugSnapshot"
+                >复制快照</n-button
+              >
               <span class="divider">·</span>
-              <n-button text size="tiny" @click="onDownloadDebugSnapshot">下载快照</n-button>
+              <n-button text size="tiny" @click="onDownloadDebugSnapshot"
+                >下载快照</n-button
+              >
             </div>
           </div>
         </section>
@@ -316,13 +357,13 @@
 </template>
 
 <script setup>
-import { computed, ref, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
-import MarkdownIt from 'markdown-it'
-import dayjs from 'dayjs'
-import { useMessage } from 'naive-ui'
-import { useAiPlaylistStore } from '@/stores/aiPlaylistStore'
-import { formatDuration } from '@/utils/utils'
-import AppCover from '@/components/common/AppCover.vue'
+import { computed, ref, watch, nextTick, onMounted, onBeforeUnmount } from "vue";
+import MarkdownIt from "markdown-it";
+import dayjs from "dayjs";
+import { useMessage } from "naive-ui";
+import { useAiPlaylistStore } from "@/stores/aiPlaylistStore";
+import { formatDuration } from "@/utils/utils";
+import AppCover from "@/components/common/AppCover.vue";
 import {
   AddOutline,
   TimeOutline,
@@ -332,170 +373,184 @@ import {
   RemoveOutline,
   CropOutline,
   CloseOutline,
-  ContractOutline
-} from '@vicons/ionicons5'
+  ContractOutline,
+} from "@vicons/ionicons5";
 
-const aiPlaylistStore = useAiPlaylistStore()
-const aiStore = aiPlaylistStore
-const message = useMessage()
+const aiPlaylistStore = useAiPlaylistStore();
+const aiStore = aiPlaylistStore;
+const message = useMessage();
 
-const UNSAFE_PROTOCOL_RE = /^(?:javascript|vbscript|data):/i
+const UNSAFE_PROTOCOL_RE = /^(?:javascript|vbscript|data):/i;
 
-function isSafeUrl(rawUrl = '') {
-  const value = String(rawUrl || '').trim()
-  if (!value) return false
-  if (value.startsWith('#') || value.startsWith('/')) return true
-  if (value.startsWith('./') || value.startsWith('../')) return true
-  if (UNSAFE_PROTOCOL_RE.test(value)) return false
-  return /^(https?:|mailto:|tel:)/i.test(value)
+function isSafeUrl(rawUrl = "") {
+  const value = String(rawUrl || "").trim();
+  if (!value) return false;
+  if (value.startsWith("#") || value.startsWith("/")) return true;
+  if (value.startsWith("./") || value.startsWith("../")) return true;
+  if (UNSAFE_PROTOCOL_RE.test(value)) return false;
+  return /^(https?:|mailto:|tel:)/i.test(value);
 }
 
-function sanitizeRenderedHtml(html = '') {
-  const text = String(html || '')
-  if (!text) return ''
+function sanitizeRenderedHtml(html = "") {
+  const text = String(html || "");
+  if (!text) return "";
 
   try {
-    const parser = new DOMParser()
-    const doc = parser.parseFromString(`<div>${text}</div>`, 'text/html')
-    const root = doc.body.firstElementChild
-    if (!root) return ''
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(`<div>${text}</div>`, "text/html");
+    const root = doc.body.firstElementChild;
+    if (!root) return "";
 
     const blockedTags = new Set([
-      'script',
-      'style',
-      'iframe',
-      'object',
-      'embed',
-      'link',
-      'meta',
-      'base'
-    ])
-    const elements = root.querySelectorAll('*')
+      "script",
+      "style",
+      "iframe",
+      "object",
+      "embed",
+      "link",
+      "meta",
+      "base",
+    ]);
+    const elements = root.querySelectorAll("*");
 
     for (const element of elements) {
-      const tag = element.tagName.toLowerCase()
+      const tag = element.tagName.toLowerCase();
       if (blockedTags.has(tag)) {
-        element.remove()
-        continue
+        element.remove();
+        continue;
       }
 
-      const attrs = [...element.attributes]
+      const attrs = [...element.attributes];
       for (const attr of attrs) {
-        const name = attr.name.toLowerCase()
-        const value = String(attr.value || '').trim()
-        if (name.startsWith('on') || name === 'style') {
-          element.removeAttribute(attr.name)
-          continue
+        const name = attr.name.toLowerCase();
+        const value = String(attr.value || "").trim();
+        if (name.startsWith("on") || name === "style") {
+          element.removeAttribute(attr.name);
+          continue;
         }
-        if ((name === 'href' || name === 'src' || name === 'xlink:href') && !isSafeUrl(value)) {
-          element.removeAttribute(attr.name)
+        if (
+          (name === "href" || name === "src" || name === "xlink:href") &&
+          !isSafeUrl(value)
+        ) {
+          element.removeAttribute(attr.name);
         }
       }
 
-      if (tag === 'a') {
-        const href = element.getAttribute('href') || ''
+      if (tag === "a") {
+        const href = element.getAttribute("href") || "";
         if (!isSafeUrl(href)) {
-          element.removeAttribute('href')
+          element.removeAttribute("href");
         } else {
-          element.setAttribute('target', '_blank')
-          element.setAttribute('rel', 'noopener noreferrer nofollow')
+          element.setAttribute("target", "_blank");
+          element.setAttribute("rel", "noopener noreferrer nofollow");
         }
       }
     }
 
-    return root.innerHTML
+    return root.innerHTML;
   } catch {
-    return ''
+    return "";
   }
 }
 
-const markdownRenderer = new MarkdownIt({ html: false, linkify: true, breaks: true })
-markdownRenderer.validateLink = (url) => isSafeUrl(url)
-const chatBoardRef = ref(null)
-const isInputFocused = ref(false)
-const activeDiffTab = ref('added')
-const songKeyword = ref('')
-const activeWorkspaceTab = ref('chat')
-const isAiWindow = ref(false)
-const isAiWindowMaximized = ref(false)
-let removeWindowMaximizedListener = null
+const markdownRenderer = new MarkdownIt({ html: false, linkify: true, breaks: true });
+markdownRenderer.validateLink = (url) => isSafeUrl(url);
+const chatBoardRef = ref(null);
+const isInputFocused = ref(false);
+const activeDiffTab = ref("added");
+const songKeyword = ref("");
+const activeWorkspaceTab = ref("chat");
+const isAiWindow = ref(false);
+const isAiWindowMaximized = ref(false);
+let removeWindowMaximizedListener = null;
 
 const modalStyle = computed(() =>
   isAiWindow.value
     ? {
-        width: '100vw',
-        height: '100vh',
-        maxWidth: '100vw',
-        maxHeight: '100vh',
-        top: '0',
+        width: "100vw",
+        height: "100vh",
+        maxWidth: "100vw",
+        maxHeight: "100vh",
+        top: "0",
         margin: 0,
-        borderRadius: 0
+        borderRadius: 0,
       }
-    : { width: 'min(1180px, calc(100vw - 24px))' }
-)
+    : { width: "min(1180px, calc(100vw - 24px))" }
+);
 
 const headerStyle = computed(() =>
   isAiWindow.value
-    ? { padding: '12px 16px 10px', borderBottom: '1px solid var(--n-border-color)' }
-    : { padding: '12px 16px 10px', borderBottom: '1px solid var(--n-border-color)' }
-)
+    ? { padding: "12px 16px 10px", borderBottom: "1px solid var(--n-border-color)" }
+    : { padding: "12px 16px 10px", borderBottom: "1px solid var(--n-border-color)" }
+);
 const promptText = computed({
   get: () => aiStore.prompt,
-  set: (value) => aiStore.setPrompt(value)
-})
-const draftSongs = computed(() => aiStore.draftPlaylist?.songs || [])
-const draftName = computed(() => aiStore.draftPlaylist?.name || '')
-const hasPendingDraft = computed(() => Boolean(aiStore.pendingDraftPlaylist))
-const canRollback = computed(() => Boolean(aiStore.lastCommittedDraft))
-const pendingDiff = computed(() => aiStore.pendingDraftDiff || { addedSongs: [], removedSongs: [] })
+  set: (value) => aiStore.setPrompt(value),
+});
+const draftSongs = computed(() => aiStore.draftPlaylist?.songs || []);
+const draftName = computed(() => aiStore.draftPlaylist?.name || "");
+const hasPendingDraft = computed(() => Boolean(aiStore.pendingDraftPlaylist));
+const canRollback = computed(() => Boolean(aiStore.lastCommittedDraft));
+const pendingDiff = computed(
+  () => aiStore.pendingDraftDiff || { addedSongs: [], removedSongs: [] }
+);
 
-const addedSelection = computed(() => aiStore.pendingDraftSelection?.addedSongIds || [])
-const removedSelection = computed(() => aiStore.pendingDraftSelection?.removedSongIds || [])
+const addedSelection = computed(() => aiStore.pendingDraftSelection?.addedSongIds || []);
+const removedSelection = computed(
+  () => aiStore.pendingDraftSelection?.removedSongIds || []
+);
 
 const keptSongs = computed(() => {
-  const currentSongs = aiStore.draftPlaylist?.songs || []
-  const removedSet = new Set((pendingDiff.value.removedSongs || []).map((song) => Number(song.id)))
-  return currentSongs.filter((song) => !removedSet.has(Number(song.id)))
-})
+  const currentSongs = aiStore.draftPlaylist?.songs || [];
+  const removedSet = new Set(
+    (pendingDiff.value.removedSongs || []).map((song) => Number(song.id))
+  );
+  return currentSongs.filter((song) => !removedSet.has(Number(song.id)));
+});
 
 const currentTabSongs = computed(() => {
-  const keyword = String(songKeyword.value || '')
+  const keyword = String(songKeyword.value || "")
     .trim()
-    .toLowerCase()
+    .toLowerCase();
   const baseList =
-    activeDiffTab.value === 'added'
+    activeDiffTab.value === "added"
       ? pendingDiff.value.addedSongs || []
-      : activeDiffTab.value === 'removed'
-        ? pendingDiff.value.removedSongs || []
-        : keptSongs.value || []
+      : activeDiffTab.value === "removed"
+      ? pendingDiff.value.removedSongs || []
+      : keptSongs.value || [];
 
-  if (!keyword) return baseList
+  if (!keyword) return baseList;
   return baseList.filter((song) => {
-    const text = `${song?.name || ''} ${song?.artist || ''} ${song?.album || ''}`.toLowerCase()
-    return text.includes(keyword)
-  })
-})
+    const text = `${song?.name || ""} ${song?.artist || ""} ${
+      song?.album || ""
+    }`.toLowerCase();
+    return text.includes(keyword);
+  });
+});
 
 const isSelectableTab = computed(
-  () => activeDiffTab.value === 'added' || activeDiffTab.value === 'removed'
-)
+  () => activeDiffTab.value === "added" || activeDiffTab.value === "removed"
+);
 
 const selectionSummary = computed(() => ({
   added: addedSelection.value.length,
-  removed: aiStore.pendingApplyMode === 'only_add' ? 0 : removedSelection.value.length
-}))
+  removed: aiStore.pendingApplyMode === "only_add" ? 0 : removedSelection.value.length,
+}));
 
 const estimatedFinalCount = computed(() => {
-  const base = aiStore.draftPlaylist?.songs?.length || 0
-  return Math.max(0, base + selectionSummary.value.added - selectionSummary.value.removed)
-})
+  const base = aiStore.draftPlaylist?.songs?.length || 0;
+  return Math.max(
+    0,
+    base + selectionSummary.value.added - selectionSummary.value.removed
+  );
+});
 
 const recentPromptOptions = computed(() =>
   (aiStore.recentPrompts || []).map((prompt, index) => ({
     label: prompt,
-    key: String(index)
+    key: String(index),
   }))
-)
+);
 
 // Scroll to bottom when messages update
 watch(
@@ -503,309 +558,307 @@ watch(
   () => {
     nextTick(() => {
       if (chatBoardRef.value) {
-        chatBoardRef.value.scrollTop = chatBoardRef.value.scrollHeight
+        chatBoardRef.value.scrollTop = chatBoardRef.value.scrollHeight;
       }
-    })
+    });
   }
-)
+);
 
-aiStore.initializeStore()
+aiStore.initializeStore();
 
 globalThis?.window?.api
   ?.getWindowRole?.()
   .then((role) => {
-    isAiWindow.value = role === 'ai'
+    isAiWindow.value = role === "ai";
     if (isAiWindow.value) {
       globalThis?.window?.api
         ?.getAiWindowMaximized?.()
         .then((value) => {
-          isAiWindowMaximized.value = Boolean(value)
+          isAiWindowMaximized.value = Boolean(value);
         })
         .catch(() => {
-          isAiWindowMaximized.value = false
-        })
+          isAiWindowMaximized.value = false;
+        });
 
-      removeWindowMaximizedListener = globalThis?.window?.api?.onAiWindowMaximizedChanged?.((v) => {
-        isAiWindowMaximized.value = Boolean(v)
-      })
+      removeWindowMaximizedListener = globalThis?.window?.api?.onAiWindowMaximizedChanged?.(
+        (v) => {
+          isAiWindowMaximized.value = Boolean(v);
+        }
+      );
     }
   })
   .catch(() => {
-    isAiWindow.value = false
-  })
+    isAiWindow.value = false;
+  });
 
 watch(
   () => aiPlaylistStore.visible,
   (showing) => {
-    if (!showing && typeof removeWindowMaximizedListener === 'function') {
-      removeWindowMaximizedListener()
-      removeWindowMaximizedListener = null
+    if (!showing && typeof removeWindowMaximizedListener === "function") {
+      removeWindowMaximizedListener();
+      removeWindowMaximizedListener = null;
     }
   }
-)
+);
 
 function onAiWindowKeydown(event) {
-  if (!isAiWindow.value) return
-  if (event.key === 'Escape') {
-    event.preventDefault()
-    onAiWindowClose()
-    return
+  if (!isAiWindow.value) return;
+  if (event.key === "Escape") {
+    event.preventDefault();
+    onAiWindowClose();
+    return;
   }
-  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'w') {
-    event.preventDefault()
-    onAiWindowClose()
-    return
+  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "w") {
+    event.preventDefault();
+    onAiWindowClose();
+    return;
   }
-  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'm') {
-    event.preventDefault()
-    onAiWindowMinimize()
+  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "m") {
+    event.preventDefault();
+    onAiWindowMinimize();
   }
 }
 
 onMounted(() => {
-  window.addEventListener('keydown', onAiWindowKeydown)
-})
+  window.addEventListener("keydown", onAiWindowKeydown);
+});
 
 onBeforeUnmount(() => {
-  window.removeEventListener('keydown', onAiWindowKeydown)
-  if (typeof removeWindowMaximizedListener === 'function') {
-    removeWindowMaximizedListener()
-    removeWindowMaximizedListener = null
+  window.removeEventListener("keydown", onAiWindowKeydown);
+  if (typeof removeWindowMaximizedListener === "function") {
+    removeWindowMaximizedListener();
+    removeWindowMaximizedListener = null;
   }
-})
+});
 
 function formatChatTime(timestamp) {
-  return timestamp ? dayjs(timestamp).format('HH:mm') : ''
+  return timestamp ? dayjs(timestamp).format("HH:mm") : "";
 }
 
 function renderMessage(content) {
-  const raw = markdownRenderer.render(String(content || '').trim())
-  return sanitizeRenderedHtml(raw)
+  const raw = markdownRenderer.render(String(content || "").trim());
+  return sanitizeRenderedHtml(raw);
 }
 
 function getSongDurationLabel(song) {
-  const value = song?.duration
-  if (typeof value === 'string' && value.includes(':')) return value
-  return formatDuration(Number(song?.dt ?? song?.durationMs ?? value))
+  const value = song?.duration;
+  if (typeof value === "string" && value.includes(":")) return value;
+  return formatDuration(Number(song?.dt ?? song?.durationMs ?? value));
 }
 
 function isSongSelected(songId) {
-  const id = Number(songId)
-  if (!id) return false
-  if (activeDiffTab.value === 'added') {
-    return addedSelection.value.includes(id)
+  const id = Number(songId);
+  if (!id) return false;
+  if (activeDiffTab.value === "added") {
+    return addedSelection.value.includes(id);
   }
-  if (activeDiffTab.value === 'removed') {
-    return removedSelection.value.includes(id)
+  if (activeDiffTab.value === "removed") {
+    return removedSelection.value.includes(id);
   }
-  return false
+  return false;
 }
 
 function onToggleSong(songId, checked) {
-  if (!checked && !isSongSelected(songId)) return
-  if (checked && isSongSelected(songId)) return
+  if (!checked && !isSongSelected(songId)) return;
+  if (checked && isSongSelected(songId)) return;
 
-  if (activeDiffTab.value === 'added') {
-    aiStore.togglePendingAddedSong(songId)
-  } else if (activeDiffTab.value === 'removed') {
-    aiStore.togglePendingRemovedSong(songId)
+  if (activeDiffTab.value === "added") {
+    aiStore.togglePendingAddedSong(songId);
+  } else if (activeDiffTab.value === "removed") {
+    aiStore.togglePendingRemovedSong(songId);
   }
 }
 
 function onSelectAllCurrentTab() {
-  if (activeDiffTab.value === 'added') {
-    aiStore.selectAllPendingAddedSongs()
-  } else if (activeDiffTab.value === 'removed') {
-    aiStore.selectAllPendingRemovedSongs()
+  if (activeDiffTab.value === "added") {
+    aiStore.selectAllPendingAddedSongs();
+  } else if (activeDiffTab.value === "removed") {
+    aiStore.selectAllPendingRemovedSongs();
   }
 }
 
 function onClearCurrentTab() {
-  if (activeDiffTab.value === 'added') {
-    aiStore.clearPendingAddedSongs()
-  } else if (activeDiffTab.value === 'removed') {
-    aiStore.clearPendingRemovedSongs()
+  if (activeDiffTab.value === "added") {
+    aiStore.clearPendingAddedSongs();
+  } else if (activeDiffTab.value === "removed") {
+    aiStore.clearPendingRemovedSongs();
   }
 }
 
 function onInvertCurrentTab() {
-  const list = currentTabSongs.value || []
-  if (activeDiffTab.value === 'added') {
+  const list = currentTabSongs.value || [];
+  if (activeDiffTab.value === "added") {
     for (const song of list) {
-      aiStore.togglePendingAddedSong(song.id)
+      aiStore.togglePendingAddedSong(song.id);
     }
-  } else if (activeDiffTab.value === 'removed') {
+  } else if (activeDiffTab.value === "removed") {
     for (const song of list) {
-      aiStore.togglePendingRemovedSong(song.id)
+      aiStore.togglePendingRemovedSong(song.id);
     }
   }
 }
 
 async function onGenerate() {
-  const text = promptText.value.trim()
+  const text = promptText.value.trim();
   if (!text) {
-    message.warning('请输入需求后发送')
-    return
+    message.warning("请输入需求后发送");
+    return;
   }
-  const result = await aiStore.generateFromPrompt(text)
+  const result = await aiStore.generateFromPrompt(text);
   if (!result.success && !result.canceled) {
-    message.error(result.error || aiStore.error || '生成失败')
+    message.error(result.error || aiStore.error || "生成失败");
   }
 }
 
 async function onConfirm() {
-  const result = await aiStore.createDraftToLocalPlaylist()
+  const result = await aiStore.createDraftToLocalPlaylist();
   if (result?.success) {
-    message.success(`已创建歌单，添加 ${result.addedSongs || 0} 首`)
-    onModalClose()
-    return
+    message.success(`已创建歌单，添加 ${result.addedSongs || 0} 首`);
+    onModalClose();
+    return;
   }
-  message.error(result?.error || aiStore.error || '创建失败')
+  message.error(result?.error || aiStore.error || "创建失败");
 }
 
 function onModalClose() {
   if (isAiWindow.value) {
-    globalThis?.window?.api?.aiWindowClose?.()
-    return
+    globalThis?.window?.api?.aiWindowClose?.();
+    return;
   }
-  aiPlaylistStore.closeModal()
+  aiPlaylistStore.closeModal();
 }
 
 function onAiWindowMinimize() {
   if (globalThis?.window?.api?.aiWindowMinimize) {
-    globalThis.window.api.aiWindowMinimize()
-    return
+    globalThis.window.api.aiWindowMinimize();
+    return;
   }
-  globalThis?.window?.api?.minimize?.()
+  globalThis?.window?.api?.minimize?.();
 }
 
 function onAiWindowMaximize() {
   if (globalThis?.window?.api?.aiWindowMaximize) {
-    globalThis.window.api.aiWindowMaximize()
-    return
+    globalThis.window.api.aiWindowMaximize();
+    return;
   }
-  globalThis?.window?.api?.maximize?.()
+  globalThis?.window?.api?.maximize?.();
 }
 
 function onHeaderDblClick() {
-  if (!isAiWindow.value) return
-  onAiWindowMaximize()
+  if (!isAiWindow.value) return;
+  onAiWindowMaximize();
 }
 
 function onAiWindowClose() {
   if (globalThis?.window?.api?.aiWindowClose) {
-    globalThis.window.api.aiWindowClose()
-    return
+    globalThis.window.api.aiWindowClose();
+    return;
   }
-  globalThis?.window?.api?.close?.()
+  globalThis?.window?.api?.close?.();
 }
 
 function onApplyPendingDraft() {
-  aiStore.setPendingApplyMode('standard')
-  const ok = aiStore.applyPendingDraft()
-  if (ok) message.success('已应用调整')
+  aiStore.setPendingApplyMode("standard");
+  const ok = aiStore.applyPendingDraft();
+  if (ok) message.success("已应用调整");
 }
 
 function onApplyOnlyAdded() {
-  aiStore.setPendingApplyMode('only_add')
-  const ok = aiStore.applyPendingDraft()
-  if (ok) message.success('已仅应用新增歌曲')
+  aiStore.setPendingApplyMode("only_add");
+  const ok = aiStore.applyPendingDraft();
+  if (ok) message.success("已仅应用新增歌曲");
 }
 
 function onRollbackDraft() {
-  const ok = aiStore.rollbackDraft()
-  if (ok) message.warning('已回滚')
+  const ok = aiStore.rollbackDraft();
+  if (ok) message.warning("已回滚");
 }
 
 function onCancelGenerate() {
-  const canceled = aiStore.cancelCurrentGeneration()
-  if (canceled) message.warning('已取消请求')
+  const canceled = aiStore.cancelCurrentGeneration();
+  if (canceled) message.warning("已取消请求");
 }
 
 function onChatModeChange(value) {
-  aiStore.setChatMode(value)
+  aiStore.setChatMode(value);
 }
 
 function onWorkspaceTabChange(value) {
-  activeWorkspaceTab.value = value === 'diff' ? 'diff' : 'chat'
+  activeWorkspaceTab.value = value === "diff" ? "diff" : "chat";
 }
 
 function onCreateSession() {
-  aiStore.createSession('')
+  aiStore.createSession("");
 }
 
 function onDeleteSessionById(sessionId) {
   if (aiStore.sessions.length <= 1) {
-    message.warning('至少保留一个会话')
-    return
+    message.warning("至少保留一个会话");
+    return;
   }
-  const removed = aiStore.deleteSession(sessionId)
+  const removed = aiStore.deleteSession(sessionId);
   if (removed) {
-    message.success('已删除会话')
+    message.success("已删除会话");
   }
 }
 
 function getSessionPreview(session) {
-  const list = Array.isArray(session?.chatMessages) ? session.chatMessages : []
-  const latest = list[list.length - 1]?.content || ''
-  return String(latest || '暂无对话内容').slice(0, 36)
+  const list = Array.isArray(session?.chatMessages) ? session.chatMessages : [];
+  const latest = list[list.length - 1]?.content || "";
+  return String(latest || "暂无对话内容").slice(0, 36);
 }
 
 function onSwitchSession(value) {
-  aiStore.switchSession(value)
+  aiStore.switchSession(value);
 }
 
 async function onSelectRecentPrompt(key) {
-  const index = Number(key)
-  if (!Number.isInteger(index)) return
-  await aiStore.reusePromptByIndex(index)
+  const index = Number(key);
+  if (!Number.isInteger(index)) return;
+  await aiStore.reusePromptByIndex(index);
 }
 
 async function onExportDebugSnapshot() {
   try {
-    const snapshot = aiStore.buildDebugSnapshot()
-    await navigator.clipboard.writeText(JSON.stringify(snapshot, null, 2))
-    message.success('已复制调试快照')
+    const snapshot = aiStore.buildDebugSnapshot();
+    await navigator.clipboard.writeText(JSON.stringify(snapshot, null, 2));
+    message.success("已复制调试快照");
   } catch {
-    message.error('复制失败')
+    message.error("复制失败");
   }
 }
 
 function onDownloadDebugSnapshot() {
   try {
-    const snapshot = aiStore.buildDebugSnapshot()
-    const payload = JSON.stringify(snapshot, null, 2)
-    const blob = new Blob([payload], { type: 'application/json;charset=utf-8' })
-    const url = URL.createObjectURL(blob)
-    const anchor = document.createElement('a')
-    anchor.href = url
-    anchor.download = `ai-debug-snapshot-${dayjs().format('YYYYMMDD-HHmmss')}.json`
-    document.body.appendChild(anchor)
-    anchor.click()
-    anchor.remove()
-    URL.revokeObjectURL(url)
-    message.success('已下载调试快照')
+    const snapshot = aiStore.buildDebugSnapshot();
+    const payload = JSON.stringify(snapshot, null, 2);
+    const blob = new Blob([payload], { type: "application/json;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `ai-debug-snapshot-${dayjs().format("YYYYMMDD-HHmmss")}.json`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
+    message.success("已下载调试快照");
   } catch {
-    message.error('下载失败')
+    message.error("下载失败");
   }
 }
 </script>
 
 <style scoped lang="scss">
 .ai-chat-modal {
-  border-radius: 16px;
   overflow: hidden;
+  height: 100%;
   box-shadow: 0 12px 36px rgba(0, 0, 0, 0.15);
   z-index: auto;
 }
 
 :deep(.ai-chat-modal .n-card) {
   height: 100%;
-}
-
-:deep(.ai-chat-modal .n-card__content) {
-  padding: 0 !important;
-  overflow: hidden;
+  top: 0;
 }
 
 :deep(.ai-chat-modal .n-card-header .header-actions) {
@@ -867,6 +920,15 @@ function onDownloadDebugSnapshot() {
   min-height: 0;
   max-height: none;
   overflow: hidden;
+}
+
+:deep(.ai-chat-modal.ai-window-mode .n-modal-scroll-content) {
+  overflow: hidden !important;
+}
+
+:deep(.ai-chat-modal.ai-window-mode .n-modal-body-wrapper) {
+  overflow: hidden !important;
+  height: 100vh;
 }
 
 .session-sidebar {

@@ -335,9 +335,10 @@ import { useRouter } from 'vue-router'
 import { useSearchStore } from '@/stores/searchStore'
 import { useUserStore } from '@/stores/userStore'
 import { storeToRefs } from 'pinia'
-import { NIcon, useMessage } from 'naive-ui'
+import { NIcon } from 'naive-ui'
 import SettingDrawer from '@/components/content/setting/setting.vue'
 import { ROUTE_NAMES } from '@/router/routeNames'
+import { useAppFeedback } from '@/composables/useAppFeedback'
 import {
   SearchOutline,
   SettingsOutline,
@@ -361,7 +362,7 @@ import {
 import appIcon from '@/assets/icon/icon.png'
 
 const router = useRouter()
-const message = useMessage()
+const feedback = useAppFeedback()
 
 const searchStore = useSearchStore()
 const { setSearchKeyword } = searchStore
@@ -459,7 +460,7 @@ const build163Email = () => {
 
 const handleSearch = async () => {
   if (!searchKeyword.value.trim()) {
-    message.warning('请输入搜索关键词')
+    feedback.warning('请输入搜索关键词')
     return
   }
   setSearchKeyword(searchKeyword.value.trim())
@@ -500,7 +501,7 @@ const startQrCodePolling = () => {
       if (result.status === 'success') {
         stopQrCodePolling()
         showLoginModal.value = false
-        message.success('登录成功')
+        feedback.success('登录成功')
       } else if (result.status === 'expired') {
         stopQrCodePolling()
       }
@@ -517,27 +518,27 @@ const stopQrCodePolling = () => {
 
 const handleSendCaptcha = async () => {
   if (!isPhoneValid(loginForm.value.phone)) {
-    message.warning('请输入正确的手机号')
+    feedback.warning('请输入正确的手机号')
     return
   }
   const result = await userStore.sendCaptcha(loginForm.value.phone, loginForm.value.countryCode)
   if (result.success) {
-    message.success('验证码已发送')
+    feedback.success('验证码已发送')
     startSmsCountdown()
   } else {
-    message.error(result.message || '验证码发送失败')
+    feedback.error(result.message || '验证码发送失败')
   }
 }
 
 const handlePasswordLogin = async () => {
   if (loginType.value === 'phone') {
     if (!isPhoneValid(loginForm.value.phone)) {
-      message.warning('请输入正确的手机号')
+      feedback.warning('请输入正确的手机号')
       return
     }
   } else {
     if (!loginForm.value.emailPrefix) {
-      message.warning('请输入163邮箱前缀')
+      feedback.warning('请输入163邮箱前缀')
       return
     }
   }
@@ -546,7 +547,7 @@ const handlePasswordLogin = async () => {
   if (loginType.value === 'phone') {
     if (phoneLoginMode.value === 'password') {
       if (!loginForm.value.password) {
-        message.warning('请输入密码')
+        feedback.warning('请输入密码')
         return
       }
       result = await userStore.loginByPhone(
@@ -556,7 +557,7 @@ const handlePasswordLogin = async () => {
       )
     } else {
       if (!loginForm.value.captcha) {
-        message.warning('请输入短信验证码')
+        feedback.warning('请输入短信验证码')
         return
       }
       result = await userStore.loginByPhoneCaptcha(
@@ -567,7 +568,7 @@ const handlePasswordLogin = async () => {
     }
   } else {
     if (!loginForm.value.password) {
-      message.warning('请输入密码')
+      feedback.warning('请输入密码')
       return
     }
     result = await userStore.loginByEmail(build163Email(), loginForm.value.password)
@@ -575,17 +576,17 @@ const handlePasswordLogin = async () => {
 
   if (result.success) {
     showLoginModal.value = false
-    message.success('登录成功')
+    feedback.success('登录成功')
     resetLoginForm()
     stopSmsCountdown()
   } else {
-    message.error(result.message || '登录失败')
+    feedback.error(result.message || '登录失败')
   }
 }
 
 const handleLogout = async () => {
   const success = await userStore.logout()
-  if (success) message.success('已退出登录')
+  if (success) feedback.success('已退出登录')
 }
 
 const handleCloseLoginModal = () => {
