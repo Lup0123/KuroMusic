@@ -4,6 +4,9 @@ import eslintPluginVue from 'eslint-plugin-vue'
 import vueParser from 'vue-eslint-parser'
 
 export default [
+  {
+    extends: ['eslint:recommended', 'plugin:prettier/recommended']
+  },
   { ignores: ['**/node_modules', '**/dist', '**/out'] },
   eslintConfig,
   ...eslintPluginVue.configs['flat/recommended'],
@@ -23,7 +26,8 @@ export default [
     files: ['**/*.{js,jsx,vue}'],
     rules: {
       'vue/require-default-prop': 'off',
-      'vue/multi-word-component-names': 'off'
+      'vue/multi-word-component-names': 'off',
+      'prettier/prettier': ['error', { endOfLine: 'auto' }]
     }
   },
   eslintConfigPrettier

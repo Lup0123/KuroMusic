@@ -11,6 +11,7 @@ import { aiConfig } from './getLocalConfig/aiConfig'
 import { auth, getCookie } from './auth/login'
 import { recommendPlaylistByLLM } from './ai/llmPlaylist'
 import { runLangChainRecommend } from './ai/langchainRecommend'
+import { ragService } from './ai/ragService'
 import {
   cloudsearch,
   song_url_v1,
@@ -320,6 +321,22 @@ if (!gotLock) {
           return JSON.stringify(structured)
         }
 
+        const ragResult = ragService.buildContext(prompt, {
+          limit: 5,
+          sourceTypes: ['lyrics', 'playlist', 'preference']
+        })
+        const mergedMessages = [
+          ...(ragResult.context
+            ? [
+                {
+                  role: 'system',
+                  content: `本地 RAG 上下文：\n${ragResult.context}`
+                }
+              ]
+            : []),
+          ...(Array.isArray(context?.messages) ? context.messages : [])
+        ]
+
         const searchSongs = async (keyword, limit = 30, offset = 0) => {
           const response = await cloudsearch({
             keywords: keyword,
@@ -348,7 +365,11 @@ if (!gotLock) {
 
         const result = await recommendPlaylistByLLM({
           prompt,
-          context,
+          context: {
+            ...context,
+            messages: mergedMessages,
+            ragContext: ragResult.hits
+          },
           searchSongs,
           llmClient
         })
@@ -585,6 +606,27 @@ if (!gotLock) {
       }
     })
 
+    ipcMain.handle('rag-search', async (event, payload = {}) => {
+      try {
+        const data = ragService.buildContext(String(payload?.query || ''), {
+          limit: Number(payload?.limit) || 5,
+          sourceTypes: Array.isArray(payload?.sourceTypes) ? payload.sourceTypes : []
+        })
+        return { success: true, data }
+      } catch (error) {
+        return { success: false, error: error?.message || 'RAG 检索失败' }
+      }
+    })
+
+    ipcMain.handle('rag-index-preference', async (event, payload = {}) => {
+      try {
+        const data = ragService.indexPreference(payload?.id || Date.now(), payload)
+        return { success: true, data }
+      } catch (error) {
+        return { success: false, error: error?.message || 'RAG 偏好入库失败' }
+      }
+    })
+
     // 修复重复的 get-song-url,合并为一个
     ipcMain.handle('get-song-url', async (event, songId, quality = 'standard') => {
       try {
@@ -610,6 +652,13 @@ if (!gotLock) {
           id: songId,
           cookie: getCookie()
         })
+        try {
+          ragService.indexLyrics(songId, response?.body || response, {
+            title: response?.body?.lrc?.lyric ? `歌词 ${songId}` : `歌曲 ${songId}`
+          })
+        } catch (error) {
+          console.error('[RAG] 索引歌词失败:', error)
+        }
         return response
       } catch (error) {
         console.error('获取歌词时发生错误：', error)
@@ -649,6 +698,11 @@ if (!gotLock) {
     ipcMain.handle('get-playlist-details', async (event, playlistId) => {
       try {
         const response = await playlist_detail({ id: playlistId, cookie: getCookie() })
+        try {
+          ragService.indexPlaylist(playlistId, response?.body?.playlist || response?.body || response)
+        } catch (error) {
+          console.error('[RAG] 索引歌单失败:', error)
+        }
         return response
       } catch (error) {
         console.error('获取歌单详情时发生错误：', error)
@@ -662,6 +716,11 @@ if (!gotLock) {
     ipcMain.handle('get-playlist-all-songs', async (event, playlistId) => {
       try {
         const response = await playlist_track_all({ id: playlistId, cookie: getCookie() })
+        try {
+          ragService.indexPlaylist(playlistId, response?.body?.songs || response?.body || response)
+        } catch (error) {
+          console.error('[RAG] 索引歌单歌曲失败:', error)
+        }
         return response
       } catch (error) {
         console.error('获取歌单所有歌曲时发生错误：', error)

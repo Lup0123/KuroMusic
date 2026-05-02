@@ -1,6 +1,6 @@
 ﻿<template>
   <n-drawer v-model:show="visible" :width="450" placement="right">
-    <n-drawer-content title="设置" closable>
+    <n-drawer-content title="设置" closable :native-scrollbar="false">
       <div class="settings-content">
         <!-- 主题颜色设置 -->
         <div class="setting-section">
@@ -56,21 +56,30 @@
                 <span class="item-label">自动播放下一首</span
                 ><span class="item-desc">播放完当前歌曲后自动播放下一首</span>
               </div>
-              <n-switch v-model:value="settings.autoPlayNext" @update:value="saveSettings" />
+              <n-switch
+                v-model:value="settings.autoPlayNext"
+                @update:value="saveSettings"
+              />
             </div>
             <div class="setting-item">
               <div class="item-info">
                 <span class="item-label">启用淡入淡出</span
                 ><span class="item-desc">歌曲切换时使用淡入淡出效果</span>
               </div>
-              <n-switch v-model:value="settings.enableFade" @update:value="saveSettings" />
+              <n-switch
+                v-model:value="settings.enableFade"
+                @update:value="saveSettings"
+              />
             </div>
             <div class="setting-item">
               <div class="item-info">
                 <span class="item-label">显示歌词</span
                 ><span class="item-desc">在播放器中显示歌词</span>
               </div>
-              <n-switch v-model:value="settings.showLyrics" @update:value="saveSettings" />
+              <n-switch
+                v-model:value="settings.showLyrics"
+                @update:value="saveSettings"
+              />
             </div>
           </n-space>
         </div>
@@ -125,7 +134,7 @@
             <div class="setting-item">
               <div class="item-info">
                 <span class="item-label">下载路径</span
-                ><span class="item-desc">{{ settings.downloadPath || '默认路径' }}</span>
+                ><span class="item-desc">{{ settings.downloadPath || "默认路径" }}</span>
               </div>
               <n-button size="small" @click="selectDownloadPath">选择</n-button>
             </div>
@@ -155,8 +164,8 @@
 </template>
 
 <script setup>
-import { ref, onMounted, inject } from 'vue'
-import { useMessage, useDialog } from 'naive-ui'
+import { ref, onMounted, inject } from "vue";
+import { useMessage, useDialog } from "naive-ui";
 import {
   CheckmarkOutline,
   RefreshOutline,
@@ -165,124 +174,142 @@ import {
   PlayCircleOutline,
   VolumeHighOutline,
   DownloadOutline,
-  SparklesOutline
-} from '@vicons/ionicons5'
+  SparklesOutline,
+} from "@vicons/ionicons5";
 
-const visible = defineModel('visible', { type: Boolean, default: false })
-const message = useMessage()
-const dialog = useDialog()
-const setPrimaryColor = inject('setPrimaryColor')
+const visible = defineModel("visible", { type: Boolean, default: false });
+const message = useMessage();
+const dialog = useDialog();
+const setPrimaryColor = inject("setPrimaryColor");
 
 const defaultSettings = {
-  themeColor: 'arcoblue',
+  themeColor: "arcoblue",
   fontSize: 14,
   autoPlayNext: true,
   enableFade: true,
   showLyrics: true,
-  quality: 'exhigh',
-  downloadPath: '',
-  aiApiKey: '',
-  aiModel: 'qwen-plus',
-  aiBaseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1'
-}
-const settings = ref({ ...defaultSettings })
+  quality: "exhigh",
+  downloadPath: "",
+  aiApiKey: "",
+  aiModel: "qwen-plus",
+  aiBaseUrl: "https://dashscope.aliyuncs.com/compatible-mode/v1",
+};
+const settings = ref({ ...defaultSettings });
 
 const themeColors = [
-  { name: '拂晓蓝', value: 'arcoblue', color: '#165DFF', hover: '#4080FF' },
-  { name: '极客蓝', value: 'blue', color: '#3491FA', hover: '#5AA9FA' },
-  { name: '暮光紫', value: 'purple', color: '#722ED1', hover: '#9254DE' },
-  { name: '浪漫粉', value: 'pinkpurple', color: '#D91AD9', hover: '#EA3FEA' },
-  { name: '火山红', value: 'red', color: '#F53F3F', hover: '#F76560' },
-  { name: '日出橙', value: 'orangered', color: '#F77234', hover: '#FF9A2E' },
-  { name: '金盏黄', value: 'gold', color: '#F7BA1E', hover: '#F9CC45' },
-  { name: '极光绿', value: 'green', color: '#00B42A', hover: '#23C343' },
-  { name: '青春青', value: 'cyan', color: '#14C9C9', hover: '#33D4CF' },
-  { name: '雅致灰', value: 'gray', color: '#86909C', hover: '#A4ACB5' }
-]
-const themeColorMap = Object.fromEntries(themeColors.map((item) => [item.value, item]))
+  { name: "拂晓蓝", value: "arcoblue", color: "#165DFF", hover: "#4080FF" },
+  { name: "极客蓝", value: "blue", color: "#3491FA", hover: "#5AA9FA" },
+  { name: "暮光紫", value: "purple", color: "#722ED1", hover: "#9254DE" },
+  { name: "浪漫粉", value: "pinkpurple", color: "#D91AD9", hover: "#EA3FEA" },
+  { name: "火山红", value: "red", color: "#F53F3F", hover: "#F76560" },
+  { name: "日出橙", value: "orangered", color: "#F77234", hover: "#FF9A2E" },
+  { name: "金盏黄", value: "gold", color: "#F7BA1E", hover: "#F9CC45" },
+  { name: "极光绿", value: "green", color: "#00B42A", hover: "#23C343" },
+  { name: "青春青", value: "cyan", color: "#14C9C9", hover: "#33D4CF" },
+  { name: "雅致灰", value: "gray", color: "#86909C", hover: "#A4ACB5" },
+];
+const themeColorMap = Object.fromEntries(themeColors.map((item) => [item.value, item]));
 
 const changeThemeColor = (colorScheme) => {
-  settings.value.themeColor = colorScheme
-  applyThemeColor(colorScheme)
-  saveSettings()
-  message.success('主题颜色已更改')
-}
+  settings.value.themeColor = colorScheme;
+  applyThemeColor(colorScheme);
+  saveSettings();
+  message.success("主题颜色已更改");
+};
 const applyThemeColor = (colorScheme) => {
-  const targetThemeColor = themeColorMap[colorScheme] || themeColorMap.arcoblue
-  if (setPrimaryColor) setPrimaryColor(targetThemeColor.color, targetThemeColor.hover)
-}
+  const targetThemeColor = themeColorMap[colorScheme] || themeColorMap.arcoblue;
+  if (setPrimaryColor) setPrimaryColor(targetThemeColor.color, targetThemeColor.hover);
+};
 const changeFontSize = (value) => {
-  settings.value.fontSize = value
-  applyFontSize(value)
-  saveSettings()
-}
+  settings.value.fontSize = value;
+  applyFontSize(value);
+  saveSettings();
+};
 const applyFontSize = (size) => {
-  document.documentElement.style.setProperty('--base-font-size', size + 'px')
-  document.documentElement.style.fontSize = size + 'px'
-}
+  document.documentElement.style.setProperty("--base-font-size", size + "px");
+  document.documentElement.style.fontSize = size + "px";
+};
 const saveSettings = () => {
-  localStorage.setItem('appSettings', JSON.stringify(settings.value))
+  localStorage.setItem("appSettings", JSON.stringify(settings.value));
 
   if (window.api?.setAiProviderConfig) {
     window.api.setAiProviderConfig({
       apiKey: settings.value.aiApiKey,
       model: settings.value.aiModel,
-      baseUrl: settings.value.aiBaseUrl
-    })
+      baseUrl: settings.value.aiBaseUrl,
+    });
   }
-}
+
+  if (window.api?.ragIndexPreference) {
+    void window.api.ragIndexPreference({
+      id: "app-ai-settings",
+      title: "AI 设置偏好",
+      summary: [
+        `模型: ${settings.value.aiModel || "qwen-plus"}`,
+        `接口: ${settings.value.aiBaseUrl || "默认 Base URL"}`,
+        `音质: ${settings.value.quality || "exhigh"}`,
+        `自动播放下一首: ${settings.value.autoPlayNext ? "开启" : "关闭"}`,
+        `淡入淡出: ${settings.value.enableFade ? "开启" : "关闭"}`,
+        `显示歌词: ${settings.value.showLyrics ? "开启" : "关闭"}`,
+      ].join("；"),
+      keywords: ["AI", "设置", settings.value.aiModel, settings.value.quality].filter(
+        Boolean
+      ),
+    });
+  }
+};
 const loadSettings = () => {
-  const saved = localStorage.getItem('appSettings')
+  const saved = localStorage.getItem("appSettings");
   if (saved) {
     try {
-      settings.value = { ...defaultSettings, ...JSON.parse(saved) }
-      applyThemeColor(settings.value.themeColor)
-      applyFontSize(settings.value.fontSize)
+      settings.value = { ...defaultSettings, ...JSON.parse(saved) };
+      applyThemeColor(settings.value.themeColor);
+      applyFontSize(settings.value.fontSize);
     } catch (e) {
-      console.error('加载设置失败:', e)
+      console.error("加载设置失败:", e);
     }
   }
 
   if (window.api?.getAiProviderConfig) {
     window.api.getAiProviderConfig().then((res) => {
       if (res?.success && res.data) {
-        settings.value.aiApiKey = res.data.apiKey || settings.value.aiApiKey
-        settings.value.aiModel = res.data.model || settings.value.aiModel
-        settings.value.aiBaseUrl = res.data.baseUrl || settings.value.aiBaseUrl
+        settings.value.aiApiKey = res.data.apiKey || settings.value.aiApiKey;
+        settings.value.aiModel = res.data.model || settings.value.aiModel;
+        settings.value.aiBaseUrl = res.data.baseUrl || settings.value.aiBaseUrl;
       }
-    })
+    });
   }
-}
+};
 const selectDownloadPath = async () => {
-  message.info('此功能需要 Electron API 支持')
-}
+  message.info("此功能需要 Electron API 支持");
+};
 const confirmReset = () => {
   dialog.warning({
-    title: '确认重置',
-    content: '确定要恢复所有默认设置吗？',
-    positiveText: '确认',
-    negativeText: '取消',
-    onPositiveClick: resetSettings
-  })
-}
+    title: "确认重置",
+    content: "确定要恢复所有默认设置吗？",
+    positiveText: "确认",
+    negativeText: "取消",
+    onPositiveClick: resetSettings,
+  });
+};
 const resetSettings = () => {
-  settings.value = { ...defaultSettings }
-  applyThemeColor(defaultSettings.themeColor)
-  applyFontSize(defaultSettings.fontSize)
-  localStorage.removeItem('appSettings')
-  message.success('已恢复默认设置')
-}
+  settings.value = { ...defaultSettings };
+  applyThemeColor(defaultSettings.themeColor);
+  applyFontSize(defaultSettings.fontSize);
+  localStorage.removeItem("appSettings");
+  message.success("已恢复默认设置");
+};
 onMounted(() => {
-  loadSettings()
-})
+  loadSettings();
+});
 defineExpose({
   show: () => {
-    visible.value = true
+    visible.value = true;
   },
   hide: () => {
-    visible.value = false
-  }
-})
+    visible.value = false;
+  },
+});
 </script>
 
 <style lang="scss" scoped>
@@ -419,7 +446,7 @@ defineExpose({
         .value {
           color: var(--n-text-color);
           font-weight: 500;
-          font-family: 'Consolas', 'Monaco', monospace;
+          font-family: "Consolas", "Monaco", monospace;
         }
       }
     }
