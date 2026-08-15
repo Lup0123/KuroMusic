@@ -1,4 +1,5 @@
-import { app, shell, BrowserWindow, ipcMain, dialog } from 'electron'
+import { app, shell, BrowserWindow, ipcMain, dialog, Tray, Menu, globalShortcut } from 'electron'
+import { autoUpdater } from 'electron-updater'
 import { join } from 'path'
 import { writeFileSync, readFileSync, existsSync, unlinkSync } from 'fs'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
@@ -36,6 +37,8 @@ import {
 
 let mainWindow = null
 let aiWindow = null
+let normalWindowBounds = null
+const MINI_WINDOW_SIZE = { width: 380, height: 88 }
 const gotLock = app.requestSingleInstanceLock()
 
 function createAiWindow() {
@@ -137,6 +140,14 @@ function createWindow() {
     mainWindow.show()
   })
 
+  mainWindow.on('close', (event) => {
+    if (closeToTray && !isQuitting) {
+      event.preventDefault()
+      mainWindow.hide()
+      tipCloseToTray()
+    }
+  })
+
   mainWindow.webContents.setWindowOpenHandler((details) => {
     shell.openExternal(details.url)
     return { action: 'deny' }
@@ -148,6 +159,140 @@ function createWindow() {
     mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL'])
   } else {
     mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
+  }
+}
+
+let tray = null
+let closeToTray = false
+let closeToTrayTipped = false
+let isQuitting = false
+let autoCheckUpdate = true
+let updateChecking = false
+let updateDownloaded = false
+
+function showMainWindow() {
+  if (!mainWindow || mainWindow.isDestroyed()) return
+  if (mainWindow.isMinimized()) mainWindow.restore()
+  mainWindow.show()
+  mainWindow.focus()
+}
+
+function tipCloseToTray() {
+  if (closeToTrayTipped) return
+  closeToTrayTipped = true
+  if (process.platform === 'win32' && tray) {
+    try {
+      tray.displayBalloon({
+        title: 'Kuromusic 已最小化到托盘',
+        content: '点击托盘图标即可恢复窗口'
+      })
+    } catch {
+      // 忽略气泡提示失败
+    }
+  }
+}
+
+function sendPlayerCommand(command) {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('player-command', command)
+  }
+}
+
+function createTray() {
+  if (tray) return tray
+
+  tray = new Tray(icon)
+  tray.setToolTip('Kuromusic')
+  tray.setContextMenu(
+    Menu.buildFromTemplate([
+      { label: '显示主窗口', click: showMainWindow },
+      { type: 'separator' },
+      { label: '播放 / 暂停', click: () => sendPlayerCommand('toggle-play') },
+      { label: '上一首', click: () => sendPlayerCommand('previous') },
+      { label: '下一首', click: () => sendPlayerCommand('next') },
+      { type: 'separator' },
+      { label: '迷你模式', click: () => sendPlayerCommand('toggle-mini') },
+      { type: 'separator' },
+      { label: '退出', click: () => app.quit() }
+    ])
+  )
+  tray.on('click', showMainWindow)
+  return tray
+}
+function registerGlobalShortcuts(payload) {
+  globalShortcut.unregisterAll()
+  if (!payload?.enabled) return { disabled: true }
+
+  const results = {}
+  const shortcuts = payload.shortcuts || {}
+  for (const [command, accelerator] of Object.entries(shortcuts)) {
+    const acc = typeof accelerator === 'string' ? accelerator.trim() : ''
+    if (!acc) {
+      results[command] = { ok: false, reason: 'empty' }
+      continue
+    }
+    try {
+      const ok = globalShortcut.register(acc, () => sendPlayerCommand(command))
+      results[command] = ok ? { ok: true } : { ok: false, reason: 'conflict' }
+    } catch {
+      results[command] = { ok: false, reason: 'invalid' }
+    }
+  }
+  return results
+}
+
+function sendToRenderer(channel, payload) {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send(channel, payload)
+  }
+}
+
+function initAutoUpdater() {
+  autoUpdater.autoDownload = true
+  autoUpdater.autoInstallOnAppQuit = true
+
+  autoUpdater.on('checking-for-update', () => {
+    sendToRenderer('update-status', { status: 'checking' })
+  })
+  autoUpdater.on('update-available', (info) => {
+    updateChecking = false
+    sendToRenderer('update-status', { status: 'available', version: info?.version || '' })
+  })
+  autoUpdater.on('update-not-available', (info) => {
+    updateChecking = false
+    sendToRenderer('update-status', { status: 'not-available', version: info?.version || '' })
+  })
+  autoUpdater.on('download-progress', (progress) => {
+    sendToRenderer('update-status', {
+      status: 'downloading',
+      percent: Math.round(progress?.percent || 0),
+      transferred: progress?.transferred || 0,
+      total: progress?.total || 0
+    })
+  })
+  autoUpdater.on('update-downloaded', (info) => {
+    updateChecking = false
+    updateDownloaded = true
+    sendToRenderer('update-status', { status: 'downloaded', version: info?.version || '' })
+  })
+  autoUpdater.on('error', (error) => {
+    updateChecking = false
+    sendToRenderer('update-status', { status: 'error', message: error?.message || String(error) })
+  })
+}
+
+async function checkForUpdates(silent = false) {
+  if (updateChecking) return { ok: false, reason: 'checking' }
+  updateChecking = true
+  try {
+    const result = await autoUpdater.checkForUpdates()
+    return { ok: true, updateInfo: result?.updateInfo || null }
+  } catch (error) {
+    updateChecking = false
+    if (!silent) {
+      sendToRenderer('update-status', { status: 'error', message: error?.message || String(error) })
+    }
+    return { ok: false, reason: 'error', message: error?.message || String(error) }
   }
 }
 
@@ -1371,10 +1516,97 @@ if (!gotLock) {
     })
 
     ipcMain.on('window-close', () => {
-      if (mainWindow) mainWindow.close()
+      if (!mainWindow || mainWindow.isDestroyed()) return
+      if (closeToTray) {
+        mainWindow.hide()
+        tipCloseToTray()
+      } else {
+        mainWindow.close()
+      }
+    })
+
+    ipcMain.on('set-close-to-tray', (event, enabled) => {
+      closeToTray = Boolean(enabled)
+    })
+
+    ipcMain.handle('set-auto-launch', (event, enabled) => {
+      if (process.platform !== 'win32' && process.platform !== 'darwin') {
+        return { ok: false, reason: 'unsupported-platform' }
+      }
+      const openAtLogin = Boolean(enabled)
+      const options = app.isPackaged
+        ? { openAtLogin }
+        : { openAtLogin, path: process.execPath, args: [app.getAppPath()] }
+      app.setLoginItemSettings(options)
+      return { ok: true, enabled: openAtLogin }
+    })
+
+    ipcMain.handle('get-auto-launch', () => {
+      if (process.platform !== 'win32' && process.platform !== 'darwin') {
+        return { ok: false, reason: 'unsupported-platform' }
+      }
+      return { ok: true, enabled: app.getLoginItemSettings().openAtLogin }
+    })
+
+    ipcMain.handle('check-for-updates', (event, silent) => {
+      return checkForUpdates(Boolean(silent))
+    })
+
+    ipcMain.handle('quit-and-install-update', () => {
+      if (updateDownloaded) {
+        autoUpdater.quitAndInstall()
+        return { ok: true }
+      }
+      return { ok: false }
+    })
+
+    ipcMain.on('set-auto-check-update', (event, enabled) => {
+      autoCheckUpdate = Boolean(enabled)
+    })
+
+    ipcMain.on('show-main-window', showMainWindow)
+
+    ipcMain.handle('global-shortcuts-register', (event, payload) => {
+      return registerGlobalShortcuts(payload)
+    })
+
+    ipcMain.handle('set-mini-mode', async (event, isMini) => {
+      if (!mainWindow || mainWindow.isDestroyed()) return { ok: false }
+
+      if (isMini) {
+        if (mainWindow.isMaximized()) mainWindow.unmaximize()
+        normalWindowBounds = mainWindow.getBounds()
+        mainWindow.setResizable(true)
+        mainWindow.setMinimumSize(0, 0)
+        mainWindow.setSize(MINI_WINDOW_SIZE.width, MINI_WINDOW_SIZE.height)
+        if (process.platform === 'darwin') {
+          mainWindow.setAlwaysOnTop(true, 'floating')
+        } else {
+          mainWindow.setAlwaysOnTop(true)
+        }
+        mainWindow.setSkipTaskbar(true)
+        mainWindow.setResizable(false)
+        mainWindow.center()
+      } else {
+        mainWindow.setAlwaysOnTop(false)
+        mainWindow.setSkipTaskbar(false)
+        mainWindow.setResizable(true)
+        mainWindow.setMinimumSize(1280, 720)
+        if (normalWindowBounds) {
+          mainWindow.setBounds(normalWindowBounds)
+          normalWindowBounds = null
+        }
+      }
+
+      return { ok: true, isMini: Boolean(isMini) }
     })
 
     createWindow()
+    createTray()
+    initAutoUpdater()
+    setTimeout(() => {
+      if (app.isPackaged && autoCheckUpdate) checkForUpdates(true)
+    }, 60 * 1000)
 
     app.on('activate', function () {
       // On macOS it's common to re-create a window in the app when the
@@ -1426,3 +1658,10 @@ app.on('window-all-closed', () => {
 
 // In this file you can include the rest of your app's specific main process
 // code. You can also put them in separate files and require them here.
+app.on('before-quit', () => {
+  isQuitting = true
+})
+
+app.on('will-quit', () => {
+  globalShortcut.unregisterAll()
+})

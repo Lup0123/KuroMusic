@@ -9,6 +9,25 @@ const api = {
   minimize: () => ipcRenderer.send('window-minimize'),
   maximize: () => ipcRenderer.send('window-maximize'),
   close: () => ipcRenderer.send('window-close'),
+  setMiniMode: (isMini) => ipcRenderer.invoke('set-mini-mode', isMini),
+  showWindow: () => ipcRenderer.send('show-main-window'),
+  registerGlobalShortcuts: (payload) => ipcRenderer.invoke('global-shortcuts-register', payload),
+  setCloseToTray: (enabled) => ipcRenderer.send('set-close-to-tray', enabled),
+  setAutoLaunch: (enabled) => ipcRenderer.invoke('set-auto-launch', enabled),
+  getAutoLaunch: () => ipcRenderer.invoke('get-auto-launch'),
+  checkForUpdates: (silent) => ipcRenderer.invoke('check-for-updates', silent),
+  quitAndInstallUpdate: () => ipcRenderer.invoke('quit-and-install-update'),
+  setAutoCheckUpdate: (enabled) => ipcRenderer.send('set-auto-check-update', enabled),
+  onUpdateStatus: (callback) => {
+    const listener = (_, payload) => callback?.(payload)
+    ipcRenderer.on('update-status', listener)
+    return () => ipcRenderer.removeListener('update-status', listener)
+  },
+  onPlayerCommand: (callback) => {
+    const listener = (_, command) => callback?.(command)
+    ipcRenderer.on('player-command', listener)
+    return () => ipcRenderer.removeListener('player-command', listener)
+  },
 
   selectMusicFiles: () => ipcRenderer.invoke('select-music-files'),
   getMusicMetadata: (filePath) => ipcRenderer.invoke('get-music-metadata', filePath),

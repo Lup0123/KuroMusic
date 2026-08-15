@@ -21,6 +21,7 @@ declare module 'vue' {
     MyMusic: typeof import('./src/components/content/my-music/my-music.vue')['default']
     NAvatar: typeof import('naive-ui')['NAvatar']
     Navbar: typeof import('./src/components/layout/navbar/navbar.vue')['default']
+    NBadge: typeof import('naive-ui')['NBadge']
     NButton: typeof import('naive-ui')['NButton']
     NCheckbox: typeof import('naive-ui')['NCheckbox']
     NDialogProvider: typeof import('naive-ui')['NDialogProvider']

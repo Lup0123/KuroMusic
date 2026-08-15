@@ -171,6 +171,14 @@
               <div class="col-operations">
                 <n-tooltip trigger="hover">
                   <template #trigger>
+                    <n-icon @click.stop="playSongNext(item.song)"
+                      ><PlaySkipForwardOutline
+                    /></n-icon>
+                  </template>
+                  下一首播放
+                </n-tooltip>
+                <n-tooltip trigger="hover">
+                  <template #trigger>
                     <n-icon @click.stop="addToPlaylist(item.song)"><FolderOpenOutline /></n-icon>
                   </template>
                   添加到歌单
@@ -282,6 +290,7 @@ import {
   ChevronBack,
   FolderOpenOutline,
   ChatboxOutline,
+  PlaySkipForwardOutline,
   AddCircleOutline,
   CheckmarkCircle,
   StarOutline,
@@ -475,6 +484,11 @@ const addToPlaylist = (song) => {
   currentSongToAdd.value = song
   selectedPlaylistId.value = null
   addToPlaylistModalVisible.value = true
+}
+
+const playSongNext = (song) => {
+  songStore.playSongNext(song)
+  feedback.success(`已加入「下一首播放」：${song.name}`)
 }
 
 const selectPlaylist = (playlistId) => {

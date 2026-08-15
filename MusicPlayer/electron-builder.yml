@@ -1,5 +1,6 @@
-appId: com.luo.app
+appId: com.kuromusic.app
 productName: KuroMusic
+icon: build/app.ico
 directories:
   buildResources: build
 files:
@@ -12,7 +13,7 @@ asarUnpack:
   - resources/**
 win:
   executableName: KuroMusic
-  icon: build/icon.ico
+  icon: build/app.ico
 nsis:
   artifactName: ${name}-${version}-setup.${ext}
   shortcutName: ${productName}
@@ -33,7 +34,6 @@ dmg:
 linux:
   target:
     - AppImage
-    - snap
     - deb
   maintainer: electronjs.org
   category: Utility
@@ -41,5 +41,7 @@ appImage:
   artifactName: ${name}-${version}.${ext}
 npmRebuild: false
 publish:
-  provider: generic
-  url: https://example.com/auto-updates
+  provider: github
+  owner: Lup0123
+  repo: MusicPlayer_vite
+  releaseType: release

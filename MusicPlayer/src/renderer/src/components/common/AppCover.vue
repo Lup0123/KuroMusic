@@ -44,12 +44,17 @@ const props = defineProps({
   alt: {
     type: String,
     default: 'cover'
+  },
+  errorSrc: {
+    type: String,
+    default: ''
   }
 })
 
 const normalizedSrc = computed(() => normalizeCoverUrl(props.src, props.size))
 const displaySrc = ref(normalizedSrc.value)
 const isLoaded = ref(false)
+const isUsingErrorSrc = ref(false)
 
 watch(
   normalizedSrc,
@@ -58,8 +63,11 @@ watch(
     if (!next) {
       displaySrc.value = ''
       isLoaded.value = false
+      isUsingErrorSrc.value = false
       return
     }
+
+    isUsingErrorSrc.value = false
 
     const probe = new Image()
     probe.onload = () => {
@@ -91,6 +99,15 @@ const handleLoad = () => {
 }
 
 const handleError = () => {
+  if (props.errorSrc && !isUsingErrorSrc.value) {
+    isUsingErrorSrc.value = true
+    displaySrc.value = props.errorSrc
+    isLoaded.value = false
+    return
+  }
+
+  isUsingErrorSrc.value = false
+  displaySrc.value = ''
   isLoaded.value = true
 }
 </script>
@@ -125,3 +142,4 @@ const handleError = () => {
   font-size: 14px;
 }
 </style>
+

@@ -118,7 +118,10 @@ function scoreAndSortSongs(songs, signals, prompt) {
   return dedupeBySongId(songs)
     .map((song) => ({ ...song, __score: scoreSong(song, signals, prompt) }))
     .sort((a, b) => b.__score - a.__score)
-    .map(({ __score, ...song }) => song)
+    .map((song) => {
+      delete song.__score
+      return song
+    })
 }
 
 export function buildDraftFromSongs(prompt, songs, maxSongs = DEFAULT_MAX_SONGS) {

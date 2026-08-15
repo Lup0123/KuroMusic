@@ -8,7 +8,7 @@
 
     <div v-else class="mainpage-content">
       <!-- 私人FM（仅登录用户） -->
-      <div v-if="isLoggedIn && fmSong" class="section fm-section">
+      <div v-if="isLoggedIn && fmSong && showFirstFoldContent" class="section fm-section">
         <div class="section-header">
           <h2 class="section-title">
             <span style="color: #ff6b6b">@</span>
@@ -53,7 +53,7 @@
       </div>
 
       <!-- 每日推荐歌曲（仅登录用户） -->
-      <div v-if="isLoggedIn && recommendSongs.length > 0" class="section">
+      <div v-if="isLoggedIn && recommendSongs.length > 0 && showFirstFoldContent" class="section">
         <div class="section-header">
           <h2 class="section-title">
             <n-icon color="#6366f1"><CalendarOutline /></n-icon>
@@ -91,8 +91,10 @@
         </div>
       </div>
 
+      <div ref="secondaryContentSentinel" class="secondary-content-sentinel"></div>
+
       <!-- 新歌速递（所有用户） -->
-      <div v-if="topSongs.length > 0" class="section new-songs-section">
+      <div v-if="topSongs.length > 0 && showSecondaryContent" class="section new-songs-section">
         <div class="section-header">
           <h2 class="section-title">
             <n-icon color="#f59e0b"><HappyOutline /></n-icon>
@@ -131,7 +133,7 @@
       </div>
 
       <!-- 每日推荐歌单（仅登录用户） -->
-      <div v-if="isLoggedIn && recommendPlaylists.length > 0" class="section">
+      <div v-if="isLoggedIn && recommendPlaylists.length > 0 && showSecondaryContent" class="section">
         <div class="section-header">
           <h2 class="section-title">
             <n-icon color="#ff6b6b"><FlameOutline /></n-icon>
@@ -165,7 +167,7 @@
       </div>
 
       <!-- 个性化推荐歌单 -->
-      <div v-if="personalizedPlaylists.length > 0" class="section">
+      <div v-if="personalizedPlaylists.length > 0 && showSecondaryContent" class="section">
         <div class="section-header">
           <h2 class="section-title">
             <n-icon color="#ffd93d"><StarOutline /></n-icon>
@@ -197,7 +199,7 @@
         </div>
       </div>
 
-      <div v-if="topPlaylists.length > 0" class="section">
+      <div v-if="topPlaylists.length > 0 && showSecondaryContent" class="section">
         <div class="section-header">
           <h2 class="section-title">
             <n-icon color="#ff6b6b"><FlameOutline /></n-icon>
@@ -234,7 +236,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, onBeforeUnmount, computed, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useMessage } from 'naive-ui'
 import {
@@ -272,6 +274,11 @@ const fmSong = ref(null)
 const topSongs = ref([])
 const topSongsType = ref(0)
 const loading = ref(true)
+const showFirstFoldContent = ref(false)
+const showSecondaryContent = ref(false)
+const secondaryContentSentinel = ref(null)
+let secondaryContentObserver = null
+let secondaryContentRequested = false
 
 const topSongsTabs = [
   { label: '全部', value: 0 },
@@ -431,6 +438,22 @@ const loadTopSongs = async () => {
   }
 }
 
+const loadSecondaryContent = async () => {
+  if (secondaryContentRequested) return
+  secondaryContentRequested = true
+  try {
+    await Promise.all([
+      loadRecommendResource(),
+      loadPersonalizedPlaylists(),
+      loadTopPlaylists(),
+      loadTopSongs()
+    ])
+    showSecondaryContent.value = true
+  } catch (error) {
+    console.error('加载首页次屏内容失败:', error)
+  }
+}
+
 const loadPersonalizedPlaylists = async () => {
   try {
     const response = await window.api.getPersonalizedPlaylists(30)
@@ -471,18 +494,42 @@ onMounted(async () => {
   try {
     loading.value = true
     await Promise.all([
-      loadRecommendResource(),
       loadRecommendSongs(),
-      loadPersonalFM(),
-      loadTopSongs(),
-      loadPersonalizedPlaylists(),
-      loadTopPlaylists()
+      loadPersonalFM()
     ])
+    showFirstFoldContent.value = true
+    loading.value = false
+    await nextTick()
+
+    const rootEl = document.querySelector('.main-content')
+    if (secondaryContentSentinel.value && 'IntersectionObserver' in window) {
+      secondaryContentObserver = new IntersectionObserver(
+        (entries) => {
+          const [entry] = entries
+          if (entry?.isIntersecting) {
+            void loadSecondaryContent()
+            secondaryContentObserver?.disconnect()
+            secondaryContentObserver = null
+          }
+        },
+        { root: rootEl, rootMargin: '280px 0px' }
+      )
+      secondaryContentObserver.observe(secondaryContentSentinel.value)
+    } else {
+      requestAnimationFrame(() => {
+        void loadSecondaryContent()
+      })
+    }
   } catch (error) {
     console.error('加载首页数据失败:', error)
   } finally {
     loading.value = false
   }
+})
+
+onBeforeUnmount(() => {
+  secondaryContentObserver?.disconnect()
+  secondaryContentObserver = null
 })
 </script>
 
@@ -1402,6 +1449,11 @@ onMounted(async () => {
       font-size: 48px;
       color: var(--n-text-color-disabled);
     }
+  }
+
+  .secondary-content-sentinel {
+    width: 100%;
+    height: 1px;
   }
 }
 

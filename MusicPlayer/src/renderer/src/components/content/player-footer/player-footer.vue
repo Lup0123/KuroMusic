@@ -1,16 +1,19 @@
 <template>
-  <n-layout-footer class="player-footer" :style="{ height: '80px' }">
+  <n-layout-footer
+    class="player-footer"
+    :class="{ 'mini-mode': isMiniMode }"
+    :style="{ height: '80px' }"
+  >
     <div class="player-container">
       <!-- 当前播放歌曲信息 -->
-      <div class="current-song" @click="goToLyric">
+      <div class="current-song" @click="!isMiniMode && goToLyric()">
         <div class="song-cover">
           <AppCover
             :src="currentSong.cover"
-            :width="50"
-            :height="50"
-            :size="100"
+            :width="isMiniMode ? 40 : 50"
+            :height="isMiniMode ? 40 : 50"
+            :size="isMiniMode ? 80 : 100"
             :radius="6"
-            alt="current-song-cover"
           />
         </div>
         <div class="song-info">
@@ -18,6 +21,7 @@
           <div class="song-artist">{{ currentSong.artist }}</div>
         </div>
         <n-button
+          v-if="!isMiniMode"
           text
           size="small"
           :loading="isLikeUpdating"
@@ -48,7 +52,7 @@
               </n-icon>
             </template>
           </n-button>
-          <n-button text size="large" @click="playNext">
+          <n-button text size="large" @click="handlePlayNext">
             <template #icon
               ><n-icon size="20"><PlaySkipForwardOutline /></n-icon
             ></template>
@@ -56,7 +60,7 @@
         </div>
 
         <!-- 进度条 -->
-        <div class="progress-container" @click="goToLyric">
+        <div class="progress-container" @click="!isMiniMode && goToLyric()">
           <span class="time-current">{{ formattedCurrentTime }}</span>
           <n-slider
             :value="progress"
@@ -71,27 +75,45 @@
 
       <!-- 右侧功能 -->
       <div class="player-actions">
-        <n-button text size="large">
-          <template #icon
-            ><n-icon><RepeatOutline /></n-icon
-          ></template>
+        <n-button
+          v-if="!isMiniMode"
+          text
+          size="large"
+          :title="playModeTooltip"
+          @click="cyclePlayMode"
+        >
+          <template #icon>
+            <n-badge v-if="playMode === 'single'" :value="1" :offset="[0, 8]" :show-zero="false">
+              <n-icon><RepeatOutline /></n-icon>
+            </n-badge>
+            <n-icon v-else>
+              <ShuffleOutline v-if="playMode === 'random'" />
+              <RepeatOutline v-else />
+            </n-icon>
+          </template>
         </n-button>
-        <n-button text size="large" @click="togglePlaylist">
+        <n-button v-if="!isMiniMode" text size="large" @click="togglePlaylist">
           <template #icon
             ><n-icon><ListOutline /></n-icon
           ></template>
         </n-button>
-        <n-button text size="large" :loading="isDownloading" @click="handleDownload">
+        <n-button
+          v-if="!isMiniMode"
+          text
+          size="large"
+          :loading="isDownloading"
+          @click="handleDownload"
+        >
           <template #icon
             ><n-icon><DownloadOutline /></n-icon
           ></template>
         </n-button>
-        <n-button text size="large" @click="goToLyric">
+        <n-button v-if="!isMiniMode" text size="large" @click="goToLyric">
           <template #icon
             ><n-icon><DocumentTextOutline /></n-icon
           ></template>
         </n-button>
-        <div class="volume-control">
+        <div v-if="!isMiniMode" class="volume-control">
           <n-icon size="20"><VolumeHighOutline /></n-icon>
           <n-slider
             :value="volume"
@@ -100,6 +122,19 @@
             @update:value="handleVolumeChange"
           />
         </div>
+        <n-button
+          text
+          size="large"
+          :title="isMiniMode ? '退出迷你模式' : '迷你模式'"
+          @click="toggleMiniMode"
+        >
+          <template #icon>
+            <n-icon>
+              <ContractOutline v-if="!isMiniMode" />
+              <ExpandOutline v-else />
+            </n-icon>
+          </template>
+        </n-button>
       </div>
     </div>
 
@@ -109,18 +144,20 @@
       @loadedmetadata="handleLoadedMetadata"
       @ended="handleEnded"
       @error="handleError"
+      @playing="handlePlaying"
     />
   </n-layout-footer>
 </template>
 
 <script setup>
-import { ref, watch, onMounted, computed } from 'vue'
-import { useRouter } from 'vue-router'
-import { storeToRefs } from 'pinia'
-import { useSongStore } from '@/stores/songStore'
-import { usePlaylistStore } from '@/stores/playlistStore'
-import { useUserStore } from '@/stores/userStore'
-import { useAppFeedback } from '@/composables/useAppFeedback'
+import { ref, watch, onMounted, computed } from "vue";
+import { useRouter } from "vue-router";
+import { storeToRefs } from "pinia";
+import { useSongStore } from "@/stores/songStore";
+import { usePlaylistStore } from "@/stores/playlistStore";
+import { useUserStore } from "@/stores/userStore";
+import { useIndexStore } from "@/stores/indexStore";
+import { useAppFeedback } from "@/composables/useAppFeedback";
 import {
   Heart,
   HeartOutline,
@@ -129,19 +166,31 @@ import {
   PauseOutline,
   PlaySkipForwardOutline,
   RepeatOutline,
+  ShuffleOutline,
+  ContractOutline,
+  ExpandOutline,
   ListOutline,
   DownloadOutline,
   DocumentTextOutline,
-  VolumeHighOutline
-} from '@vicons/ionicons5'
-import { downloadSong } from '@/utils/downloadUtils'
-import AppCover from '@/components/common/AppCover.vue'
+  VolumeHighOutline,
+} from "@vicons/ionicons5";
+import { downloadSong } from "@/utils/downloadUtils";
+import {
+  getNextFallbackQuality,
+  isLocalSong,
+  buildSkipFeedbackMessage
+} from "@/services/player/playbackFailover";
+import { syncGlobalShortcutsFromStoredSettings } from "@/services/player/globalShortcuts";
+import { syncCloseToTrayFromStoredSettings } from "@/services/desktopSettings";
+import { syncAutoCheckUpdateFromStoredSettings } from "@/services/desktopSettings";
+import AppCover from "@/components/common/AppCover.vue";
 
-const router = useRouter()
-const feedback = useAppFeedback()
-const songStore = useSongStore()
-const playlistStore = usePlaylistStore()
-const userStore = useUserStore()
+const router = useRouter();
+const feedback = useAppFeedback();
+const songStore = useSongStore();
+const playlistStore = usePlaylistStore();
+const userStore = useUserStore();
+const indexStore = useIndexStore();
 const {
   currentSong,
   isPlaying,
@@ -149,170 +198,357 @@ const {
   volume,
   formattedCurrentTime,
   formattedDuration,
-  currentTime
-} = storeToRefs(songStore)
-const { isLoggedIn, userInfo } = storeToRefs(userStore)
+  currentTime,
+  playMode,
+} = storeToRefs(songStore);
+const { isLoggedIn, userInfo } = storeToRefs(userStore);
+const { isMiniMode } = storeToRefs(indexStore);
 const {
   togglePlay,
   playNext,
   playPrevious,
   togglePlaylist,
+  cyclePlayMode,
   setCurrentTime,
   setDuration,
   setVolume,
-  setProgress
-} = songStore
+  setProgress,
+} = songStore;
+const { toggleMiniMode } = indexStore;
 
-const audioRef = ref(null)
-const isDownloading = ref(false)
-const isLikeUpdating = ref(false)
+const audioRef = ref(null);
+const isDownloading = ref(false);
+const isLikeUpdating = ref(false);
+const failoverMap = new Map();
+const skippedSongIds = new Set();
+const skippedCount = ref(0);
+let failoverInFlight = false;
+
+const playModeTooltip = computed(() => {
+  if (playMode.value === "random") return "随机播放（点击切换模式）";
+  if (playMode.value === "single") return "单曲循环（点击切换模式）";
+  return "列表循环（点击切换模式）";
+});
+
+const handlePlayNext = () => {
+  playNext();
+};
+
+const handlePlaying = () => {
+  if (skippedCount.value > 0) skippedCount.value = 0;
+};
+
+const handleFailoverSkip = () => {
+  skippedCount.value += 1;
+  feedback.error(buildSkipFeedbackMessage(skippedCount.value));
+  songStore.setPlaying(false);
+  setTimeout(() => {
+    playNext({ auto: true });
+  }, 500);
+};
+
+const handleError = async () => {
+  const song = currentSong.value;
+  const songId = String(song?.id || "");
+  if (!songId || isLocalSong(song) || skippedSongIds.has(songId)) {
+    handleFailoverSkip();
+    return;
+  }
+
+  if (failoverInFlight) return;
+  failoverInFlight = true;
+  try {
+    const settings = JSON.parse(localStorage.getItem("appSettings") || "{}");
+    const baseQuality = settings.quality || "exhigh";
+    const entry = failoverMap.get(songId) || { attemptedLevels: [] };
+
+    while (true) {
+      const nextQuality = getNextFallbackQuality(baseQuality, entry.attemptedLevels);
+      if (!nextQuality) {
+        skippedSongIds.add(songId);
+        handleFailoverSkip();
+        return;
+      }
+      entry.attemptedLevels.push(nextQuality);
+      failoverMap.set(songId, entry);
+
+      try {
+        const response = await window.api.getSongUrl(song.id, nextQuality);
+        const nextUrl = response?.body?.data?.[0]?.url;
+        if (nextUrl && audioRef.value) {
+          audioRef.value.src = nextUrl;
+          audioRef.value.load();
+          if (isPlaying.value) await audioRef.value.play();
+          return;
+        }
+      } catch (error) {
+        console.error("降级换源失败:", error);
+      }
+    }
+  } finally {
+    failoverInFlight = false;
+  }
+};
 
 const isCurrentSongLiked = computed(() => {
-  const songId = currentSong.value?.id
-  if (!songId) return false
-  return Boolean(currentSong.value?.liked) || playlistStore.isSongLiked(songId)
-})
+  const songId = currentSong.value?.id;
+  if (!songId) return false;
+  return Boolean(currentSong.value?.liked) || playlistStore.isSongLiked(songId);
+});
 
 const handleToggleLike = async () => {
   if (!currentSong.value?.id) {
-    feedback.warning('当前没有播放歌曲')
-    return
+    feedback.warning("当前没有播放歌曲");
+    return;
   }
 
   if (!isLoggedIn.value) {
-    feedback.warning('请先登录后再操作')
-    return
+    feedback.warning("请先登录后再操作");
+    return;
   }
 
-  if (isLikeUpdating.value) return
+  if (isLikeUpdating.value) return;
 
-  isLikeUpdating.value = true
+  isLikeUpdating.value = true;
   try {
-    const nextLiked = !isCurrentSongLiked.value
-    const success = await playlistStore.toggleLikeSong(currentSong.value.id, nextLiked)
+    const nextLiked = !isCurrentSongLiked.value;
+    const success = await playlistStore.toggleLikeSong(currentSong.value.id, nextLiked);
 
     if (!success) {
-      feedback.error('操作失败，请重试')
-      return
+      feedback.error("操作失败，请重试");
+      return;
     }
 
-    const targetSong = songStore.playlist.find((song) => song.id === currentSong.value.id)
+    const targetSong = songStore.playlist.find(
+      (song) => song.id === currentSong.value.id
+    );
     if (targetSong) {
-      targetSong.liked = nextLiked
+      targetSong.liked = nextLiked;
     }
 
-    feedback.success(nextLiked ? '已添加到我喜欢的音乐' : '已取消喜欢')
+    feedback.success(nextLiked ? "已添加到我喜欢的音乐" : "已取消喜欢");
   } catch (error) {
-    console.error('喜欢操作失败:', error)
-    feedback.error('操作失败，请重试')
+    console.error("喜欢操作失败:", error);
+    feedback.error("操作失败，请重试");
   } finally {
-    isLikeUpdating.value = false
+    isLikeUpdating.value = false;
   }
-}
+};
 
 const handleDownload = async () => {
   if (!currentSong.value.id) {
-    feedback.warning('当前没有播放歌曲')
-    return
+    feedback.warning("当前没有播放歌曲");
+    return;
   }
-  isDownloading.value = true
+  isDownloading.value = true;
   try {
-    await downloadSong(currentSong.value)
+    await downloadSong(currentSong.value);
   } finally {
-    isDownloading.value = false
+    isDownloading.value = false;
   }
-}
+};
 
 const goToLyric = () => {
   if (!currentSong.value.id) {
-    feedback.warning('当前没有播放歌曲')
-    return
+    feedback.warning("当前没有播放歌曲");
+    return;
   }
-  const currentRoute = router.currentRoute.value
-  const nextQuery = { ...currentRoute.query }
-  if (nextQuery.lyric === '1') delete nextQuery.lyric
-  else nextQuery.lyric = '1'
-  router.push({ name: currentRoute.name, params: currentRoute.params, query: nextQuery })
-}
+  const currentRoute = router.currentRoute.value;
+  const nextQuery = { ...currentRoute.query };
+  if (nextQuery.lyric === "1") delete nextQuery.lyric;
+  else nextQuery.lyric = "1";
+  router.push({ name: currentRoute.name, params: currentRoute.params, query: nextQuery });
+};
 
 watch(isPlaying, (newVal) => {
-  if (!audioRef.value) return
-  if (newVal) audioRef.value.play().catch((err) => console.error('播放失败:', err))
-  else audioRef.value.pause()
-})
+  if (!audioRef.value) return;
+  if (newVal) audioRef.value.play().catch((err) => console.error("播放失败:", err));
+  else audioRef.value.pause();
+});
 
 watch(
   () => currentSong.value.id,
   async (newId, oldId) => {
-    if (!newId || newId === '' || newId === oldId) return
+    if (!newId || newId === "" || newId === oldId) return;
+    failoverMap.delete(String(newId));
+    skippedSongIds.delete(String(newId));
     try {
-      let songUrl = null
-      if (currentSong.value.url) songUrl = currentSong.value.url
-      else if (currentSong.value.path) songUrl = currentSong.value.path
+      let songUrl = null;
+      if (currentSong.value.url) songUrl = currentSong.value.url;
+      else if (currentSong.value.path) songUrl = currentSong.value.path;
       else {
-        const settings = JSON.parse(localStorage.getItem('appSettings') || '{}')
-        const quality = settings.quality || 'exhigh'
-        const response = await window.api.getSongUrl(newId, quality)
-        if (response?.body?.data?.[0]) songUrl = response.body.data[0].url
+        const settings = JSON.parse(localStorage.getItem("appSettings") || "{}");
+        const quality = settings.quality || "exhigh";
+        const response = await window.api.getSongUrl(newId, quality);
+        if (response?.body?.data?.[0]) songUrl = response.body.data[0].url;
       }
       if (songUrl && audioRef.value) {
-        audioRef.value.src = songUrl
-        audioRef.value.load()
-        if (isPlaying.value) await audioRef.value.play()
+        audioRef.value.src = songUrl;
+        audioRef.value.load();
+        if (isPlaying.value) await audioRef.value.play();
       } else {
-        feedback.error('无法获取歌曲播放地址')
-        songStore.setPlaying(false)
+        feedback.error("无法获取歌曲播放地址");
+        songStore.setPlaying(false);
       }
     } catch (error) {
-      console.error('加载歌曲失败:', error)
-      feedback.error('歌曲加载失败')
-      songStore.setPlaying(false)
+      console.error("加载歌曲失败:", error);
+      feedback.error("歌曲加载失败");
+      songStore.setPlaying(false);
     }
   },
   { immediate: true }
-)
+);
 
 watch(volume, (newVolume) => {
-  if (audioRef.value) audioRef.value.volume = newVolume / 100
-})
+  if (audioRef.value) audioRef.value.volume = newVolume / 100;
+});
 watch(currentTime, (newTime) => {
-  if (!audioRef.value) return
-  if (Math.abs(audioRef.value.currentTime - newTime) > 0.5) audioRef.value.currentTime = newTime
-})
+  if (!audioRef.value) return;
+  if (Math.abs(audioRef.value.currentTime - newTime) > 0.5)
+    audioRef.value.currentTime = newTime;
+});
+
+// ===== 媒体键（MediaSession）=====
+const setupMediaSession = () => {
+  if (!("mediaSession" in navigator)) return;
+  try {
+    const mediaSession = navigator.mediaSession;
+    mediaSession.setActionHandler("play", () => songStore.setPlaying(true));
+    mediaSession.setActionHandler("pause", () => songStore.setPlaying(false));
+    mediaSession.setActionHandler("previoustrack", () => playPrevious());
+    mediaSession.setActionHandler("nexttrack", () => playNext());
+    mediaSession.setActionHandler("seekto", (details) => {
+      if (typeof details?.seekTime === "number" && audioRef.value) {
+        setCurrentTime(details.seekTime);
+        audioRef.value.currentTime = details.seekTime;
+      }
+    });
+  } catch (error) {
+    console.warn("MediaSession 初始化失败:", error);
+  }
+};
+
+watch(
+  () => currentSong.value,
+  (song) => {
+    if (!("mediaSession" in navigator) || typeof MediaMetadata === "undefined") return;
+    try {
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: song?.name || "",
+        artist: song?.artist || "",
+        album: song?.album || "",
+        artwork: song?.cover ? [{ src: song.cover, sizes: "512x512" }] : [],
+      });
+    } catch (error) {
+      console.warn("MediaSession 元数据更新失败:", error);
+    }
+  },
+  { immediate: true }
+);
+
+watch(isPlaying, (playing) => {
+  if ("mediaSession" in navigator) {
+    navigator.mediaSession.playbackState = playing ? "playing" : "paused";
+  }
+});
+
+// ===== 切歌桌面通知 =====
+const showSongNotification = (song) => {
+  try {
+    if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
+    const notification = new Notification(song?.name || "", {
+      body: song?.artist || "",
+      icon: song?.cover || undefined,
+      silent: true
+    });
+    notification.onclick = () => {
+      window.api?.showWindow?.();
+    };
+  } catch (error) {
+    console.warn("切歌通知展示失败:", error);
+  }
+};
+
+watch(
+  () => currentSong.value?.id,
+  (newId, oldId) => {
+    if (!newId || newId === "" || newId === oldId) return;
+    showSongNotification(currentSong.value);
+  }
+);
+
+// ===== 托盘 / 主进程命令 =====
+const handlePlayerCommand = (command) => {
+  switch (command) {
+    case "toggle-play":
+      togglePlay();
+      break;
+    case "next":
+      playNext();
+      break;
+    case "previous":
+      playPrevious();
+      break;
+    case "toggle-mini":
+      toggleMiniMode();
+      break;
+    default:
+      break;
+  }
+};
 
 const handleTimeUpdate = () => {
-  if (audioRef.value) setCurrentTime(audioRef.value.currentTime)
-}
+  if (audioRef.value) setCurrentTime(audioRef.value.currentTime);
+};
 const handleLoadedMetadata = () => {
-  if (audioRef.value) setDuration(audioRef.value.duration)
-}
+  if (audioRef.value) setDuration(audioRef.value.duration);
+};
 const handleEnded = () => {
-  playNext()
-}
-const handleError = (e) => {
-  console.error('音频加载错误:', e)
-  feedback.error('音频加载失败，尝试播放下一首')
-  songStore.setPlaying(false)
-  setTimeout(() => playNext(), 1000)
-}
+  const isSingleLoop = playMode.value === "single";
+  playNext({ auto: true });
+  if (isSingleLoop && audioRef.value) {
+    audioRef.value.currentTime = 0;
+    audioRef.value.play().catch((err) => console.error("单曲循环重播失败:", err));
+  }
+};
 const handleProgressChange = (value) => {
-  setProgress(value)
-  if (audioRef.value?.duration) audioRef.value.currentTime = (value / 100) * audioRef.value.duration
-}
+  setProgress(value);
+  if (audioRef.value?.duration)
+    audioRef.value.currentTime = (value / 100) * audioRef.value.duration;
+};
 const handleVolumeChange = (value) => {
-  setVolume(value)
-}
+  setVolume(value);
+};
 
 onMounted(() => {
-  if (audioRef.value) {
-    audioRef.value.volume = volume.value / 100
-    songStore.audioElement = audioRef.value
+  window.api?.onPlayerCommand?.(handlePlayerCommand);
+  setupMediaSession();
+
+  syncGlobalShortcutsFromStoredSettings();
+  syncCloseToTrayFromStoredSettings();
+  syncAutoCheckUpdateFromStoredSettings();
+
+  if (typeof Notification !== "undefined" && Notification.permission === "default") {
+    try {
+      Notification.requestPermission();
+    } catch (error) {
+      console.warn("通知权限请求失败:", error);
+    }
   }
 
-  if (isLoggedIn.value && userInfo.value?.userId && playlistStore.likedSongIds.size === 0) {
-    playlistStore.loadLikedSongs(userInfo.value.userId)
+  if (audioRef.value) {
+    audioRef.value.volume = volume.value / 100;
+    songStore.audioElement = audioRef.value;
   }
-})
+
+  if (
+    isLoggedIn.value &&
+    userInfo.value?.userId &&
+    playlistStore.likedSongIds.size === 0
+  ) {
+    playlistStore.loadLikedSongs(userInfo.value.userId);
+  }
+});
 </script>
 
 <style lang="scss" scoped>
@@ -332,6 +568,82 @@ onMounted(() => {
     height: 100%;
     padding: 0 24px;
     gap: 24px;
+  }
+}
+
+// 迷你模式：紧凑顶置条
+.player-footer.mini-mode {
+  height: 100% !important;
+  border-top: none;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 0;
+
+  .player-container {
+    flex-direction: row;
+    gap: 10px;
+    padding: 0 10px;
+    -webkit-app-region: drag;
+
+    button,
+    .n-slider {
+      -webkit-app-region: no-drag;
+    }
+  }
+
+  .current-song {
+    width: auto;
+    min-width: 0;
+    flex: 0 1 auto;
+    gap: 8px;
+  }
+
+  .song-cover {
+    width: 40px;
+    height: 40px;
+    border-radius: 6px;
+    box-shadow: none;
+  }
+
+  .song-title {
+    font-size: 13px;
+  }
+
+  .song-artist {
+    font-size: 11px;
+  }
+
+  .player-controls {
+    flex: 1;
+    min-width: 0;
+    width: auto;
+    gap: 0;
+    overflow: hidden;
+  }
+
+  .control-buttons {
+    gap: 4px;
+  }
+
+  .progress-container {
+    gap: 6px;
+    min-width: 0;
+  }
+
+  .time-current,
+  .time-total {
+    display: none;
+  }
+
+  .progress-slider {
+    min-width: 0;
+    flex: 1;
+  }
+
+  .player-actions {
+    width: auto;
+    min-width: 0;
+    gap: 4px;
   }
 }
 
@@ -377,9 +689,7 @@ onMounted(() => {
       overflow: hidden;
       text-overflow: ellipsis;
       cursor: pointer;
-      transition:
-        color 0.3s ease,
-        transform 0.2s ease;
+      transition: color 0.3s ease, transform 0.2s ease;
 
       &:hover {
         color: var(--n-text-color);

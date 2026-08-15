@@ -55,7 +55,9 @@ export const useSongStore = defineStore('song', {
     volume: 70,
     lyric: '',
     audioElement: null,
-    playMode: 'list' // 'list', 'single', 'random'
+    playMode: 'list', // 'list', 'single', 'random'
+    shuffleOrder: [],
+    shuffleCursor: -1
   }),
 
   getters: {
@@ -91,6 +93,7 @@ export const useSongStore = defineStore('song', {
       this.playlist = [...songs]
       this.currentSongIndex = -1
       this.isPlaying = false
+      this.rebuildShuffleOrder()
       this.persistPlaybackState()
     },
 
@@ -100,6 +103,7 @@ export const useSongStore = defineStore('song', {
         this.currentSongIndex = index
         this.isPlaying = true
         this.currentTime = 0
+        this.rebuildShuffleOrder()
         this.persistPlaybackState()
       }
     },
@@ -115,6 +119,7 @@ export const useSongStore = defineStore('song', {
       }
       this.isPlaying = true
       this.currentTime = 0
+      this.rebuildShuffleOrder()
       this.persistPlaybackState()
     },
 
@@ -122,22 +127,78 @@ export const useSongStore = defineStore('song', {
       const exists = this.playlist.some((item) => item.id === song.id)
       if (!exists) {
         this.playlist.push(song)
+        this.rebuildShuffleOrder()
         this.persistPlaybackState()
       }
     },
 
-    removeFromPlaylist(index) {
-      if (index === this.currentSongIndex) {
-        if (this.playlist.length > 1) {
-          this.playNext()
-        } else {
-          this.currentSongIndex = -1
-          this.isPlaying = false
+    playSongNext(song) {
+      if (!song?.id) return
+      if (this.playlist.length === 0 || this.currentSongIndex < 0) {
+        this.addToPlaylist(song)
+        return
+      }
+
+      const existingIndex = this.playlist.findIndex((item) => item.id === song.id)
+      if (existingIndex === this.currentSongIndex) return
+
+      if (existingIndex !== -1) {
+        this.playlist.splice(existingIndex, 1)
+        if (existingIndex < this.currentSongIndex) {
+          this.currentSongIndex--
         }
+      }
+
+      const insertIndex = this.currentSongIndex + 1
+      this.playlist.splice(insertIndex, 0, song)
+      this.rebuildShuffleOrder()
+      this.persistPlaybackState()
+    },
+
+    removeSongsByIds(songIds) {
+      const ids = new Set(songIds.filter((id) => id !== undefined && id !== null))
+      if (ids.size === 0) return
+
+      const originalPlaylist = this.playlist
+      const currentIndex = this.currentSongIndex
+      const currentSong = currentIndex >= 0 ? originalPlaylist[currentIndex] : null
+      const currentRemoved = Boolean(currentSong && ids.has(currentSong.id))
+      const removedBeforeCurrent =
+        currentIndex >= 0
+          ? originalPlaylist.slice(0, currentIndex).filter((song) => ids.has(song.id)).length
+          : 0
+
+      this.playlist = originalPlaylist.filter((song) => !ids.has(song.id))
+
+      if (this.playlist.length === 0) {
+        this.currentSongIndex = -1
+        this.isPlaying = false
+      } else if (currentRemoved) {
+        this.currentSongIndex = Math.min(currentIndex, this.playlist.length - 1)
+        this.isPlaying = true
+        this.currentTime = 0
+      } else if (currentIndex >= 0) {
+        this.currentSongIndex = currentIndex - removedBeforeCurrent
+      }
+
+      this.rebuildShuffleOrder()
+      this.persistPlaybackState()
+    },
+
+    removeFromPlaylist(index) {
+      this.playlist.splice(index, 1)
+      this.rebuildShuffleOrder()
+
+      if (this.playlist.length === 0) {
+        this.currentSongIndex = -1
+        this.isPlaying = false
+      } else if (index === this.currentSongIndex) {
+        this.currentSongIndex = Math.min(index, this.playlist.length - 1)
+        this.isPlaying = true
+        this.currentTime = 0
       } else if (index < this.currentSongIndex) {
         this.currentSongIndex--
       }
-      this.playlist.splice(index, 1)
       this.persistPlaybackState()
     },
 
@@ -150,17 +211,20 @@ export const useSongStore = defineStore('song', {
       this.persistPlaybackState()
     },
 
-    playNext() {
+    playNext(options = {}) {
       if (this.playlist.length === 0) return
+      const auto = Boolean(options?.auto)
 
-      if (this.playMode === 'single') {
+      if (this.playMode === 'single' && auto) {
         this.currentTime = 0
         this.isPlaying = true
         return
       }
 
       if (this.playMode === 'random') {
-        this.currentSongIndex = Math.floor(Math.random() * this.playlist.length)
+        const nextIndex = this.takeNextShuffleIndex()
+        if (nextIndex === -1) return
+        this.currentSongIndex = nextIndex
       } else {
         this.currentSongIndex = (this.currentSongIndex + 1) % this.playlist.length
       }
@@ -220,8 +284,58 @@ export const useSongStore = defineStore('song', {
     },
 
     setPlayMode(mode) {
+      if (!['list', 'random', 'single'].includes(mode)) return
       this.playMode = mode
+      if (mode === 'random') {
+        this.rebuildShuffleOrder()
+      }
       this.persistPlaybackState()
+    },
+
+    cyclePlayMode() {
+      const order = ['list', 'random', 'single']
+      const currentIndex = order.indexOf(this.playMode)
+      const next = order[(currentIndex + 1) % order.length]
+      this.setPlayMode(next)
+    },
+
+    rebuildShuffleOrder(includeCurrent = false) {
+      const length = this.playlist.length
+      if (length === 0) {
+        this.shuffleOrder = []
+        this.shuffleCursor = -1
+        return
+      }
+
+      let indices = Array.from({ length }, (_, index) => index)
+      if (
+        !includeCurrent &&
+        this.currentSongIndex >= 0 &&
+        this.currentSongIndex < length &&
+        length > 1
+      ) {
+        indices = indices.filter((index) => index !== this.currentSongIndex)
+      }
+
+      this.shuffleOrder = shuffleArray(indices)
+      this.shuffleCursor = -1
+    },
+
+    ensureShuffleBag() {
+      if (this.playlist.length === 0) return
+      if (this.shuffleOrder.length > 0) return
+      this.rebuildShuffleOrder()
+    },
+
+    takeNextShuffleIndex() {
+      if (this.playlist.length === 0) return -1
+      this.ensureShuffleBag()
+      if (this.shuffleOrder.length === 0) return -1
+      if (this.shuffleCursor >= this.shuffleOrder.length - 1) {
+        this.rebuildShuffleOrder(true)
+      }
+      this.shuffleCursor += 1
+      return this.shuffleOrder[this.shuffleCursor]
     },
 
     setPlaying(playing) {
@@ -262,10 +376,25 @@ export const useSongStore = defineStore('song', {
         : 'list'
       this.isPlaying = false
 
+      if (this.playMode === 'random') {
+        this.rebuildShuffleOrder()
+      }
+
       this.persistPlaybackState()
     }
   }
 })
+
+function shuffleArray(array) {
+  const result = [...array]
+  for (let index = result.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1))
+    const current = result[index]
+    result[index] = result[swapIndex]
+    result[swapIndex] = current
+  }
+  return result
+}
 
 function formatTime(seconds) {
   if (!seconds || isNaN(seconds)) return '00:00'

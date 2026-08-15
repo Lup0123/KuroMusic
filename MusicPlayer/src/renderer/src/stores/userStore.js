@@ -31,7 +31,7 @@ export const useUserStore = defineStore('user', () => {
     if (stored) {
       try {
         userInfo.value = JSON.parse(stored)
-      } catch (e) {
+      } catch {
         localStorage.removeItem('userInfo')
       }
     }

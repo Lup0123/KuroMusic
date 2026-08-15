@@ -98,7 +98,7 @@
           </div>
         </div>
       </n-popover>
-      <n-button v-else text size="large" class="no-drag" @click="showLoginModal = true">
+      <n-button v-else text size="large" class="no-drag" @click="openLoginModal">
         <template #icon>
           <n-icon><PersonOutline /></n-icon>
         </template>
@@ -133,7 +133,8 @@
       class="login-modal-wrapper"
       @close="handleCloseLoginModal"
     >
-      <div class="login-container">
+      <template v-if="showLoginModal">
+        <div class="login-container">
         <!-- 左侧品牌区 -->
         <div class="login-brand">
           <div class="brand-content">
@@ -321,7 +322,8 @@
             </n-form>
           </div>
         </div>
-      </div>
+        </div>
+      </template>
     </n-modal>
 
     <!-- 设置抽屉 -->
@@ -330,13 +332,12 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, computed, inject } from 'vue'
+import { ref, onMounted, onUnmounted, computed, inject, defineAsyncComponent } from 'vue'
 import { useRouter } from 'vue-router'
 import { useSearchStore } from '@/stores/searchStore'
 import { useUserStore } from '@/stores/userStore'
 import { storeToRefs } from 'pinia'
 import { NIcon } from 'naive-ui'
-import SettingDrawer from '@/components/content/setting/setting.vue'
 import { ROUTE_NAMES } from '@/router/routeNames'
 import { useAppFeedback } from '@/composables/useAppFeedback'
 import {
@@ -360,6 +361,7 @@ import {
   DownloadOutline
 } from '@vicons/ionicons5'
 import appIcon from '@/assets/icon/icon.png'
+const SettingDrawer = defineAsyncComponent(() => import('@/components/content/setting/setting.vue'))
 
 const router = useRouter()
 const feedback = useAppFeedback()
@@ -599,6 +601,10 @@ const handleCloseLoginModal = () => {
 
 const handleuserinfo = () => {
   showSettingsDrawer.value = true
+}
+
+const openLoginModal = () => {
+  showLoginModal.value = true
 }
 
 onMounted(() => {

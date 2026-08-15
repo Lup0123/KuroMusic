@@ -84,6 +84,127 @@
           </n-space>
         </div>
         <n-divider />
+        <!-- 全局快捷键 -->
+        <div class="setting-section">
+          <h3 class="setting-title">
+            <n-icon><KeypadOutline /></n-icon> 全局快捷键
+          </h3>
+          <n-space vertical :size="12" style="width: 100%">
+            <div class="setting-item">
+              <div class="item-info">
+                <span class="item-label">启用全局快捷键</span
+                ><span class="item-desc">应用在后台或最小化时也能响应快捷键</span>
+              </div>
+              <n-switch
+                v-model:value="settings.globalShortcutsEnabled"
+                @update:value="onGlobalShortcutsToggle"
+              />
+            </div>
+            <div
+              v-for="(label, command) in globalShortcutLabels"
+              :key="command"
+              class="setting-item"
+              :class="{ recording: recordingFor === command }"
+              @click="startRecording(command)"
+            >
+              <div class="item-info">
+                <span class="item-label">{{ label }}</span>
+                <span class="item-desc shortcut-value">
+                  <n-tag
+                    size="small"
+                    :type="recordingFor === command ? 'warning' : 'default'"
+                    :bordered="false"
+                  >
+                    {{
+                      recordingFor === command
+                        ? "请按下快捷键…"
+                        : formatAccelerator(settings.globalShortcuts[command])
+                    }}
+                  </n-tag>
+                </span>
+              </div>
+              <n-space :size="8">
+                <n-button
+                  size="small"
+                  :type="recordingFor === command ? 'warning' : 'default'"
+                  @click.stop="startRecording(command)"
+                >
+                  {{ recordingFor === command ? "监听中" : "录制" }}
+                </n-button>
+                <n-button size="small" @click.stop="clearShortcut(command)">清除</n-button>
+              </n-space>
+            </div>
+          </n-space>
+        </div>
+        <n-divider />
+        <!-- 桌面设置 -->
+        <div class="setting-section">
+          <h3 class="setting-title">
+            <n-icon><DesktopOutline /></n-icon> 桌面设置
+          </h3>
+          <n-space vertical :size="12" style="width: 100%">
+            <div class="setting-item">
+              <div class="item-info">
+                <span class="item-label">开机自启</span
+                ><span class="item-desc">登录系统后自动启动 Kuromusic</span>
+              </div>
+              <n-switch
+                :value="settings.autoLaunch"
+                :loading="autoLaunchLoading"
+                @update:value="onAutoLaunchToggle"
+              />
+            </div>
+            <div class="setting-item">
+              <div class="item-info">
+                <span class="item-label">关闭时最小化到托盘</span
+                ><span class="item-desc">点击关闭按钮时隐藏到托盘，不退出应用</span>
+              </div>
+              <n-switch
+                v-model:value="settings.closeToTray"
+                @update:value="onCloseToTrayToggle"
+              />
+            </div>
+          </n-space>
+        </div>
+        <n-divider />
+        <!-- 软件更新 -->
+        <div class="setting-section">
+          <h3 class="setting-title">
+            <n-icon><CloudDownloadOutline /></n-icon> 软件更新
+          </h3>
+          <n-space vertical :size="12" style="width: 100%">
+            <div class="setting-item">
+              <div class="item-info">
+                <span class="item-label">自动检查更新</span
+                ><span class="item-desc">应用启动后自动检查新版本</span>
+              </div>
+              <n-switch
+                v-model:value="settings.autoCheckUpdate"
+                @update:value="onAutoCheckUpdateToggle"
+              />
+            </div>
+            <div class="setting-item">
+              <div class="item-info">
+                <span class="item-label">检查更新</span>
+                <span class="item-desc">{{ updateStatusText }}</span>
+              </div>
+              <n-space :size="8">
+                <n-button size="small" :loading="updateChecking" @click="handleCheckUpdate">
+                  检查更新
+                </n-button>
+                <n-button
+                  v-if="updateState?.status === 'downloaded'"
+                  size="small"
+                  type="primary"
+                  @click="handleQuitAndInstall"
+                >
+                  立即重启安装
+                </n-button>
+              </n-space>
+            </div>
+          </n-space>
+        </div>
+        <n-divider />
         <div class="setting-section">
           <h3 class="setting-title">
             <n-icon><SparklesOutline /></n-icon> AI Provider
@@ -164,7 +285,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, inject } from "vue";
+import { ref, onMounted, onBeforeUnmount, computed, inject } from "vue";
 import { useMessage, useDialog } from "naive-ui";
 import {
   CheckmarkOutline,
@@ -175,7 +296,22 @@ import {
   VolumeHighOutline,
   DownloadOutline,
   SparklesOutline,
+  KeypadOutline,
+  DesktopOutline,
+  CloudDownloadOutline,
 } from "@vicons/ionicons5";
+import {
+  DEFAULT_GLOBAL_SHORTCUTS,
+  GLOBAL_SHORTCUT_COMMANDS,
+  syncGlobalShortcuts,
+} from "@/services/player/globalShortcuts";
+import { keydownToAccelerator, formatAccelerator } from "@/utils/shortcut";
+import {
+  applyAutoLaunch,
+  fetchAutoLaunchStatus,
+  syncAutoCheckUpdate,
+  syncCloseToTray,
+} from "@/services/desktopSettings";
 
 const visible = defineModel("visible", { type: Boolean, default: false });
 const message = useMessage();
@@ -188,6 +324,11 @@ const defaultSettings = {
   autoPlayNext: true,
   enableFade: true,
   showLyrics: true,
+  globalShortcutsEnabled: true,
+  globalShortcuts: { ...DEFAULT_GLOBAL_SHORTCUTS },
+  autoLaunch: false,
+  closeToTray: true,
+  autoCheckUpdate: true,
   quality: "exhigh",
   downloadPath: "",
   aiApiKey: "",
@@ -228,6 +369,128 @@ const changeFontSize = (value) => {
 const applyFontSize = (size) => {
   document.documentElement.style.setProperty("--base-font-size", size + "px");
   document.documentElement.style.fontSize = size + "px";
+};
+const globalShortcutLabels = GLOBAL_SHORTCUT_COMMANDS;
+const recordingFor = ref(null);
+
+const startRecording = (command) => {
+  recordingFor.value = command;
+  message.info("请按下新的快捷键（Esc 取消，Backspace 清除）");
+};
+const stopRecording = () => {
+  recordingFor.value = null;
+};
+const handleRecordKeydown = (event) => {
+  if (!recordingFor.value) return;
+  if (event.key === "Escape") {
+    event.preventDefault();
+    stopRecording();
+    return;
+  }
+  if (event.key === "Backspace" || event.key === "Delete") {
+    event.preventDefault();
+    settings.value.globalShortcuts[recordingFor.value] = "";
+    stopRecording();
+    saveSettings();
+    applyGlobalShortcuts();
+    return;
+  }
+  const accelerator = keydownToAccelerator(event);
+  if (!accelerator) return;
+  event.preventDefault();
+  settings.value.globalShortcuts[recordingFor.value] = accelerator;
+  stopRecording();
+  saveSettings();
+  applyGlobalShortcuts();
+};
+const clearShortcut = (command) => {
+  settings.value.globalShortcuts[command] = "";
+  saveSettings();
+  applyGlobalShortcuts();
+};
+const onGlobalShortcutsToggle = () => {
+  saveSettings();
+  applyGlobalShortcuts();
+};
+const autoLaunchLoading = ref(false);
+const onAutoLaunchToggle = async (value) => {
+  autoLaunchLoading.value = true;
+  try {
+    const result = await applyAutoLaunch(value);
+    if (result?.ok) {
+      settings.value.autoLaunch = result.enabled !== false;
+      saveSettings();
+      message.success(result.enabled ? "已开启开机自启" : "已关闭开机自启");
+    } else if (result?.reason === "unsupported-platform") {
+      settings.value.autoLaunch = false;
+      message.warning("当前系统不支持开机自启");
+    } else {
+      settings.value.autoLaunch = false;
+      message.error("开机自启设置失败");
+    }
+  } finally {
+    autoLaunchLoading.value = false;
+  }
+};
+const onCloseToTrayToggle = () => {
+  saveSettings();
+  syncCloseToTray(settings.value);
+};
+const updateState = ref(null);
+const updateChecking = ref(false);
+let unsubscribeUpdateStatus = null;
+const handleUpdateStatus = (payload) => {
+  updateState.value = payload || null;
+  if (payload?.status === "checking") updateChecking.value = true;
+  else if (["available", "not-available", "downloaded", "error"].includes(payload?.status)) {
+    updateChecking.value = false;
+  }
+};
+const updateStatusText = computed(() => {
+  const st = updateState.value;
+  if (!st) return "等待检查";
+  switch (st.status) {
+    case "checking":
+      return "正在检查更新…";
+    case "available":
+      return `发现新版本 v${st.version}，正在下载`;
+    case "downloading":
+      return `正在下载 ${st.percent}%`;
+    case "downloaded":
+      return `新版本 v${st.version} 已就绪`;
+    case "not-available":
+      return `已是最新版本 v${st.version}`;
+    case "error":
+      return `检查失败：${st.message || "未知错误"}`;
+    default:
+      return "等待检查";
+  }
+});
+const handleCheckUpdate = async () => {
+  updateChecking.value = true;
+  updateState.value = { status: "checking" };
+  await window.api?.checkForUpdates?.(false);
+};
+const handleQuitAndInstall = async () => {
+  await window.api?.quitAndInstallUpdate?.();
+};
+const onAutoCheckUpdateToggle = () => {
+  saveSettings();
+  syncAutoCheckUpdate(settings.value);
+};
+const applyGlobalShortcuts = async () => {
+  const result = await syncGlobalShortcuts(settings.value);
+  if (!result || result.disabled) return;
+  const failed = Object.entries(result).filter(
+    ([, item]) =>
+      item?.ok === false && (item.reason === "conflict" || item.reason === "invalid")
+  );
+  if (failed.length > 0) {
+    const names = failed
+      .map(([command]) => globalShortcutLabels[command] || command)
+      .join("、");
+    message.warning(`部分快捷键注册失败（可能被其他应用占用）：${names}`);
+  }
 };
 const saveSettings = () => {
   localStorage.setItem("appSettings", JSON.stringify(settings.value));
@@ -270,6 +533,15 @@ const loadSettings = () => {
     }
   }
 
+  if (window.api?.getAutoLaunch) {
+    fetchAutoLaunchStatus().then((res) => {
+      if (res?.ok && typeof res.enabled === "boolean") {
+        settings.value.autoLaunch = res.enabled;
+        localStorage.setItem("appSettings", JSON.stringify(settings.value));
+      }
+    });
+  }
+
   if (window.api?.getAiProviderConfig) {
     window.api.getAiProviderConfig().then((res) => {
       if (res?.success && res.data) {
@@ -297,10 +569,21 @@ const resetSettings = () => {
   applyThemeColor(defaultSettings.themeColor);
   applyFontSize(defaultSettings.fontSize);
   localStorage.removeItem("appSettings");
+  applyGlobalShortcuts();
+  syncCloseToTray(settings.value);
+  syncAutoCheckUpdate(settings.value);
+  applyAutoLaunch(false);
   message.success("已恢复默认设置");
 };
 onMounted(() => {
   loadSettings();
+  window.addEventListener("keydown", handleRecordKeydown, true);
+  unsubscribeUpdateStatus = window.api?.onUpdateStatus?.(handleUpdateStatus) || null;
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener("keydown", handleRecordKeydown, true);
+  unsubscribeUpdateStatus?.();
 });
 defineExpose({
   show: () => {

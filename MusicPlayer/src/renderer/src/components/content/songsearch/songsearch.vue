@@ -162,6 +162,17 @@
                 <n-button
                   text
                   size="small"
+                  class="action-btn next-btn"
+                  title="下一首播放"
+                  @click.stop="playSongNext(song)"
+                >
+                  <template #icon>
+                    <n-icon size="20"><PlaySkipForwardOutline /></n-icon>
+                  </template>
+                </n-button>
+                <n-button
+                  text
+                  size="small"
                   class="action-btn add-btn"
                   @click.stop="addSongToPlaylist(song)"
                 >
@@ -365,6 +376,7 @@ import {
   PlaySharp,
   PauseSharp,
   FolderOpenOutline,
+  PlaySkipForwardOutline,
   HeartOutline,
   Heart,
   MusicalNotesOutline,
@@ -669,6 +681,12 @@ const playAll = async () => {
     await playSong(firstSong);
     feedback.success(`开始播放全部 ${currentResults.value.length} 首歌曲`);
   }
+};
+
+// 下一首播放
+const playSongNext = (song) => {
+  songStore.playSongNext(song);
+  feedback.success(`已加入「下一首播放」：${song.name}`);
 };
 
 const collectAll = () => {

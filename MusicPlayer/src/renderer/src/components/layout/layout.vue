@@ -1,17 +1,31 @@
 ﻿<template>
-  <div class="music-player-layout">
+  <div class="music-player-layout" :class="{ 'mini-mode': isMiniMode }">
     <!-- 顶部导航栏 -->
     <Navbar />
     <div class="content-container">
       <!-- 左侧边栏 -->
-      <Sidebar />
+      <Suspense>
+        <template #default>
+          <Sidebar v-if="showSidebar" />
+        </template>
+        <template #fallback>
+          <div class="async-overlay async-overlay--sidebar">正在加载侧边栏...</div>
+        </template>
+      </Suspense>
       <!-- 主内容区域 -->
       <main class="main-content">
         <router-view />
       </main>
     </div>
     <!-- 底部播放控制栏 -->
-    <PlayerFooter />
+    <Suspense>
+      <template #default>
+        <PlayerFooter v-if="showPlayerFooter" />
+      </template>
+      <template #fallback>
+        <div class="async-overlay async-overlay--player">正在加载播放栏...</div>
+      </template>
+    </Suspense>
 
     <!-- 播放列表弹窗 -->
     <Suspense>
@@ -30,10 +44,17 @@
       </div>
     </transition>
 
-    <AIFloatBall />
     <Suspense>
       <template #default>
-        <AIPlaylistModal />
+        <AIFloatBall v-if="showAiEntry" />
+      </template>
+      <template #fallback>
+        <div class="async-overlay async-overlay--ai">正在加载 AI 助手...</div>
+      </template>
+    </Suspense>
+    <Suspense>
+      <template #default>
+        <AIPlaylistModal v-if="showAiModal" />
       </template>
       <template #fallback>
         <div class="async-overlay async-overlay--ai">正在加载 AI 助手...</div>
@@ -43,14 +64,24 @@
 </template>
 
 <script setup>
-import { watch, computed, defineAsyncComponent } from 'vue'
+import { watch, computed, defineAsyncComponent, ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useSongStore } from '@/stores/songStore'
+import { useIndexStore } from '@/stores/indexStore'
+import { useAiPlaylistStore } from '@/stores/aiPlaylistStore'
 import { storeToRefs } from 'pinia'
 import { useThemeVars } from 'naive-ui'
-import PlayerFooter from '@/components/content/player-footer/player-footer.vue'
+const PlayerFooter = defineAsyncComponent({
+  loader: () => import('@/components/content/player-footer/player-footer.vue'),
+  delay: 120,
+  timeout: 15000
+})
 import Navbar from '@/components/layout/navbar/navbar.vue'
-import Sidebar from '@/components/layout/sidebar/sidebar.vue'
+const Sidebar = defineAsyncComponent({
+  loader: () => import('@/components/layout/sidebar/sidebar.vue'),
+  delay: 120,
+  timeout: 15000
+})
 
 const SongList = defineAsyncComponent({
   loader: () => import('@/components/content/playlist/songlist.vue'),
@@ -72,11 +103,18 @@ const AIPlaylistModal = defineAsyncComponent({
   delay: 120,
   timeout: 15000
 })
+const showAiEntry = ref(false)
+const showAiModal = ref(false)
+const showSidebar = ref(false)
+const showPlayerFooter = ref(false)
 
 const route = useRoute()
 const themeVars = useThemeVars()
 
 const songStore = useSongStore()
+const indexStore = useIndexStore()
+const { isMiniMode } = storeToRefs(indexStore)
+const aiPlaylistStore = useAiPlaylistStore()
 const { showPlaylist, showLyric } = storeToRefs(songStore)
 
 const lyricDrawerStyle = computed(() => ({
@@ -92,9 +130,47 @@ watch(
   },
   { immediate: true }
 )
+
+watch(isMiniMode, (mini) => {
+  if (mini) {
+    songStore.showPlaylist = false
+    songStore.showLyric = false
+    aiPlaylistStore.visible = false
+  }
+})
+
+onMounted(() => {
+  requestAnimationFrame(() => {
+    showAiEntry.value = true
+    showAiModal.value = true
+    showSidebar.value = true
+    showPlayerFooter.value = true
+  })
+
+  if (isMiniMode.value) {
+    globalThis?.window?.api?.setMiniMode?.(true)
+  }
+})
 </script>
 
 <style scoped lang="scss">
+// 迷你模式：仅保留底部播放栏
+.music-player-layout.mini-mode {
+  :deep(.header) {
+    display: none;
+  }
+
+  .content-container,
+  .lyric-drawer-container,
+  .async-overlay {
+    display: none;
+  }
+
+  :deep(.ai-float-ball) {
+    display: none;
+  }
+}
+
 // 布局整体样式
 .content-container {
   height: calc(100vh - 60px - 80px);
@@ -217,6 +293,15 @@ watch(
 
 .async-overlay--playlist {
   bottom: 102px;
+}
+
+.async-overlay--sidebar {
+  top: 72px;
+  left: 124px;
+}
+
+.async-overlay--player {
+  bottom: 18px;
 }
 
 .async-overlay--ai {

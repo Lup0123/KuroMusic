@@ -16,6 +16,11 @@
           <span>共 {{ playlist.length }} 首</span>
         </div>
         <div class="playlist-actions">
+          <n-button text title="批量管理" @click="toggleSelectMode">
+            <template #icon
+              ><n-icon><CheckboxOutline /></n-icon
+            ></template>
+          </n-button>
           <n-button text title="清空播放列表" @click="clearPlaylist">
             <template #icon
               ><n-icon><TrashOutline /></n-icon
@@ -35,11 +40,17 @@
             v-for="(song, index) in playlist"
             :key="song.id || index"
             class="playlist-item"
-            :class="{ active: currentSongIndex === index }"
-            @click="playSong(index)"
+            :class="{ active: currentSongIndex === index, selected: selectedIds.has(song.id) }"
+            @click="selectMode ? toggleSelect(song) : playSong(index)"
           >
             <div class="song-index">
-              <span v-if="currentSongIndex !== index">{{ index + 1 }}</span>
+              <n-checkbox
+                v-if="selectMode"
+                :checked="selectedIds.has(song.id)"
+                @click.stop
+                @update:checked="toggleSelect(song)"
+              />
+              <span v-else-if="currentSongIndex !== index">{{ index + 1 }}</span>
               <n-icon v-else class="playing-icon"><PlayOutline /></n-icon>
             </div>
             <div class="song-info">
@@ -48,7 +59,14 @@
             </div>
             <div class="song-duration">{{ formatDuration(song.duration) }}</div>
             <div class="song-actions">
-              <n-button text circle size="small" title="移除" @click.stop="removeSong(index)">
+              <n-button
+                v-if="!selectMode"
+                text
+                circle
+                size="small"
+                title="移除"
+                @click.stop="removeSong(index)"
+              >
                 <template #icon
                   ><n-icon><CloseOutline /></n-icon
                 ></template>
@@ -62,22 +80,43 @@
           <p>播放列表为空</p>
         </div>
       </div>
+
+      <div v-if="selectMode" class="playlist-select-bar">
+        <span class="select-count">已选 {{ selectedIds.size }} 首</span>
+        <n-button
+          size="small"
+          type="primary"
+          :disabled="selectedIds.size === 0"
+          @click="removeSelected"
+          >移除选中</n-button
+        >
+        <n-button size="small" @click="toggleSelectMode">取消</n-button>
+      </div>
     </div>
   </transition>
 </template>
 
 <script setup>
-import { computed } from 'vue'
-import { useDialog, useThemeVars } from 'naive-ui'
+import { computed, ref } from 'vue'
+import { useDialog, useMessage, useThemeVars } from 'naive-ui'
 import { useSongStore } from '@/stores/songStore'
 import { formatDuration } from '@/utils/utils'
 import { storeToRefs } from 'pinia'
-import { TrashOutline, CloseOutline, PlayOutline, HeadsetOutline } from '@vicons/ionicons5'
+import {
+  TrashOutline,
+  CloseOutline,
+  PlayOutline,
+  HeadsetOutline,
+  CheckboxOutline
+} from '@vicons/ionicons5'
 
 const dialog = useDialog()
+const message = useMessage()
 const themeVars = useThemeVars()
 const songStore = useSongStore()
 const { playlist, currentSongIndex } = storeToRefs(songStore)
+const selectMode = ref(false)
+const selectedIds = ref(new Set())
 
 const props = defineProps({ visible: { type: Boolean, default: false } })
 const emit = defineEmits(['update:visible'])
@@ -106,6 +145,35 @@ const removeSong = (index) => {
   songStore.removeFromPlaylist(index)
 }
 
+const toggleSelectMode = () => {
+  selectMode.value = !selectMode.value
+  selectedIds.value = new Set()
+}
+
+const toggleSelect = (song) => {
+  if (!song?.id) return
+  const next = new Set(selectedIds.value)
+  if (next.has(song.id)) next.delete(song.id)
+  else next.add(song.id)
+  selectedIds.value = next
+}
+
+const removeSelected = () => {
+  const ids = Array.from(selectedIds.value)
+  if (ids.length === 0) return
+  dialog.warning({
+    title: '提示',
+    content: `确定要移除选中的 ${ids.length} 首歌曲吗?`,
+    positiveText: '确定',
+    negativeText: '取消',
+    onPositiveClick: () => {
+      songStore.removeSongsByIds(ids)
+      toggleSelectMode()
+      message.success(`已移除 ${ids.length} 首歌曲`)
+    }
+  })
+}
+
 const clearPlaylist = async () => {
   dialog.warning({
     title: '提示',
@@ -113,6 +181,7 @@ const clearPlaylist = async () => {
     positiveText: '确定',
     negativeText: '取消',
     onPositiveClick: () => {
+      toggleSelectMode()
       playlist.value = []
       songStore.currentSongIndex = -1
       songStore.setPlaying(false)
@@ -231,6 +300,15 @@ const clearPlaylist = async () => {
     }
   }
 
+  &.selected {
+    background-color: color-mix(in srgb, var(--n-primary-color) 20%, transparent);
+
+    .song-title {
+      color: var(--n-primary-color);
+      font-weight: 600;
+    }
+  }
+
   .song-index {
     width: 40px;
     text-align: center;
@@ -280,6 +358,21 @@ const clearPlaylist = async () => {
     opacity: 0;
     transition: opacity 0.3s ease;
     flex-shrink: 0;
+  }
+}
+
+.playlist-select-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--n-border-color);
+  background-color: var(--playlist-drawer-bg, var(--n-color));
+
+  .select-count {
+    flex: 1;
+    font-size: 13px;
+    color: var(--n-text-color-3);
   }
 }
 

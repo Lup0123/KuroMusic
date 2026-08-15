@@ -227,14 +227,6 @@ function isAdjustmentPrompt(prompt) {
   return /(再|继续|调整|改成|换成|多一点|少一点|不要|增加|减少)/.test(text)
 }
 
-function deriveQueryKeywords(prompt, intent) {
-  const text = `${prompt || ''} ${intent || ''}`
-  const chineseTokens = text.match(CHINESE_TOKEN_PATTERN) || []
-  const latinTokens = text.match(LATIN_TOKEN_PATTERN) || []
-
-  return uniqueArray([...chineseTokens, ...latinTokens]).slice(0, KEYWORDS_TO_QUERY)
-}
-
 function buildDraftName(prompt, intent) {
   const seed = (intent || prompt || 'AI推荐').trim().slice(0, 12)
   return `${seed || 'AI推荐'}歌单`
