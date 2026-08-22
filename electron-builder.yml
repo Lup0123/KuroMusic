@@ -1,6 +1,5 @@
 appId: com.kuromusic.app
 productName: KuroMusic
-icon: build/app.ico
 directories:
   buildResources: build
 files:
@@ -27,6 +26,7 @@ nsis:
   oneClick: false
   allowToChangeInstallationDirectory: true
 mac:
+  icon: build/icon.icns
   entitlementsInherit: build/entitlements.mac.plist
   extendInfo:
     - NSCameraUsageDescription: Application requests access to the device's camera.
@@ -37,6 +37,7 @@ mac:
 dmg:
   artifactName: ${name}-${version}.${ext}
 linux:
+  icon: resources/icon.png
   target:
     - AppImage
     - deb
