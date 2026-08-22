@@ -215,6 +215,22 @@ export const useSongStore = defineStore('song', {
       if (this.playlist.length === 0) return
       const auto = Boolean(options?.auto)
 
+      if (!auto) {
+        const current = this.currentSong
+        if (current?.id) {
+          globalThis?.window?.api
+            ?.behaviorRecordEvent?.({
+              type: 'skip',
+              song: {
+                id: current.id,
+                name: current.name,
+                artist: current.artist
+              }
+            })
+            ?.catch?.(() => {})
+        }
+      }
+
       if (this.playMode === 'single' && auto) {
         this.currentTime = 0
         this.isPlaying = true

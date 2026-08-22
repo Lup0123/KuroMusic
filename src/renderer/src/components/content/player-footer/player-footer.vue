@@ -230,6 +230,17 @@ const playModeTooltip = computed(() => {
   return "列表循环（点击切换模式）";
 });
 
+function recordBehavior(type) {
+  const song = currentSong.value;
+  if (!song?.id) return;
+  globalThis?.window?.api
+    ?.behaviorRecordEvent?.({
+      type,
+      song: { id: song.id, name: song.name, artist: song.artist }
+    })
+    ?.catch?.(() => {});
+}
+
 const handlePlayNext = () => {
   playNext();
 };
@@ -327,6 +338,7 @@ const handleToggleLike = async () => {
     }
 
     feedback.success(nextLiked ? "已添加到我喜欢的音乐" : "已取消喜欢");
+    recordBehavior(nextLiked ? "like" : "unlike");
   } catch (error) {
     console.error("喜欢操作失败:", error);
     feedback.error("操作失败，请重试");
@@ -474,6 +486,7 @@ watch(
   (newId, oldId) => {
     if (!newId || newId === "" || newId === oldId) return;
     showSongNotification(currentSong.value);
+    recordBehavior("play");
   }
 );
 
@@ -504,6 +517,7 @@ const handleLoadedMetadata = () => {
   if (audioRef.value) setDuration(audioRef.value.duration);
 };
 const handleEnded = () => {
+  recordBehavior("finish");
   const isSingleLoop = playMode.value === "single";
   playNext({ auto: true });
   if (isSingleLoop && audioRef.value) {

@@ -4,7 +4,7 @@ import { join } from 'path'
 import Database from 'better-sqlite3'
 import * as sqliteVec from 'sqlite-vec'
 
-const VECTOR_DIMENSION = 64
+const VECTOR_DIMENSION = 512
 const MAX_CHUNK_LENGTH = 420
 const CHUNK_OVERLAP = 80
 
@@ -28,6 +28,7 @@ function openDatabase() {
   sqliteVec.load(db)
   db.pragma('journal_mode = WAL')
   db.pragma('foreign_keys = ON')
+  ensureVectorSchemaVersion(db)
   db.exec(`
     create virtual table if not exists rag_documents using vec0(
       source_type text,
@@ -48,6 +49,29 @@ function openDatabase() {
   `)
 
   return db
+}
+
+/**
+ * vec0 table dimensions are fixed at creation time and cannot be altered.
+ * When the stored dimension differs from the current one, rebuild the table
+ * and clear sync state so content is lazily re-indexed with the new vectors.
+ */
+function ensureVectorSchemaVersion(database) {
+  const row = database
+    .prepare("select sql from sqlite_master where type = 'table' and name = 'rag_documents'")
+    .get()
+  if (!row?.sql) return
+
+  const match = String(row.sql).match(/float\[(\d+)\]/)
+  const storedDimension = match ? Number(match[1]) : 0
+  if (storedDimension === VECTOR_DIMENSION) return
+
+  database.exec('drop table if exists rag_documents')
+  try {
+    database.exec('delete from rag_sync_state')
+  } catch {
+    // sync state table may not exist on a partially initialized database
+  }
 }
 
 function normalizeText(value) {

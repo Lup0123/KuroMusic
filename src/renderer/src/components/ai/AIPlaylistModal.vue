@@ -134,6 +134,14 @@
             >
             <n-button
               size="small"
+              tertiary
+              :loading="aiStore.reranking"
+              :disabled="aiStore.loading || draftSongs.length < 10"
+              @click="onRerank"
+              >再精修</n-button
+            >
+            <n-button
+              size="small"
               secondary
               :disabled="!hasPendingDraft"
               @click="onApplyOnlyAdded"
@@ -166,6 +174,23 @@
               <n-tag size="small" :bordered="false" round
                 >共{{ draftSongs.length }}</n-tag
               >
+              <n-tag
+                v-if="aiStore.reranking"
+                size="small"
+                type="info"
+                :bordered="false"
+                round
+                >精排中…</n-tag
+              >
+            </div>
+            <div v-if="rerankReasonLines.length" class="rerank-reasons">
+              <div
+                v-for="line in rerankReasonLines"
+                :key="line.id"
+                class="rerank-reason"
+              >
+                ✨ {{ line.text }}
+              </div>
             </div>
           </div>
 
@@ -360,7 +385,7 @@
 import { computed, ref, watch, nextTick, onMounted, onBeforeUnmount } from "vue";
 import MarkdownIt from "markdown-it";
 import dayjs from "dayjs";
-import { useMessage } from "naive-ui";
+import { useMessage, useDialog } from "naive-ui";
 import { useAiPlaylistStore } from "@/stores/aiPlaylistStore";
 import { formatDuration } from "@/utils/utils";
 import AppCover from "@/components/common/AppCover.vue";
@@ -379,6 +404,7 @@ import {
 const aiPlaylistStore = useAiPlaylistStore();
 const aiStore = aiPlaylistStore;
 const message = useMessage();
+const dialog = useDialog();
 
 const UNSAFE_PROTOCOL_RE = /^(?:javascript|vbscript|data):/i;
 
@@ -545,6 +571,19 @@ const estimatedFinalCount = computed(() => {
   );
 });
 
+const rerankReasonLines = computed(() => {
+  const songs = draftSongs.value || [];
+  return (aiStore.rerankHighlights || []).map((item) => {
+    const song = songs.find(
+      (candidate) => String(candidate.id) === String(item.id)
+    );
+    return {
+      id: item.id,
+      text: song ? `${song.name}：${item.reason}` : item.reason,
+    };
+  });
+});
+
 const recentPromptOptions = computed(() =>
   (aiStore.recentPrompts || []).map((prompt, index) => ({
     label: prompt,
@@ -621,6 +660,26 @@ function onAiWindowKeydown(event) {
 
 onMounted(() => {
   window.addEventListener("keydown", onAiWindowKeydown);
+  globalThis?.window?.api
+    ?.behaviorGetConfig?.()
+    .then((config) => {
+      if (!config?.enabled || config?.promptShown) return;
+      dialog.info({
+        title: "开启 AI 偏好记忆",
+        content:
+          "将记录你播放、收藏、跳过等行为用于优化 AI 推荐，数据仅保存在本地，可随时在设置中关闭。",
+        positiveText: "知道了",
+        negativeText: "关闭",
+        onPositiveClick: () => {
+          globalThis?.window?.api?.behaviorMarkPromptShown?.();
+        },
+        onNegativeClick: () => {
+          globalThis?.window?.api?.behaviorMarkPromptShown?.();
+          globalThis?.window?.api?.behaviorSetEnabled?.(false);
+        }
+      });
+    })
+    .catch(() => {});
 });
 
 onBeforeUnmount(() => {
@@ -772,6 +831,13 @@ function onApplyOnlyAdded() {
 function onRollbackDraft() {
   const ok = aiStore.rollbackDraft();
   if (ok) message.warning("已回滚");
+}
+
+async function onRerank() {
+  const result = await aiStore.rerankDraft();
+  if (!result?.success) {
+    message.info(result?.error || "当前候选数量不足，暂无法精排");
+  }
 }
 
 function onCancelGenerate() {
@@ -1035,8 +1101,8 @@ function onDownloadDebugSnapshot() {
 }
 
 .summary-badges {
-  display: flex;
-  align-items: center;
+    display: flex;
+    align-items: center;
   gap: 8px;
 }
 
@@ -1048,6 +1114,23 @@ function onDownloadDebugSnapshot() {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.rerank-reasons {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 6px;
+}
+
+.rerank-reason {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--n-text-color-3);
+  max-width: 420px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .split-content {

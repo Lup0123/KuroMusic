@@ -242,7 +242,13 @@ function parseOpenAIResponse(content) {
   }
 }
 
-export async function recommendPlaylistByLLM({ prompt, context = {}, searchSongs, llmClient }) {
+export async function recommendPlaylistByLLM({
+  prompt,
+  context = {},
+  searchSongs,
+  llmClient,
+  semanticExpander
+}) {
   const safePrompt = String(prompt || '').trim()
   if (!safePrompt) {
     return {
@@ -269,12 +275,52 @@ export async function recommendPlaylistByLLM({ prompt, context = {}, searchSongs
   )
   const include = Array.isArray(parsed?.include) ? parsed.include.filter(Boolean).slice(0, 4) : []
   const exclude = Array.isArray(parsed?.exclude) ? parsed.exclude.filter(Boolean).slice(0, 4) : []
-  const keywords = buildQueryKeywords({
+  const baseKeywords = buildQueryKeywords({
     prompt: safePrompt,
     intent,
     artist,
     include
   })
+  let keywords = baseKeywords
+  let semanticTags = []
+
+  if (typeof semanticExpander === 'function') {
+    try {
+      const extra = await semanticExpander({
+        prompt: safePrompt,
+        intent,
+        artist,
+        include
+      })
+      semanticTags = uniqueArray(
+        (Array.isArray(extra) ? extra : [])
+          .map((item) => String(item || '').trim())
+          .filter(Boolean)
+      ).slice(0, 3)
+    } catch {
+      // semantic expansion must never break recommendation
+      semanticTags = []
+    }
+
+    if (semanticTags.length > 0) {
+      const explicitTerms = [artist, ...(include || [])].filter(Boolean)
+      const explicitSet = new Set(explicitTerms.map((item) => normalizeText(item)).filter(Boolean))
+      const tokenKeywords = baseKeywords.filter((item) => !explicitSet.has(normalizeText(item)))
+      const merged = []
+      const seen = new Set()
+
+      for (const item of [...explicitTerms, ...semanticTags, ...tokenKeywords]) {
+        const key = normalizeText(item)
+        if (!key || seen.has(key)) continue
+        seen.add(key)
+        merged.push(item)
+        if (merged.length >= KEYWORDS_TO_QUERY) break
+      }
+
+      if (merged.length > 0) keywords = merged
+    }
+  }
+
   const targetSongLimit = resolveTargetSongLimit({ prompt: safePrompt, parsedCount: parsed?.count })
   const searchLimit = Math.min(50, Math.max(20, targetSongLimit))
   const allSongs = []
@@ -432,6 +478,7 @@ export async function recommendPlaylistByLLM({ prompt, context = {}, searchSongs
       fetchedKeywordPages,
       targetSongLimit,
       keywords,
+      semanticTags,
       fetchedCount: allSongs.length,
       uniqueCount: dedupedSongs.length,
       llmTrace: parsed?.llmTrace || null

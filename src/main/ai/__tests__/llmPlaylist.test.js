@@ -74,4 +74,43 @@ describe('recommendPlaylistByLLM', () => {
 
     expect(result.draft.songs.map((song) => song.id)).toEqual([1, 2])
   })
+
+  it('merges semantic tags into keywords within budget, explicit artist first', async () => {
+    const llmClient = vi.fn(async () => JSON.stringify({ intent: '夜跑', artist: '周杰伦' }))
+    const searchSongs = vi.fn(async () => [])
+    const semanticExpander = vi.fn(async () => ['动感', '跑步', '燃'])
+
+    const result = await recommendPlaylistByLLM({
+      prompt: '夜跑动感一点',
+      context: {},
+      llmClient,
+      searchSongs,
+      semanticExpander
+    })
+
+    expect(semanticExpander).toHaveBeenCalled()
+    expect(result.debug.keywords[0]).toBe('周杰伦')
+    expect(result.debug.keywords).toContain('动感')
+    expect(result.debug.semanticTags).toEqual(['动感', '跑步', '燃'])
+    expect(result.debug.keywords.length).toBeLessThanOrEqual(6)
+  })
+
+  it('tolerates semantic expander failures', async () => {
+    const llmClient = vi.fn(async () => JSON.stringify({ intent: '夜跑' }))
+    const searchSongs = vi.fn(async () => [])
+    const semanticExpander = vi.fn(async () => {
+      throw new Error('boom')
+    })
+
+    const result = await recommendPlaylistByLLM({
+      prompt: '夜跑',
+      context: {},
+      llmClient,
+      searchSongs,
+      semanticExpander
+    })
+
+    expect(result.debug.semanticTags).toEqual([])
+    expect(result.debug.keywords.length).toBeGreaterThan(0)
+  })
 })

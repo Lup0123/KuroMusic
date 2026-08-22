@@ -229,6 +229,25 @@
             />
           </n-space>
         </div>
+        <div class="setting-section">
+          <h3 class="setting-title">
+            <n-icon><SparklesOutline /></n-icon> AI 偏好记忆
+          </h3>
+          <n-space vertical :size="12" style="width: 100%">
+            <div class="setting-item">
+              <div class="item-info">
+                <span class="item-label">行为数据采集</span>
+                <span class="item-desc"
+                  >记录播放 / 收藏 / 跳过等行为用于优化 AI 推荐，仅保存在本地</span
+                >
+              </div>
+              <n-switch
+                :value="behaviorEnabled"
+                @update:value="handleBehaviorToggle"
+              />
+            </div>
+          </n-space>
+        </div>
         <n-divider />
         <!-- 音质设置 -->
         <div class="setting-section">
@@ -336,6 +355,7 @@ const defaultSettings = {
   aiBaseUrl: "https://dashscope.aliyuncs.com/compatible-mode/v1",
 };
 const settings = ref({ ...defaultSettings });
+const behaviorEnabled = ref(true);
 
 const themeColors = [
   { name: "拂晓蓝", value: "arcoblue", color: "#165DFF", hover: "#4080FF" },
@@ -575,11 +595,28 @@ const resetSettings = () => {
   applyAutoLaunch(false);
   message.success("已恢复默认设置");
 };
-onMounted(() => {
-  loadSettings();
-  window.addEventListener("keydown", handleRecordKeydown, true);
-  unsubscribeUpdateStatus = window.api?.onUpdateStatus?.(handleUpdateStatus) || null;
-});
+  onMounted(() => {
+    loadSettings();
+    window.api
+      ?.behaviorGetConfig?.()
+      .then((config) => {
+        behaviorEnabled.value = Boolean(config?.enabled);
+      })
+      .catch(() => {});
+    window.addEventListener("keydown", handleRecordKeydown, true);
+    unsubscribeUpdateStatus = window.api?.onUpdateStatus?.(handleUpdateStatus) || null;
+  });
+
+  async function handleBehaviorToggle(value) {
+    try {
+      const config = await window.api?.behaviorSetEnabled?.(Boolean(value));
+      behaviorEnabled.value = Boolean(config?.enabled);
+      message.success(value ? "已开启 AI 偏好记忆（仅保存在本地）" : "已关闭 AI 偏好记忆");
+    } catch {
+      behaviorEnabled.value = !value;
+      message.error("设置失败，请重试");
+    }
+  }
 
 onBeforeUnmount(() => {
   window.removeEventListener("keydown", handleRecordKeydown, true);

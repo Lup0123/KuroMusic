@@ -164,6 +164,108 @@ function parseStructuredResult(rawText) {
   }
 }
 
+function parseRerankResult(rawText, knownIds) {
+  const text = String(rawText || '').trim()
+  if (!text) return null
+
+  const candidates = [text]
+  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/i)
+  if (fenced?.[1]) candidates.push(fenced[1])
+  const extracted = extractJsonCandidate(text)
+  if (extracted) candidates.push(extracted)
+
+  for (const candidate of candidates) {
+    try {
+      const parsed = JSON.parse(candidate)
+      if (!parsed || typeof parsed !== 'object') continue
+      if (!Array.isArray(parsed.order)) continue
+
+      const order = parsed.order
+        .map((id) => String(id))
+        .filter((id) => knownIds.has(id))
+      if (order.length === 0) continue
+
+      const highlights = (Array.isArray(parsed.highlights) ? parsed.highlights : [])
+        .filter((item) => item && knownIds.has(String(item.id)))
+        .slice(0, 3)
+        .map((item) => ({
+          id: String(item.id),
+          reason: String(item.reason || '').slice(0, 60)
+        }))
+
+      return { order, highlights }
+    } catch {
+      // try next candidate
+    }
+  }
+
+  return null
+}
+
+export async function rerankCandidates({ songs, apiKey, model, baseUrl, timeoutMs = 20000 }) {
+  const safeSongs = (Array.isArray(songs) ? songs : [])
+    .map((song, index) => ({
+      index,
+      id: String(song?.id ?? ''),
+      name: String(song?.name || '未知歌曲'),
+      artist: String(song?.artist || '未知艺术家')
+    }))
+    .filter((song) => song.id)
+    .slice(0, 60)
+
+  if (safeSongs.length < 2) {
+    throw new Error('候选歌曲不足，无法精排')
+  }
+
+  const knownIds = new Set(safeSongs.map((song) => song.id))
+  const targetModel = model || process.env.ALIBABA_MODEL || 'qwen-plus'
+  const targetBaseUrl =
+    baseUrl || process.env.ALIBABA_BASE_URL || 'https://dashscope.aliyuncs.com/compatible-mode/v1'
+  const endpoint = `${String(targetBaseUrl).replace(/\/+$/, '')}/chat/completions`
+  const candidateLines = safeSongs
+    .map((song) => `${song.index + 1}. ${song.name} - ${song.artist} (id:${song.id})`)
+    .join('\n')
+
+  const messages = [
+    {
+      role: 'system',
+      content: [
+        '你是音乐歌单精排助手。只输出 JSON，不要 Markdown，不要额外解释。',
+        `候选歌曲列表：\n${candidateLines}`,
+        '返回 JSON 结构：{"order": ["歌曲id"按相关性从高到低排列], "highlights": [最多3个 {"id": "歌曲id", "reason": "一句话推荐理由，不超过40字"}]}。',
+        'order 必须覆盖所有候选 id，不允许编造列表之外的 id；highlights 只从列表中挑选。'
+      ].join(' ')
+    }
+  ]
+
+  const response = await requestChatCompletion({
+    endpoint,
+    apiKey,
+    model: targetModel,
+    messages,
+    timeoutMs,
+    maxTokens: 600
+  })
+
+  if (!response.ok) {
+    const detail = await response.text()
+    const err = new Error(
+      `LLM HTTP ${response.status}: ${String(detail || '').slice(0, 240) || response.statusText}`
+    )
+    err.status = response.status
+    throw err
+  }
+
+  const payload = await response.json()
+  const rawContent = extractTextContent(payload?.choices?.[0]?.message?.content)
+  const parsed = parseRerankResult(rawContent, knownIds)
+  if (!parsed) {
+    throw new Error('精排输出解析失败，已保留原排序')
+  }
+
+  return parsed
+}
+
 function shouldRetry(status) {
   const code = Number(status || 0)
   return code === 408 || code === 429 || code >= 500

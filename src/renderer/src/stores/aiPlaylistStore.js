@@ -2,6 +2,9 @@ import { defineStore } from 'pinia'
 import * as providerAdapter from '../services/ai/providerAdapter'
 import { usePlaylistStore } from './playlistStore'
 
+const RERANK_AUTO_THRESHOLD = 40
+const RERANK_MIN_COUNT = 10
+
 function getErrorMessage(error) {
   if (error instanceof Error && error.message) return error.message
   return '操作失败，请稍后重试'
@@ -191,6 +194,9 @@ export const useAiPlaylistStore = defineStore('aiPlaylist', {
       recentPrompts: [],
       generationMetrics: [],
       lastLlmTraceSummary: null,
+      reranking: false,
+      rerankHighlights: [],
+      rerankError: '',
       chatMode: 'recommend',
       streaming: false,
       streamingMessageId: null,
@@ -789,6 +795,14 @@ export const useAiPlaylistStore = defineStore('aiPlaylist', {
         }
 
         const draftForMessage = this.pendingDraftPlaylist || this.draftPlaylist
+
+        if (
+          !this.pendingDraftPlaylist &&
+          (this.draftPlaylist?.songs?.length || 0) >= RERANK_AUTO_THRESHOLD
+        ) {
+          this.rerankDraft()
+        }
+
         const metric = {
           id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
           prompt: text,
@@ -881,6 +895,100 @@ export const useAiPlaylistStore = defineStore('aiPlaylist', {
           this.loading = false
         }
         this.canceledRequestIds = this.canceledRequestIds.filter((id) => id !== requestId)
+      }
+    },
+
+    async rerankDraft() {
+      const targetDraft = this.draftPlaylist
+      const songs = (targetDraft?.songs || []).slice(0, 60)
+      if (this.reranking) {
+        return { success: false, reason: 'busy' }
+      }
+      if (songs.length < RERANK_MIN_COUNT) {
+        return { success: false, reason: 'too_few' }
+      }
+
+      this.reranking = true
+      this.rerankError = ''
+      try {
+        const payload = {
+          songs: songs.map((song) => ({
+            id: song.id,
+            name: song.name,
+            artist: song.artist
+          })),
+          timeoutMs: 20000
+        }
+        const result = await globalThis.window.api.aiRerankCandidates(payload)
+        if (!result?.success || !Array.isArray(result.order)) {
+          this.rerankError = String(result?.error || '精排失败，已保留原排序')
+          return { success: false, error: this.rerankError }
+        }
+
+        if (this.draftPlaylist !== targetDraft) {
+          return { success: false, reason: 'stale' }
+        }
+
+        const orderMap = new Map(result.order.map((id, index) => [String(id), index]))
+        const sorted = [...songs].sort((a, b) => {
+          const indexA = orderMap.has(String(a.id))
+            ? orderMap.get(String(a.id))
+            : Number.MAX_SAFE_INTEGER
+          const indexB = orderMap.has(String(b.id))
+            ? orderMap.get(String(b.id))
+            : Number.MAX_SAFE_INTEGER
+          return indexA - indexB
+        })
+        const highlights = (result.highlights || []).slice(0, 3).map((item) => ({
+          id: String(item.id),
+          reason: String(item.reason || '')
+        }))
+
+        this.draftPlaylist = { ...targetDraft, songs: sorted }
+        if (Array.isArray(this.recommendations)) {
+          this.recommendations = this.recommendations.map((recommendation) => ({
+            ...recommendation,
+            songs: Array.isArray(recommendation.songs)
+              ? sorted.slice(0, recommendation.songs.length)
+              : recommendation.songs,
+            highlights
+          }))
+        }
+        this.rerankHighlights = highlights
+        this.syncToSession()
+
+        if (highlights.length > 0) {
+          const reasonText = highlights
+            .map((item) => {
+              const song = sorted.find(
+                (candidate) => String(candidate.id) === String(item.id)
+              )
+              return song ? `「${song.name}」${item.reason}` : item.reason
+            })
+            .join('；')
+          this.addChatMessage(
+            'assistant',
+            `已按相关性精排。精选理由：${reasonText}`,
+            {
+              provider: 'llm',
+              type: 'status',
+              reason: 'rerank_done'
+            }
+          )
+        } else {
+          this.addChatMessage('assistant', '已按相关性重新排序候选歌单。', {
+            provider: 'llm',
+            type: 'status',
+            reason: 'rerank_done'
+          })
+        }
+
+        return { success: true, highlights }
+      } catch (error) {
+        this.rerankError = getErrorMessage(error)
+        return { success: false, error: this.rerankError }
+      } finally {
+        this.reranking = false
       }
     },
 

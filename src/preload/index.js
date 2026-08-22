@@ -74,6 +74,11 @@ const api = {
     ipcRenderer.invoke('get-artist-albums', artistId, limit, offset),
   aiRecommendPlaylist: (prompt, context) =>
     ipcRenderer.invoke('ai-recommend-playlist', prompt, context),
+  aiRerankCandidates: (payload) => ipcRenderer.invoke('ai-rerank-candidates', payload),
+  behaviorGetConfig: () => ipcRenderer.invoke('behavior-get-config'),
+  behaviorSetEnabled: (enabled) => ipcRenderer.invoke('behavior-set-enabled', enabled),
+  behaviorMarkPromptShown: () => ipcRenderer.invoke('behavior-mark-prompt-shown'),
+  behaviorRecordEvent: (payload) => ipcRenderer.invoke('behavior-record-event', payload),
   aiChatStream: (payload) => ipcRenderer.invoke('ai-chat-stream', payload),
   openAiWindow: () => ipcRenderer.invoke('open-ai-window'),
   focusAiWindow: () => ipcRenderer.invoke('focus-ai-window'),

@@ -11,8 +11,15 @@ import { playlistConfig } from './getLocalConfig/playlistconfig'
 import { aiConfig } from './getLocalConfig/aiConfig'
 import { auth, getCookie } from './auth/login'
 import { recommendPlaylistByLLM } from './ai/llmPlaylist'
-import { runLangChainRecommend } from './ai/langchainRecommend'
+import { runLangChainRecommend, rerankCandidates } from './ai/langchainRecommend'
 import { ragService } from './ai/ragService'
+import { embed as embedTexts, prewarm as prewarmEmbedding } from './ai/embeddingService'
+import { findNearestTags, prewarm as prewarmLexicon } from './ai/tagLexicon'
+import { behaviorConfig } from './getLocalConfig/behaviorConfig'
+import {
+  recordEvent as recordBehaviorEvent,
+  disableAndClear as disableBehaviorTracking
+} from './ai/behaviorTracker'
 import {
   cloudsearch,
   song_url_v1,
@@ -313,6 +320,15 @@ if (!gotLock) {
     // Set app user model id for windows
     electronApp.setAppUserModelId('Kuromusic')
 
+    // Prewarm local embedding model during idle, so first AI use is fast.
+    setTimeout(() => {
+      prewarmEmbedding()
+        .then(() => prewarmLexicon(embedTexts))
+        .catch((error) => {
+          console.error('[AI][embedding] prewarm failed:', error?.message || error)
+        })
+    }, 5000)
+
     // Default open or close DevTools by F12 in development
     // and ignore CommandOrControl + R in production.
     // see https://github.com/alex8088/electron-toolkit/tree/master/packages/utils
@@ -508,6 +524,20 @@ if (!gotLock) {
           }))
         }
 
+        const semanticExpander = async ({ prompt: userPrompt, intent, artist, include }) => {
+          try {
+            const query = [userPrompt, intent, artist, ...(include || [])]
+              .filter(Boolean)
+              .join(' ')
+            const vectors = await embedTexts([query])
+            if (!vectors || !vectors[0]) return []
+            const tags = await findNearestTags(vectors[0], 3, embedTexts)
+            return tags.map((tag) => tag.label)
+          } catch {
+            return []
+          }
+        }
+
         const result = await recommendPlaylistByLLM({
           prompt,
           context: {
@@ -516,7 +546,8 @@ if (!gotLock) {
             ragContext: ragResult.hits
           },
           searchSongs,
-          llmClient
+          llmClient,
+          semanticExpander
         })
 
         return {
@@ -530,6 +561,59 @@ if (!gotLock) {
           error: error?.message || 'AI 推荐失败'
         }
       }
+    })
+
+    ipcMain.handle('ai-rerank-candidates', async (event, payload = {}) => {
+      try {
+        const provider = aiConfig.getProviderConfig()
+        const apiKey = String(payload?.apiKey || provider.apiKey || '')
+        const model =
+          String(payload?.model || provider.model || '').trim() ||
+          process.env.ALIBABA_MODEL ||
+          'qwen-plus'
+        const baseUrl =
+          String(payload?.baseUrl || '').trim() ||
+          provider.baseUrl ||
+          process.env.ALIBABA_BASE_URL ||
+          'https://dashscope.aliyuncs.com/compatible-mode/v1'
+        const songs = Array.isArray(payload?.songs) ? payload.songs : []
+
+        if (!apiKey) {
+          return { success: false, error: '未配置 AI API Key，请在设置中填写' }
+        }
+        if (songs.length < 2) {
+          return { success: false, error: '候选歌曲不足，无法精排' }
+        }
+
+        const result = await rerankCandidates({
+          songs,
+          apiKey,
+          model,
+          baseUrl,
+          timeoutMs: Number(payload?.timeoutMs) || 20000
+        })
+        return { success: true, ...result }
+      } catch (error) {
+        console.error('AI 精排失败:', error?.message || error)
+        return {
+          success: false,
+          error: error?.message || 'AI 精排失败'
+        }
+      }
+    })
+
+    ipcMain.handle('behavior-get-config', () => behaviorConfig.getConfig())
+
+    ipcMain.handle('behavior-set-enabled', (event, enabled) => {
+      behaviorConfig.setEnabled(Boolean(enabled))
+      if (!enabled) disableBehaviorTracking()
+      return behaviorConfig.getConfig()
+    })
+
+    ipcMain.handle('behavior-mark-prompt-shown', () => behaviorConfig.markPromptShown())
+
+    ipcMain.handle('behavior-record-event', (event, payload = {}) => {
+      return recordBehaviorEvent(payload)
     })
 
     ipcMain.handle('ai-chat-stream', async (event, payload = {}) => {

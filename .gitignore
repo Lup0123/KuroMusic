@@ -10,3 +10,8 @@ out
 .worktrees
 log
 docs
+.pnpm-store/
+release/
+resources/models/*
+!resources/models/README.md
+!resources/models/**/.gitkeep
