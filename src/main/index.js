@@ -659,8 +659,33 @@ if (!gotLock) {
 
         const prompt = String(payload?.prompt || '').trim()
         const resumeFrom = String(payload?.resumeFrom || '').trim()
+
+        const playlistContext = payload?.playlistContext
+        let playlistBlock = ''
+        if (
+          playlistContext &&
+          Array.isArray(playlistContext.songs) &&
+          playlistContext.songs.length > 0
+        ) {
+          const songLines = playlistContext.songs
+            .slice(0, 60)
+            .map(
+              (song, index) =>
+                `${index + 1}. ${String(song?.name || '未知歌曲')}${
+                  song?.artist ? ` - ${song.artist}` : ''
+                }`
+            )
+          playlistBlock = [
+            `当前草稿歌单「${String(playlistContext.name || 'AI 草稿歌单')}」共 ${playlistContext.songs.length} 首：`,
+            ...songLines
+          ].join('\n')
+        }
+
         const systemContent =
-          '你是音乐助手。当前任务是与用户进行讨论，不要直接生成歌单结果对象，给出简洁、有帮助的自然语言回复。'
+          '你是音乐助手。当前任务是与用户进行讨论，不要直接生成歌单结果对象，给出简洁、有帮助的自然语言回复。' +
+          (playlistBlock
+            ? `\n\n用户正在浏览以下歌单，请据此回答关于歌单内容的提问（如总结、分类、分析风格/语种/情绪、推荐调整方向等）：\n${playlistBlock}`
+            : '')
         const resumedSystemContent = resumeFrom
           ? `${systemContent}\n\n注意：这是一次网络中断后的续传。你上一段回复末尾是："${resumeFrom}"。请避免从头重复，直接自然衔接后续内容。`
           : systemContent

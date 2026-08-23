@@ -615,14 +615,28 @@ export const useAiPlaylistStore = defineStore('aiPlaylist', {
 
           this.streamCleanup = [offChunk, offEnd, offError].filter(Boolean)
 
-          try {
-            const resumeFrom = this.getStreamingAssistantContent().slice(-240)
-            const result = await globalThis.window.api.aiChatStream({
-              requestId,
-              prompt,
-              timeoutMs: 35000,
-              resumeFrom,
-              messages: this.chatMessages
+            try {
+              const resumeFrom = this.getStreamingAssistantContent().slice(-240)
+              const playlistContext = this.draftPlaylist?.songs?.length
+                ? {
+                    name: this.draftPlaylist.name || 'AI 草稿歌单',
+                    reason: this.draftPlaylist.reason || '',
+                    songs: this.draftPlaylist.songs
+                      .slice(0, 60)
+                      .map((song) => ({
+                        id: song.id,
+                        name: song.name,
+                        artist: song.artist
+                      }))
+                  }
+                : null
+              const result = await globalThis.window.api.aiChatStream({
+                requestId,
+                prompt,
+                timeoutMs: 35000,
+                resumeFrom,
+                playlistContext,
+                messages: this.chatMessages
                 .filter((item) => item?.role === 'user' || item?.role === 'assistant')
                 .map((item) => ({ role: item.role, content: item.content }))
             })

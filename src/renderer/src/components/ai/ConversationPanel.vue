@@ -21,7 +21,11 @@
               <div
                 v-if="!isThinkingMessage(messageItem)"
                 class="markdown-body"
-                v-html="renderMessage(messageItem.content)"
+                v-html="
+                  isStreamingMessage(messageItem)
+                    ? renderStreamingContent(messageItem.content)
+                    : renderMessage(messageItem.content)
+                "
               ></div>
               <div v-else class="typing-dots">
                 <span></span><span></span><span></span>
@@ -208,6 +212,24 @@ function isThinkingMessage(messageItem) {
 
 function showStreamingCursor(messageItem) {
   return isStreamingMessage(messageItem) && !isThinkingMessage(messageItem);
+}
+
+function escapeHtml(text) {
+  return String(text || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+// Lightweight render while streaming: escape HTML + keep line breaks.
+// Full markdown rendering happens once when the stream finishes.
+function renderStreamingContent(content) {
+  return String(content || '')
+    .split('\n')
+    .map(escapeHtml)
+    .join('<br>');
 }
 
 function renderMessage(content) {
