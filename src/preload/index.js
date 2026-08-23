@@ -23,6 +23,11 @@ const api = {
     ipcRenderer.on('update-status', listener)
     return () => ipcRenderer.removeListener('update-status', listener)
   },
+  onPlaylistsChanged: (callback) => {
+    const listener = (_, payload) => callback?.(payload)
+    ipcRenderer.on('playlists-changed', listener)
+    return () => ipcRenderer.removeListener('playlists-changed', listener)
+  },
   onPlayerCommand: (callback) => {
     const listener = (_, command) => callback?.(command)
     ipcRenderer.on('player-command', listener)

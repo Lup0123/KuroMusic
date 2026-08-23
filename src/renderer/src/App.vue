@@ -15,8 +15,9 @@
 <script setup>
 import { computed, ref, provide, onMounted, watchEffect } from 'vue'
 import { darkTheme, NConfigProvider } from 'naive-ui'
-import AIPlaylistModal from '@/components/ai/AIPlaylistModal.vue'
-import { useAiPlaylistStore } from '@/stores/aiPlaylistStore'
+  import AIPlaylistModal from '@/components/ai/AIPlaylistModal.vue'
+  import { useAiPlaylistStore } from '@/stores/aiPlaylistStore'
+  import { usePlaylistStore } from '@/stores/playlistStore'
 
 const isDarkMode = ref(false)
 const windowRole = ref('unknown')
@@ -101,12 +102,17 @@ onMounted(() => {
 
   globalThis?.window?.api
     ?.getWindowRole?.()
-    .then((role) => {
-      windowRole.value = role === 'ai' ? 'ai' : 'main'
-      if (windowRole.value === 'ai') {
-        aiPlaylistStore.openModal()
-      }
-    })
+      .then((role) => {
+        windowRole.value = role === 'ai' ? 'ai' : 'main'
+        if (windowRole.value === 'ai') {
+          aiPlaylistStore.openModal()
+        } else {
+          // AI 窗口等其它窗口创建/修改本地歌单后，主窗口自动刷新列表
+          window.api?.onPlaylistsChanged?.(() => {
+            usePlaylistStore().loadLocalPlaylists()
+          })
+        }
+      })
     .catch(() => {
       windowRole.value = 'main'
     })

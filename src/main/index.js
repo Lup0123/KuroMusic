@@ -995,7 +995,9 @@ if (!gotLock) {
     // 创建新歌单
     ipcMain.handle('create-playlist', async (event, playlist) => {
       try {
-        return playlistConfig.createPlaylist(playlist)
+        const result = playlistConfig.createPlaylist(playlist)
+        if (result) sendToRenderer('playlists-changed', {})
+        return result
       } catch (error) {
         console.error('创建歌单失败:', error)
         return null
@@ -1005,7 +1007,9 @@ if (!gotLock) {
     // 更新歌单信息
     ipcMain.handle('update-playlist', async (event, playlistId, updates) => {
       try {
-        return playlistConfig.updatePlaylist(playlistId, updates)
+        const result = playlistConfig.updatePlaylist(playlistId, updates)
+        if (result) sendToRenderer('playlists-changed', {})
+        return result
       } catch (error) {
         console.error('更新歌单失败:', error)
         return null
@@ -1015,7 +1019,9 @@ if (!gotLock) {
     // 删除歌单
     ipcMain.handle('delete-playlist', async (event, playlistId) => {
       try {
-        return playlistConfig.deletePlaylist(playlistId)
+        const result = playlistConfig.deletePlaylist(playlistId)
+        if (result) sendToRenderer('playlists-changed', {})
+        return result
       } catch (error) {
         console.error('删除歌单失败:', error)
         return false
@@ -1025,7 +1031,9 @@ if (!gotLock) {
     // 添加歌曲到歌单
     ipcMain.handle('add-song-to-playlist', async (event, playlistId, song) => {
       try {
-        return playlistConfig.addSongToPlaylist(playlistId, song)
+        const result = playlistConfig.addSongToPlaylist(playlistId, song)
+        if (result) sendToRenderer('playlists-changed', {})
+        return result
       } catch (error) {
         console.error('添加歌曲到歌单失败:', error)
         return false
@@ -1035,7 +1043,9 @@ if (!gotLock) {
     // 从歌单移除歌曲
     ipcMain.handle('remove-song-from-playlist', async (event, playlistId, songId) => {
       try {
-        return playlistConfig.removeSongFromPlaylist(playlistId, songId)
+        const result = playlistConfig.removeSongFromPlaylist(playlistId, songId)
+        if (result) sendToRenderer('playlists-changed', {})
+        return result
       } catch (error) {
         console.error('从歌单移除歌曲失败:', error)
         return false
@@ -1045,7 +1055,9 @@ if (!gotLock) {
     // 收藏歌单
     ipcMain.handle('add-favorite-playlist', async (event, playlist) => {
       try {
-        return playlistConfig.addFavoritePlaylist(playlist)
+        const result = playlistConfig.addFavoritePlaylist(playlist)
+        if (result) sendToRenderer('playlists-changed', {})
+        return result
       } catch (error) {
         console.error('收藏歌单失败:', error)
         return false
@@ -1055,7 +1067,9 @@ if (!gotLock) {
     // 取消收藏歌单
     ipcMain.handle('remove-favorite-playlist', async (event, playlistId) => {
       try {
-        return playlistConfig.removeFavoritePlaylist(playlistId)
+        const result = playlistConfig.removeFavoritePlaylist(playlistId)
+        if (result) sendToRenderer('playlists-changed', {})
+        return result
       } catch (error) {
         console.error('取消收藏歌单失败:', error)
         return false
