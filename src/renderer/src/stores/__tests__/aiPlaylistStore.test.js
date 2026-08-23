@@ -366,7 +366,8 @@ describe('aiPlaylistStore', () => {
       useLLM: true,
       providerMode: 'llm',
       messages: [{ role: 'user', content: '通勤想听轻松中文歌' }],
-      baseSongs: []
+      baseSongs: [],
+      excludeSongIds: []
     })
     expect(result).toMatchObject({ success: true })
     expect(store.error).toBe('')
@@ -393,9 +394,26 @@ describe('aiPlaylistStore', () => {
       useLLM: true,
       providerMode: 'llm',
       messages: [{ role: 'user', content: '夜跑电子乐' }],
-      baseSongs: []
+      baseSongs: [],
+      excludeSongIds: []
     })
     expect(store.prompt).toBe('夜跑电子乐')
+  })
+
+  it('removes songs from draft and records them in the exclude list', async () => {
+    const store = useAiPlaylistStore()
+    store.draftPlaylist = {
+      name: '测试草稿',
+      reason: '',
+      songs: [
+        { id: 1, name: 'A', artist: 'X' },
+        { id: 2, name: 'B', artist: 'Y' }
+      ]
+    }
+
+    expect(store.removeSongFromDraft(2)).toBe(true)
+    expect(store.draftPlaylist.songs.map((song) => song.id)).toEqual([1])
+    expect(store.excludeSongIds).toContain('2')
   })
 
   it('returns clear error when provider draft has no songs', async () => {

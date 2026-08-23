@@ -275,6 +275,11 @@ export async function recommendPlaylistByLLM({
   )
   const include = Array.isArray(parsed?.include) ? parsed.include.filter(Boolean).slice(0, 4) : []
   const exclude = Array.isArray(parsed?.exclude) ? parsed.exclude.filter(Boolean).slice(0, 4) : []
+  const excludeSongIds = new Set(
+    (Array.isArray(context?.excludeSongIds) ? context.excludeSongIds : [])
+      .map((id) => String(id))
+      .filter(Boolean)
+  )
   const baseKeywords = buildQueryKeywords({
     prompt: safePrompt,
     intent,
@@ -359,6 +364,7 @@ export async function recommendPlaylistByLLM({
   const scoredCandidates = Array.from(dedupedMap.values())
     .filter((song) => !isLikelyInvalidSong(song))
     .filter((song) => !shouldExcludeSong(song, exclude))
+    .filter((song) => !excludeSongIds.has(String(song.id)))
     .map((song, index) => ({
       song,
       index,
@@ -416,6 +422,7 @@ export async function recommendPlaylistByLLM({
     const rescored = Array.from(dedupedMap.values())
       .filter((song) => !isLikelyInvalidSong(song))
       .filter((song) => !shouldExcludeSong(song, exclude))
+      .filter((song) => !excludeSongIds.has(String(song.id)))
       .map((song, index) => ({
         song,
         index,

@@ -59,7 +59,7 @@ function createAiWindow() {
   aiWindow = new BrowserWindow({
     width: 1280,
     height: 720,
-    minWidth: 1024,
+    minWidth: 1180,
     minHeight: 576,
     show: false,
     frame: false,

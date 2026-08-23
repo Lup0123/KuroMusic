@@ -16,7 +16,8 @@ function buildIpcLlmContext(context = {}) {
     baseUrl: String(context?.baseUrl || ''),
     timeoutMs: timeoutMs > 0 ? timeoutMs : 35000,
     messages: toPlainJson(context?.messages, []),
-    baseSongs: toPlainJson(context?.baseSongs, [])
+    baseSongs: toPlainJson(context?.baseSongs, []),
+    excludeSongIds: toPlainJson(context?.excludeSongIds, [])
   }
 }
 

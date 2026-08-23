@@ -113,4 +113,39 @@ describe('recommendPlaylistByLLM', () => {
     expect(result.debug.semanticTags).toEqual([])
     expect(result.debug.keywords.length).toBeGreaterThan(0)
   })
+
+  it('filters out excluded song ids from candidates', async () => {
+    const llmClient = vi.fn(async () => JSON.stringify({ intent: '夜跑' }))
+    const searchSongs = vi.fn(async () => [
+      {
+        id: 101,
+        name: 'Run A',
+        artists: [{ name: 'Artist X' }],
+        album: 'Album A',
+        albumCover: '',
+        durationMs: 180000,
+        duration: '03:00'
+      },
+      {
+        id: 102,
+        name: 'Run B',
+        artists: [{ name: 'Artist Y' }],
+        album: 'Album B',
+        albumCover: '',
+        durationMs: 200000,
+        duration: '03:20'
+      }
+    ])
+
+    const result = await recommendPlaylistByLLM({
+      prompt: '夜跑',
+      context: { excludeSongIds: ['101'] },
+      llmClient,
+      searchSongs
+    })
+
+    const ids = result.draft.songs.map((song) => song.id)
+    expect(ids).not.toContain(101)
+    expect(ids).toContain(102)
+  })
 })

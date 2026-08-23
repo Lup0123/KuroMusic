@@ -120,11 +120,12 @@ function createSessionState(title = '') {
     lastCommittedDraft: null,
     lastAdjustmentMeta: null,
     pendingDraftDiff: { addedSongs: [], removedSongs: [] },
-    pendingDraftSelection: { addedSongIds: [], removedSongIds: [] },
-    pendingApplyMode: 'standard',
-    lastCreateResult: null
+      pendingDraftSelection: { addedSongIds: [], removedSongIds: [] },
+      pendingApplyMode: 'standard',
+      lastCreateResult: null,
+      excludeSongIds: []
+    }
   }
-}
 
 const AI_STORE_STORAGE_KEY = 'aiPlaylistStoreState'
 
@@ -190,6 +191,7 @@ export const useAiPlaylistStore = defineStore('aiPlaylist', {
       pendingApplyMode: 'standard',
       activeRequestId: 0,
       canceledRequestIds: [],
+      excludeSongIds: [],
       providerMode: 'llm',
       recentPrompts: [],
       generationMetrics: [],
@@ -248,6 +250,7 @@ export const useAiPlaylistStore = defineStore('aiPlaylist', {
       }
       this.pendingApplyMode = session.pendingApplyMode || 'standard'
       this.lastCreateResult = session.lastCreateResult || null
+      this.excludeSongIds = Array.isArray(session.excludeSongIds) ? session.excludeSongIds : []
     },
 
     syncToSession() {
@@ -264,6 +267,7 @@ export const useAiPlaylistStore = defineStore('aiPlaylist', {
       session.pendingDraftSelection = this.pendingDraftSelection
       session.pendingApplyMode = this.pendingApplyMode
       session.lastCreateResult = this.lastCreateResult
+      session.excludeSongIds = Array.isArray(this.excludeSongIds) ? this.excludeSongIds : []
       this.persistStoreState()
     },
 
@@ -751,7 +755,8 @@ export const useAiPlaylistStore = defineStore('aiPlaylist', {
           useLLM: true,
           providerMode: this.providerMode,
           messages: llmMessages,
-          baseSongs: this.draftPlaylist?.songs || []
+          baseSongs: this.draftPlaylist?.songs || [],
+          excludeSongIds: this.excludeSongIds || []
         })
 
         if (requestId !== this.activeRequestId || this.canceledRequestIds.includes(requestId)) {
@@ -990,6 +995,33 @@ export const useAiPlaylistStore = defineStore('aiPlaylist', {
       } finally {
         this.reranking = false
       }
+    },
+
+    removeSongFromDraft(songId) {
+      const id = String(songId ?? '')
+      if (!id) return false
+
+      const removeFromList = (songs = []) =>
+        songs.filter((song) => String(song?.id ?? '') !== id)
+
+      if (this.draftPlaylist?.songs?.length) {
+        this.draftPlaylist = {
+          ...this.draftPlaylist,
+          songs: removeFromList(this.draftPlaylist.songs)
+        }
+      }
+      if (this.pendingDraftPlaylist?.songs?.length) {
+        this.pendingDraftPlaylist = {
+          ...this.pendingDraftPlaylist,
+          songs: removeFromList(this.pendingDraftPlaylist.songs)
+        }
+      }
+
+      if (!this.excludeSongIds.includes(id)) {
+        this.excludeSongIds = [...this.excludeSongIds, id]
+      }
+      this.syncToSession()
+      return true
     },
 
     buildDebugSnapshot() {
