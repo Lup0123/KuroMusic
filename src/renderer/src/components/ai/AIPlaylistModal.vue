@@ -149,7 +149,10 @@ const modalStyle = computed(() =>
         margin: 0,
         borderRadius: 0
       }
-    : { width: "min(1280px, calc(100vw - 24px))" }
+    : {
+        width: "min(1280px, calc(100vw - 24px))",
+        height: "min(720px, calc(100vh - 48px))"
+      }
 );
 
 const headerStyle = computed(() => ({
@@ -175,12 +178,12 @@ async function onSelectRecentPrompt(key) {
 }
 
 function toggleSessionCollapse() {
-  uiPrefs.sessionCollapsed = !showSession.value;
+  uiPrefs.sessionCollapsed = !uiPrefs.sessionCollapsed;
   persistUiPrefs();
 }
 
 function toggleDraftCollapse() {
-  uiPrefs.draftCollapsed = !showDraft.value;
+  uiPrefs.draftCollapsed = !uiPrefs.draftCollapsed;
   persistUiPrefs();
 }
 
@@ -334,6 +337,14 @@ onBeforeUnmount(() => {
 :deep(.ai-chat-modal .n-card) {
   height: 100%;
   top: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+:deep(.ai-chat-modal .n-card > .n-card__content) {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 
 :deep(.ai-chat-modal .n-card-header .header-actions),
@@ -377,6 +388,7 @@ onBeforeUnmount(() => {
   display: flex;
   height: 100%;
   min-height: 0;
+  overflow: hidden;
 }
 
 .conversation-column {
