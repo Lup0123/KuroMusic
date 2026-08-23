@@ -13,9 +13,20 @@
           :class="`message-${messageItem.role}`"
           class="message-wrapper"
         >
+          <div v-if="messageItem.role === 'assistant'" class="message-avatar">
+            <n-icon><SparklesOutline /></n-icon>
+          </div>
           <div class="message-content-block">
             <div class="message-bubble" :class="`bubble-${messageItem.role}`">
-              <div class="markdown-body" v-html="renderMessage(messageItem.content)"></div>
+              <div
+                v-if="!isThinkingMessage(messageItem)"
+                class="markdown-body"
+                v-html="renderMessage(messageItem.content)"
+              ></div>
+              <div v-else class="typing-dots">
+                <span></span><span></span><span></span>
+              </div>
+              <span v-if="showStreamingCursor(messageItem)" class="streaming-cursor"></span>
             </div>
             <div class="message-time">{{ formatChatTime(messageItem.time) }}</div>
           </div>
@@ -84,7 +95,7 @@ import MarkdownIt from "markdown-it";
 import dayjs from "dayjs";
 import { useMessage } from "naive-ui";
 import { useAiPlaylistStore } from "@/stores/aiPlaylistStore";
-import { SendOutline, StopOutline } from "@vicons/ionicons5";
+import { SendOutline, StopOutline, SparklesOutline } from "@vicons/ionicons5";
 import GuideCards from "@/components/ai/GuideCards.vue";
 
 const aiStore = useAiPlaylistStore();
@@ -182,6 +193,21 @@ watch(
 
 function formatChatTime(timestamp) {
   return timestamp ? dayjs(timestamp).format("HH:mm") : "";
+}
+
+function isStreamingMessage(messageItem) {
+  return messageItem?.type === "streaming";
+}
+
+function isThinkingMessage(messageItem) {
+  return (
+    isStreamingMessage(messageItem) &&
+    (!String(messageItem?.content || "").trim() || Boolean(messageItem?.meta?.placeholder))
+  );
+}
+
+function showStreamingCursor(messageItem) {
+  return isStreamingMessage(messageItem) && !isThinkingMessage(messageItem);
 }
 
 function renderMessage(content) {
@@ -286,6 +312,7 @@ function onDownloadDebugSnapshot() {
 .message-wrapper {
   display: flex;
   animation: message-slide-in 0.22s ease;
+  gap: 8px;
 }
 
 .message-user {
@@ -296,31 +323,135 @@ function onDownloadDebugSnapshot() {
   justify-content: flex-start;
 }
 
+.message-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  flex-shrink: 0;
+  margin-top: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  color: var(--primary-color, var(--n-primary-color));
+  background: color-mix(
+    in srgb,
+    var(--primary-color, var(--n-primary-color)) 14%,
+    transparent
+  );
+}
+
 .message-content-block {
-  max-width: 82%;
+  max-width: 85%;
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 4px;
+  min-width: 0;
+}
+
+.message-user .message-content-block {
+  align-items: flex-end;
+}
+
+.message-assistant .message-content-block {
+  align-items: flex-start;
 }
 
 .message-bubble {
-  padding: 9px 12px;
-  border-radius: 10px;
-  font-size: 13px;
-  line-height: 1.6;
+  padding: 10px 14px;
+  border-radius: 14px;
+  font-size: 14px;
+  line-height: 1.7;
   word-break: break-word;
+  white-space: pre-wrap;
 }
 
 .bubble-user {
   background: var(--primary-color, var(--n-primary-color));
   color: #fff;
-  border-top-right-radius: 3px;
+  border-bottom-right-radius: 4px;
 }
 
 .bubble-assistant {
-  background: var(--n-color-2);
+  background: color-mix(in srgb, var(--n-text-color) 6%, transparent);
+  border: 1px solid var(--n-border-color);
   color: var(--n-text-color);
-  border-top-left-radius: 3px;
+  border-bottom-left-radius: 4px;
+}
+
+.markdown-body p {
+  margin: 0 0 8px;
+}
+
+.markdown-body p:last-child {
+  margin-bottom: 0;
+}
+
+.markdown-body ul,
+.markdown-body ol {
+  padding-left: 18px;
+  margin: 4px 0;
+}
+
+.markdown-body code {
+  font-family: ui-monospace, SFMono-Regular, Consolas, "Courier New", monospace;
+  font-size: 12px;
+  background: color-mix(in srgb, var(--n-text-color) 10%, transparent);
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
+.markdown-body pre {
+  background: color-mix(in srgb, var(--n-text-color) 8%, transparent);
+  border: 1px solid var(--n-border-color);
+  border-radius: 8px;
+  padding: 10px 12px;
+  overflow-x: auto;
+  margin: 8px 0;
+}
+
+.markdown-body pre code {
+  background: transparent;
+  padding: 0;
+}
+
+.markdown-body a {
+  color: var(--primary-color, var(--n-primary-color));
+}
+
+.typing-dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 2px;
+}
+
+.typing-dots span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.4;
+  animation: typing-bounce 1.2s infinite ease-in-out;
+}
+
+.typing-dots span:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.typing-dots span:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+.streaming-cursor {
+  display: inline-block;
+  width: 8px;
+  height: 15px;
+  margin-left: 2px;
+  vertical-align: text-bottom;
+  border-radius: 1px;
+  background: currentColor;
+  animation: cursor-blink 1s steps(2, start) infinite;
 }
 
 .message-time {
@@ -383,6 +514,25 @@ function onDownloadDebugSnapshot() {
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@keyframes typing-bounce {
+  0%,
+  60%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.4;
+  }
+  30% {
+    transform: translateY(-4px);
+    opacity: 1;
+  }
+}
+
+@keyframes cursor-blink {
+  to {
+    visibility: hidden;
   }
 }
 </style>
