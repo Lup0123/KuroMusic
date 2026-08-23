@@ -3,7 +3,6 @@
     v-model:show="aiPlaylistStore.visible"
     class="ai-chat-modal"
     :class="{ 'ai-window-mode': isAiWindow }"
-    content-scrollable
     preset="card"
     size="huge"
     :bordered="false"
@@ -329,29 +328,23 @@ onBeforeUnmount(() => {
 <style scoped lang="scss">
 .ai-chat-modal {
   overflow: hidden;
-  height: 100%;
   box-shadow: 0 12px 36px rgba(0, 0, 0, 0.15);
   z-index: auto;
 }
 
-:deep(.ai-chat-modal .n-card) {
-  height: 100%;
-  top: 0;
+/* The modal root is teleported to <body>, so scoped :deep() cannot reach it.
+   Use :global() to constrain the card height and make columns scroll inside. */
+:global(.ai-chat-modal) {
   display: flex;
   flex-direction: column;
-}
-
-:deep(.ai-chat-modal .n-card > .n-card__content) {
-  flex: 1;
-  min-height: 0;
   overflow: hidden;
 }
 
-:deep(.ai-chat-modal .n-card-header .header-actions),
-:deep(.ai-chat-modal .n-card-header .n-radio-group),
-:deep(.ai-chat-modal .n-card-header .n-dropdown),
-:deep(.ai-chat-modal .n-card-header .n-button) {
-  -webkit-app-region: no-drag;
+:global(.ai-chat-modal .n-card-content) {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
 }
 
 .chat-header {
@@ -382,11 +375,12 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   gap: 8px;
+  -webkit-app-region: no-drag;
 }
 
 .result-layout {
+  flex: 1;
   display: flex;
-  height: 100%;
   min-height: 0;
   overflow: hidden;
 }
