@@ -33,7 +33,7 @@ export const importMusicFromLocal = async () => {
           artist: metadata.artist || '未知艺术家',
           album: metadata.album || '未知专辑',
           duration: formatDuration(metadata.duration),
-          cover: metadata.picture || 'https://via.placeholder.com/50',
+          cover: metadata.picture || '',
           path: filePath,
           addTime: new Date().toISOString()
         })

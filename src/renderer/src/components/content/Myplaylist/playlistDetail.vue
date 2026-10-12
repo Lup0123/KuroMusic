@@ -303,7 +303,7 @@ import { useSongStore } from '@/stores/songStore'
 import { storeToRefs } from 'pinia'
 import { formatDate } from '@/utils/utils'
 import { downloadSong, downloadSongs } from '@/utils/downloadUtils'
-import { ROUTE_NAMES } from '@/router/routeNames'
+import { goBackOrHome } from '@/router/navHistory'
 import AppCover from '@/components/common/AppCover.vue'
 import SongDurationText from '@/components/common/SongDurationText.vue'
 import { useAppFeedback } from '@/composables/useAppFeedback'
@@ -327,7 +327,7 @@ const { refreshKey } = storeToRefs(indexStore)
 const playlist = ref({
   id: currentPlaylistInfo.value.id,
   name: currentPlaylistInfo.value.name,
-  cover: currentPlaylistInfo.value.cover || 'https://via.placeholder.com/200',
+  cover: currentPlaylistInfo.value.cover || '',
   description: currentPlaylistInfo.value.description,
   createTime: formatDate(currentPlaylistInfo.value.createTime),
   isLocal: currentPlaylistInfo.value.isLocal || false
@@ -389,11 +389,7 @@ const handleScroll = (e) => {
 }
 
 const goBack = () => {
-  if (window.history.length > 1) {
-    router.back()
-    return
-  }
-  router.push({ name: ROUTE_NAMES.MAIN_PAGE })
+  goBackOrHome(router)
 }
 
 const playAll = () => {
@@ -551,10 +547,10 @@ const getPlaylistCover = (playlist) => {
       firstSong.al?.picUrl ||
       firstSong.cover ||
       firstSong.albumCover ||
-      'https://via.placeholder.com/40'
+      ''
     )
   }
-  return 'https://via.placeholder.com/40'
+  return ''
 }
 
 const toggleFavorite = async () => {
@@ -619,7 +615,7 @@ const loadPlaylistData = async () => {
         if (songs.value.length > 0 && songs.value[0].cover) {
           playlist.value.cover = songs.value[0].cover
         } else if (!playlist.value.cover) {
-          playlist.value.cover = 'https://via.placeholder.com/200'
+          playlist.value.cover = ''
         }
       }
     } else {
@@ -969,11 +965,11 @@ watch([() => currentPlaylistInfo.value.id, refreshKey], async () => {
             }
             .playing-indicator {
               display: block;
-              color: var(--n-primary-color);
+              color: var(--primary-color, var(--n-primary-color));
             }
           }
           .song-name {
-            color: var(--n-primary-color) !important;
+            color: var(--primary-color, var(--n-primary-color)) !important;
           }
         }
 
@@ -1019,8 +1015,8 @@ watch([() => currentPlaylistInfo.value.id, refreshKey], async () => {
               font-size: 12px;
             }
             .vip-badge {
-              border: 1px solid var(--n-primary-color);
-              color: var(--n-primary-color);
+              border: 1px solid var(--primary-color, var(--n-primary-color));
+              color: var(--primary-color, var(--n-primary-color));
               font-size: 10px;
               padding: 0 2px;
               border-radius: 2px;
@@ -1051,7 +1047,7 @@ watch([() => currentPlaylistInfo.value.id, refreshKey], async () => {
               color: var(--n-text-color-2);
             }
             &.liked {
-              color: var(--n-primary-color);
+              color: var(--primary-color, var(--n-primary-color));
             }
           }
         }
@@ -1100,7 +1096,7 @@ watch([() => currentPlaylistInfo.value.id, refreshKey], async () => {
       }
 
       .ant-btn-primary {
-        background: var(--n-primary-color);
+        background: var(--primary-color, var(--n-primary-color));
         border: none;
 
         &:hover {
@@ -1235,8 +1231,8 @@ watch([() => currentPlaylistInfo.value.id, refreshKey], async () => {
       }
 
       &.selected {
-        background-color: color-mix(in srgb, var(--n-primary-color) 16%, transparent);
-        border: 1px solid var(--n-primary-color);
+        background-color: color-mix(in srgb, var(--primary-color, var(--n-primary-color)) 16%, transparent);
+        border: 1px solid var(--primary-color, var(--n-primary-color));
       }
 
       .playlist-cover {
@@ -1266,7 +1262,7 @@ watch([() => currentPlaylistInfo.value.id, refreshKey], async () => {
       }
 
       .check-icon {
-        color: var(--n-primary-color);
+        color: var(--primary-color, var(--n-primary-color));
         font-size: 20px;
       }
     }

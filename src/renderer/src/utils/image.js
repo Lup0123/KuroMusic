@@ -4,6 +4,10 @@ export function normalizeCoverUrl(url, size = 200) {
   const trimmed = url.trim()
   if (!trimmed) return ''
 
+  // via.placeholder.com 服务已下线，历史数据里的占位链接会导致裂图；
+  // 统一判空，交给上层组件（AppCover 等）显示本地兜底占位。
+  if (/placeholder\.com/i.test(trimmed)) return ''
+
   if (
     trimmed.startsWith('data:') ||
     trimmed.startsWith('blob:') ||

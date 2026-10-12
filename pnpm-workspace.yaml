@@ -1,6 +1,14 @@
 packages:
   - "."
 
-onlyBuiltDependencies:
-  - electron
-  - esbuild
+allowBuilds:
+  '@applemusic-like-lyrics/core': true
+  '@applemusic-like-lyrics/vue': true
+  '@parcel/watcher': true
+  better-sqlite3: true
+  electron: true
+  esbuild: true
+  onnxruntime-node: true
+  protobufjs: true
+  sharp: true
+  vue-demi: true

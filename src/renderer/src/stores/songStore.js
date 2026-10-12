@@ -70,7 +70,7 @@ export const useSongStore = defineStore('song', {
         name: '暂无播放',
         artist: '未知艺术家',
         album: '未知专辑',
-        cover: 'https://via.placeholder.com/50',
+        cover: '',
         duration: '00:00'
       }
     },

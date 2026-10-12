@@ -15,10 +15,7 @@
         </div>
 
         <!-- 操作按钮 -->
-        <div
-          v-if="activeTab === 'songs' && currentResults.length > 0"
-          class="header-actions"
-        >
+        <div v-if="activeTab === 'songs' && currentResults.length > 0" class="header-actions">
           <n-button type="primary" @click="playAll">
             <template #icon>
               <n-icon><PlaySharp /></n-icon>
@@ -88,7 +85,7 @@
               class="song-row"
               :class="{
                 active: currentSong?.id === song.id,
-                playing: currentSong?.id === song.id && isPlaying,
+                playing: currentSong?.id === song.id && isPlaying
               }"
               @dblclick="playSong(song)"
             >
@@ -96,12 +93,7 @@
               <div class="col-index">
                 <span class="row-number">{{ indexMethod(index) }}</span>
                 <div class="play-overlay">
-                  <n-button
-                    text
-                    class="play-btn"
-                    size="small"
-                    @click.stop="playSong(song)"
-                  >
+                  <n-button text class="play-btn" size="small" @click.stop="playSong(song)">
                     <template #icon>
                       <n-icon size="22">
                         <PlaySharp v-if="currentSong?.id !== song.id || !isPlaying" />
@@ -122,10 +114,7 @@
                       </div>
                     </template>
                   </AppCover>
-                  <div
-                    v-if="currentSong?.id === song.id && isPlaying"
-                    class="cover-play-icon"
-                  >
+                  <div v-if="currentSong?.id === song.id && isPlaying" class="cover-play-icon">
                     <n-icon><VolumeHighOutline /></n-icon>
                   </div>
                 </div>
@@ -133,10 +122,7 @@
                   <div class="song-name-wrapper">
                     <span class="song-name" :title="song.name">{{ song.name }}</span>
                     <div class="song-tags">
-                      <n-tag
-                        v-if="song.fee === 1 || song.fee === 4"
-                        type="error"
-                        size="small"
+                      <n-tag v-if="song.fee === 1 || song.fee === 4" type="error" size="small"
                         >VIP</n-tag
                       >
                       <n-tag v-if="song.mvId" type="info" size="small">MV</n-tag>
@@ -225,13 +211,7 @@
               @click="handleArtistCardClick(artist)"
             >
               <div class="artist-avatar">
-                <AppCover
-                  :src="artist.picUrl"
-                  :width="72"
-                  :height="72"
-                  :size="144"
-                  :radius="999"
-                >
+                <AppCover :src="artist.picUrl" :width="72" :height="72" :size="144" :radius="999">
                   <template #fallback>
                     <div class="avatar-placeholder">
                       <n-icon><PersonOutline /></n-icon>
@@ -241,7 +221,7 @@
               </div>
               <div class="artist-main">
                 <div class="artist-name" :title="artist.name">
-                  {{ artist.name || "未知歌手" }}
+                  {{ artist.name || '未知歌手' }}
                 </div>
                 <div v-if="artist.alias" class="artist-alias" :title="artist.alias">
                   {{ artist.alias }}
@@ -266,12 +246,7 @@
               @click="handlePlaylistCardClick(playlist)"
             >
               <div class="playlist-cover">
-                <AppCover
-                  :src="playlist.coverImgUrl"
-                  :width="88"
-                  :height="88"
-                  :size="176"
-                >
+                <AppCover :src="playlist.coverImgUrl" :width="88" :height="88" :size="176">
                   <template #fallback>
                     <div class="playlist-placeholder">
                       <n-icon><FolderOutline /></n-icon>
@@ -281,14 +256,12 @@
               </div>
               <div class="playlist-main">
                 <div class="playlist-name" :title="playlist.name">
-                  {{ playlist.name || "未命名歌单" }}
+                  {{ playlist.name || '未命名歌单' }}
                 </div>
                 <div class="playlist-meta">
                   <span>播放 {{ formatCount(playlist.playCount) }}</span>
                   <span>曲目 {{ playlist.trackCount || 0 }}</span>
-                  <span v-if="playlist.creatorName"
-                    >创建者 {{ playlist.creatorName }}</span
-                  >
+                  <span v-if="playlist.creatorName">创建者 {{ playlist.creatorName }}</span>
                 </div>
                 <div
                   v-if="playlist.description"
@@ -353,11 +326,7 @@
               <div class="playlist-name">{{ playlist.name }}</div>
               <div class="playlist-count">{{ playlist.songs?.length || 0 }} 首歌曲</div>
             </div>
-            <n-icon
-              v-if="selectedPlaylistId === playlist.id"
-              class="check-icon"
-              size="20"
-            >
+            <n-icon v-if="selectedPlaylistId === playlist.id" class="check-icon" size="20">
               <CheckmarkCircle />
             </n-icon>
           </div>
@@ -369,8 +338,8 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted, toRaw } from "vue";
-import { useRouter } from "vue-router";
+import { ref, computed, watch, onMounted, toRaw } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   SearchOutline,
   PlaySharp,
@@ -386,256 +355,249 @@ import {
   DocumentTextOutline,
   MicOutline,
   AddCircleOutline,
-  CheckmarkCircle,
-} from "@vicons/ionicons5";
-import { useSearchStore } from "@/stores/searchStore";
-import { useSongStore } from "@/stores/songStore";
-import { usePlaylistStore } from "@/stores/playlistStore";
-import { ROUTE_NAMES } from "@/router/routeNames";
-import AppCover from "@/components/common/AppCover.vue";
-import StateView from "@/components/common/StateView.vue";
-import { useAppFeedback } from "@/composables/useAppFeedback";
-import { storeToRefs } from "pinia";
+  CheckmarkCircle
+} from '@vicons/ionicons5'
+import { useSearchStore } from '@/stores/searchStore'
+import { useSongStore } from '@/stores/songStore'
+import { usePlaylistStore } from '@/stores/playlistStore'
+import { ROUTE_NAMES } from '@/router/routeNames'
+import AppCover from '@/components/common/AppCover.vue'
+import StateView from '@/components/common/StateView.vue'
+import { useAppFeedback } from '@/composables/useAppFeedback'
+import { storeToRefs } from 'pinia'
 
-const feedback = useAppFeedback();
-const router = useRouter();
+const feedback = useAppFeedback()
+const router = useRouter()
 
-const searchStore = useSearchStore();
-const { searchKeyword, searchResults, activeTab, hasSearched, loading } = storeToRefs(
-  searchStore
-);
+const searchStore = useSearchStore()
+const { searchKeyword, searchResults, activeTab, hasSearched, loading } = storeToRefs(searchStore)
 
-const { setSearchResults, setActiveTab, setHasSearched, setLoading } = searchStore;
+const { setSearchResults, setActiveTab, setHasSearched, setLoading } = searchStore
 
-const songStore = useSongStore();
-const { currentSong, isPlaying } = storeToRefs(songStore);
-const { play } = songStore;
+const songStore = useSongStore()
+const { currentSong, isPlaying } = storeToRefs(songStore)
+const { play } = songStore
 
-const playlistStore = usePlaylistStore();
-const { createdPlaylists } = storeToRefs(playlistStore);
-const { setCurrentPlaylist } = playlistStore;
+const playlistStore = usePlaylistStore()
+const { createdPlaylists } = storeToRefs(playlistStore)
+const { setCurrentPlaylist } = playlistStore
 
 // 添加到歌单相关
-const addToPlaylistModalVisible = ref(false);
-const selectedPlaylistId = ref(null);
-const currentSongToAdd = ref(null);
-const isCollectAll = ref(false);
-const searchContentRef = ref(null);
-const isScrolled = ref(false);
+const addToPlaylistModalVisible = ref(false)
+const selectedPlaylistId = ref(null)
+const currentSongToAdd = ref(null)
+const isCollectAll = ref(false)
+const searchContentRef = ref(null)
+const isScrolled = ref(false)
 
 // 标签页配置
 const tabs = [
-  { key: "songs", title: "单曲", icon: MusicalNotesOutline },
-  { key: "artists", title: "歌手", icon: PersonOutline },
-  { key: "albums", title: "专辑", icon: FolderOutline },
-  { key: "playlists", title: "歌单", icon: FolderOutline },
-  { key: "mv", title: "MV", icon: MicOutline },
-  { key: "lyrics", title: "歌词", icon: DocumentTextOutline },
-  { key: "voice", title: "声音", icon: MicOutline },
-];
+  { key: 'songs', title: '单曲', icon: MusicalNotesOutline },
+  { key: 'artists', title: '歌手', icon: PersonOutline },
+  { key: 'albums', title: '专辑', icon: FolderOutline },
+  { key: 'playlists', title: '歌单', icon: FolderOutline },
+  { key: 'mv', title: 'MV', icon: MicOutline },
+  { key: 'lyrics', title: '歌词', icon: DocumentTextOutline },
+  { key: 'voice', title: '声音', icon: MicOutline }
+]
 
 // 分页相关
-const currentPage = ref(1);
-const pageSize = 50;
+const currentPage = ref(1)
+const pageSize = 50
 
 const tabTypeMap = {
   songs: 1,
   artists: 100,
-  playlists: 1000,
-};
+  playlists: 1000
+}
 
 const handleContentScroll = (event) => {
-  const scrollTop = event.target.scrollTop;
-  isScrolled.value = scrollTop > 220;
-};
+  const scrollTop = event.target.scrollTop
+  isScrolled.value = scrollTop > 220
+}
 
 // 执行搜索
 const performSearch = async (keyword, page = 1, targetTab = activeTab.value) => {
   if (!keyword || !keyword.trim()) {
-    return;
+    return
   }
 
-  const tabType = tabTypeMap[targetTab];
+  const tabType = tabTypeMap[targetTab]
   if (!tabType) {
-    return;
+    return
   }
 
-  setLoading(true);
-  setHasSearched(true);
+  setLoading(true)
+  setHasSearched(true)
 
   try {
-    const offset = (page - 1) * pageSize;
-    const response = await window.api.search(keyword.trim(), tabType, pageSize, offset);
-    console.log("搜索结果:", response);
-    const results = response?.body?.result;
+    const offset = (page - 1) * pageSize
+    const response = await window.api.search(keyword.trim(), tabType, pageSize, offset)
+    console.log('搜索结果:', response)
+    const results = response?.body?.result
     if (results && response) {
-      setSearchResults(results, targetTab);
+      setSearchResults(results, targetTab)
     } else {
-      feedback.error("搜索失败，请重试");
-      setSearchResults({}, targetTab);
+      feedback.error('搜索失败，请重试')
+      setSearchResults({}, targetTab)
     }
   } catch (error) {
-    console.error("搜索错误:", error);
-    feedback.error("搜索出错，请稍后重试");
-    setSearchResults({}, targetTab);
+    console.error('搜索错误:', error)
+    feedback.error('搜索出错，请稍后重试')
+    setSearchResults({}, targetTab)
   } finally {
-    setLoading(false);
+    setLoading(false)
   }
-};
+}
 
 // 监听搜索关键词变化
 watch(
   searchKeyword,
   (newKeyword) => {
     if (newKeyword && newKeyword.trim()) {
-      currentPage.value = 1;
-      performSearch(newKeyword, 1, activeTab.value);
+      currentPage.value = 1
+      performSearch(newKeyword, 1, activeTab.value)
     }
   },
   { immediate: false }
-);
+)
 
 // 组件挂载时检查是否有搜索关键词
 onMounted(() => {
   if (searchKeyword.value && searchKeyword.value.trim()) {
-    performSearch(searchKeyword.value, currentPage.value, activeTab.value);
+    performSearch(searchKeyword.value, currentPage.value, activeTab.value)
   }
-});
+})
 
 const totalCount = computed(() => {
-  if (activeTab.value === "songs") {
-    return searchResults.value.trackCount || searchResults.value.songs?.length || 0;
+  if (activeTab.value === 'songs') {
+    return searchResults.value.trackCount || searchResults.value.songs?.length || 0
   }
-  if (activeTab.value === "artists") {
-    return searchResults.value.artistCount || searchResults.value.artists?.length || 0;
+  if (activeTab.value === 'artists') {
+    return searchResults.value.artistCount || searchResults.value.artists?.length || 0
   }
-  if (activeTab.value === "playlists") {
-    return (
-      searchResults.value.playlistCount || searchResults.value.playlists?.length || 0
-    );
+  if (activeTab.value === 'playlists') {
+    return searchResults.value.playlistCount || searchResults.value.playlists?.length || 0
   }
-  return 0;
-});
+  return 0
+})
 
 const resultLabel = computed(() => {
-  if (activeTab.value === "songs") return "首相关歌曲";
-  if (activeTab.value === "artists") return "位相关歌手";
-  if (activeTab.value === "playlists") return "个相关歌单";
-  return "条相关结果";
-});
+  if (activeTab.value === 'songs') return '首相关歌曲'
+  if (activeTab.value === 'artists') return '位相关歌手'
+  if (activeTab.value === 'playlists') return '个相关歌单'
+  return '条相关结果'
+})
 
-const isSupportedTab = computed(() => Boolean(tabTypeMap[activeTab.value]));
+const isSupportedTab = computed(() => Boolean(tabTypeMap[activeTab.value]))
 
 const currentResults = computed(() => {
-  if (activeTab.value === "songs") return searchResults.value.songs || [];
-  if (activeTab.value === "artists") return searchResults.value.artists || [];
-  if (activeTab.value === "playlists") return searchResults.value.playlists || [];
-  return [];
-});
+  if (activeTab.value === 'songs') return searchResults.value.songs || []
+  if (activeTab.value === 'artists') return searchResults.value.artists || []
+  if (activeTab.value === 'playlists') return searchResults.value.playlists || []
+  return []
+})
 
 const indexMethod = (index) => {
-  return String((currentPage.value - 1) * pageSize + index + 1).padStart(2, "0");
-};
+  return String((currentPage.value - 1) * pageSize + index + 1).padStart(2, '0')
+}
 
 const getTabCount = (tabKey) => {
-  if (tabKey === "songs") {
-    return searchResults.value.trackCount || searchResults.value.songs?.length || 0;
+  if (tabKey === 'songs') {
+    return searchResults.value.trackCount || searchResults.value.songs?.length || 0
   }
-  if (tabKey === "artists") {
-    return searchResults.value.artistCount || searchResults.value.artists?.length || 0;
+  if (tabKey === 'artists') {
+    return searchResults.value.artistCount || searchResults.value.artists?.length || 0
   }
-  if (tabKey === "playlists") {
-    return (
-      searchResults.value.playlistCount || searchResults.value.playlists?.length || 0
-    );
+  if (tabKey === 'playlists') {
+    return searchResults.value.playlistCount || searchResults.value.playlists?.length || 0
   }
-  return 0;
-};
+  return 0
+}
 
 watch(activeTab, (newTab) => {
-  currentPage.value = 1;
+  currentPage.value = 1
   if (searchContentRef.value) {
-    searchContentRef.value.scrollTop = 0;
+    searchContentRef.value.scrollTop = 0
   }
-  isScrolled.value = false;
+  isScrolled.value = false
 
   if (!searchKeyword.value || !searchKeyword.value.trim()) {
-    return;
+    return
   }
 
   if (tabTypeMap[newTab]) {
-    performSearch(searchKeyword.value, 1, newTab);
+    performSearch(searchKeyword.value, 1, newTab)
   }
-});
+})
 
 const handleCurrentChange = (val) => {
-  currentPage.value = val;
-  performSearch(searchKeyword.value, currentPage.value, activeTab.value);
+  currentPage.value = val
+  performSearch(searchKeyword.value, currentPage.value, activeTab.value)
   if (searchContentRef.value) {
-    searchContentRef.value.scrollTop = 0;
+    searchContentRef.value.scrollTop = 0
   }
-  isScrolled.value = false;
-};
+  isScrolled.value = false
+}
 
 const handleTabChange = (tab) => {
-  setActiveTab(tab);
-};
+  setActiveTab(tab)
+}
 
 const handleArtistCardClick = async (artist) => {
-  if (!artist?.id) return;
+  if (!artist?.id) return
 
   router.push({
     name: ROUTE_NAMES.ARTIST_DETAIL,
     params: { id: String(artist.id) },
     query: {
-      name: artist.name || "",
-      alias: artist.alias || "",
-      avatar: artist.picUrl || "",
+      name: artist.name || '',
+      alias: artist.alias || '',
+      avatar: artist.picUrl || '',
       fanCount: String(artist.fanCount || 0),
       musicSize: String(artist.musicSize || 0),
-      albumSize: String(artist.albumSize || 0),
-    },
-  });
-};
+      albumSize: String(artist.albumSize || 0)
+    }
+  })
+}
 
 const handlePlaylistCardClick = (playlist) => {
-  if (!playlist?.id) return;
+  if (!playlist?.id) return
 
   setCurrentPlaylist({
     id: playlist.id,
-    name: playlist.name || "未命名歌单",
-    cover: playlist.coverImgUrl || "",
-    description: playlist.description || "",
+    name: playlist.name || '未命名歌单',
+    cover: playlist.coverImgUrl || '',
+    description: playlist.description || '',
     createTime: playlist.createTime,
-    isLocal: false,
-  });
+    isLocal: false
+  })
 
-  router.push({ name: ROUTE_NAMES.PLAYLIST_DETAIL, params: { id: String(playlist.id) } });
-};
+  router.push({ name: ROUTE_NAMES.PLAYLIST_DETAIL, params: { id: String(playlist.id) } })
+}
 
 const formatCount = (value) => {
-  const count = Number(value) || 0;
-  if (count >= 100000000)
-    return `${(count / 100000000).toFixed(1).replace(/\.0$/, "")}亿`;
-  if (count >= 10000) return `${(count / 10000).toFixed(1).replace(/\.0$/, "")}万`;
-  return `${count}`;
-};
+  const count = Number(value) || 0
+  if (count >= 100000000) return `${(count / 100000000).toFixed(1).replace(/\.0$/, '')}亿`
+  if (count >= 10000) return `${(count / 10000).toFixed(1).replace(/\.0$/, '')}万`
+  return `${count}`
+}
 
 const playSong = async (song) => {
   try {
-    const settings = JSON.parse(localStorage.getItem("appSettings") || "{}");
-    const settingQuality = settings.quality || "exhigh";
+    const settings = JSON.parse(localStorage.getItem('appSettings') || '{}')
+    const settingQuality = settings.quality || 'exhigh'
     const qualityMap = {
-      standard: "standard",
-      higher: "higher",
-      exhigh: "exhigh",
-      lossless: "lossless",
-      hires: "hires",
-    };
-    const quality = qualityMap[settingQuality] || "exhigh";
+      standard: 'standard',
+      higher: 'higher',
+      exhigh: 'exhigh',
+      lossless: 'lossless',
+      hires: 'hires'
+    }
+    const quality = qualityMap[settingQuality] || 'exhigh'
 
-    const response = await window.api.getSongUrl(song.id, quality);
-    const result = response.body;
+    const response = await window.api.getSongUrl(song.id, quality)
+    const result = response.body
 
     if (result.code == 200) {
       const fullSong = {
@@ -643,168 +605,163 @@ const playSong = async (song) => {
         name: song.name,
         artist: song.artist,
         album: song.album,
-        cover: song.albumCover || "https://via.placeholder.com/50",
+        cover: song.albumCover || '',
         duration: song.duration,
-        dt: song.durationMs,
-      };
-      play(fullSong);
-      feedback.success(`开始播放 ${song.name}`);
+        dt: song.durationMs
+      }
+      play(fullSong)
+      feedback.success(`开始播放 ${song.name}`)
     } else {
-      feedback.error("无法获取播放链接");
+      feedback.error('无法获取播放链接')
     }
   } catch (error) {
-    feedback.error("获取播放链接失败");
-    console.error("播放错误:", error);
+    feedback.error('获取播放链接失败')
+    console.error('播放错误:', error)
   }
-};
+}
 
 const toggleLike = async (song) => {
-  const newLikedState = !song.liked;
+  const newLikedState = !song.liked
 
   try {
-    const success = await playlistStore.toggleLikeSong(song.id, newLikedState);
+    const success = await playlistStore.toggleLikeSong(song.id, newLikedState)
     if (success) {
-      song.liked = newLikedState;
-      feedback.success(newLikedState ? "已添加到我喜欢的音乐" : "已取消喜欢");
+      song.liked = newLikedState
+      feedback.success(newLikedState ? '已添加到我喜欢的音乐' : '已取消喜欢')
     } else {
-      feedback.error("操作失败，请重试");
+      feedback.error('操作失败，请重试')
     }
   } catch (error) {
-    console.error("喜欢操作失败:", error);
-    feedback.errorWith(error, "操作失败，请重试");
+    console.error('喜欢操作失败:', error)
+    feedback.errorWith(error, '操作失败，请重试')
   }
-};
+}
 
 const playAll = async () => {
   if (currentResults.value.length > 0) {
-    const firstSong = currentResults.value[0];
-    await playSong(firstSong);
-    feedback.success(`开始播放全部 ${currentResults.value.length} 首歌曲`);
+    const firstSong = currentResults.value[0]
+    await playSong(firstSong)
+    feedback.success(`开始播放全部 ${currentResults.value.length} 首歌曲`)
   }
-};
+}
 
 // 下一首播放
 const playSongNext = (song) => {
-  songStore.playSongNext(song);
-  feedback.success(`已加入「下一首播放」：${song.name}`);
-};
+  songStore.playSongNext(song)
+  feedback.success(`已加入「下一首播放」：${song.name}`)
+}
 
 const collectAll = () => {
-  isCollectAll.value = true;
-  currentSongToAdd.value = null;
-  selectedPlaylistId.value = null;
-  addToPlaylistModalVisible.value = true;
-};
+  isCollectAll.value = true
+  currentSongToAdd.value = null
+  selectedPlaylistId.value = null
+  addToPlaylistModalVisible.value = true
+}
 
 // 添加单曲到歌单
 const addSongToPlaylist = (song) => {
-  isCollectAll.value = false;
+  isCollectAll.value = false
   currentSongToAdd.value = {
     id: song.id,
     name: song.name,
     artist: song.artist,
     album: song.album,
-    cover: song.albumCover || "https://via.placeholder.com/50",
+    cover: song.albumCover || '',
     duration: song.duration,
-    dt: song.durationMs,
-  };
-  selectedPlaylistId.value = null;
-  addToPlaylistModalVisible.value = true;
-};
+    dt: song.durationMs
+  }
+  selectedPlaylistId.value = null
+  addToPlaylistModalVisible.value = true
+}
 
 const selectPlaylist = (playlistId) => {
-  selectedPlaylistId.value = playlistId;
-};
+  selectedPlaylistId.value = playlistId
+}
 
 const handleAddToPlaylist = async () => {
   if (!selectedPlaylistId.value) {
-    feedback.warning("请选择一个歌单");
-    return false;
+    feedback.warning('请选择一个歌单')
+    return false
   }
 
   try {
     if (isCollectAll.value) {
-      let successCount = 0;
+      let successCount = 0
       for (const song of currentResults.value) {
         const songData = {
           id: song.id,
           name: song.name,
           artist: song.artist,
           album: song.album,
-          cover: song.albumCover || "https://via.placeholder.com/50",
+          cover: song.albumCover || '',
           duration: song.duration,
-          dt: song.durationMs,
-        };
+          dt: song.durationMs
+        }
         const success = await playlistStore.addSongToLocalPlaylist(
           selectedPlaylistId.value,
           songData
-        );
-        if (success) successCount++;
+        )
+        if (success) successCount++
       }
-      feedback.success(`成功添加 ${successCount} 首歌曲到歌单`);
-      await playlistStore.loadLocalPlaylists();
-      isCollectAll.value = false;
-      selectedPlaylistId.value = null;
-      addToPlaylistModalVisible.value = false;
-      return true;
+      feedback.success(`成功添加 ${successCount} 首歌曲到歌单`)
+      await playlistStore.loadLocalPlaylists()
+      isCollectAll.value = false
+      selectedPlaylistId.value = null
+      addToPlaylistModalVisible.value = false
+      return true
     } else {
       if (!currentSongToAdd.value) {
-        feedback.error("没有选择要添加的歌曲");
-        return false;
+        feedback.error('没有选择要添加的歌曲')
+        return false
       }
 
       const success = await playlistStore.addSongToLocalPlaylist(
         selectedPlaylistId.value,
         toRaw(currentSongToAdd.value)
-      );
+      )
 
       if (success) {
-        feedback.success("添加成功");
-        await playlistStore.loadLocalPlaylists();
-        currentSongToAdd.value = null;
-        selectedPlaylistId.value = null;
-        addToPlaylistModalVisible.value = false;
-        return true;
+        feedback.success('添加成功')
+        await playlistStore.loadLocalPlaylists()
+        currentSongToAdd.value = null
+        selectedPlaylistId.value = null
+        addToPlaylistModalVisible.value = false
+        return true
       } else {
-        feedback.warning("歌曲已存在于该歌单中");
-        return false;
+        feedback.warning('歌曲已存在于该歌单中')
+        return false
       }
     }
   } catch (error) {
-    console.error("添加歌曲到歌单失败:", error);
-    feedback.errorWith(error, "添加失败，请稍后重试");
-    return false;
+    console.error('添加歌曲到歌单失败:', error)
+    feedback.errorWith(error, '添加失败，请稍后重试')
+    return false
   }
-};
+}
 
 const handleCancelAddToPlaylist = () => {
-  addToPlaylistModalVisible.value = false;
-  currentSongToAdd.value = null;
-  selectedPlaylistId.value = null;
-  isCollectAll.value = false;
-};
+  addToPlaylistModalVisible.value = false
+  currentSongToAdd.value = null
+  selectedPlaylistId.value = null
+  isCollectAll.value = false
+}
 
 // 获取歌单封面
 const getPlaylistCover = (playlist) => {
   if (playlist.cover) {
-    return playlist.cover;
+    return playlist.cover
   }
   if (playlist.songs && playlist.songs.length > 0) {
-    const firstSong = playlist.songs[0];
-    return (
-      firstSong.al?.picUrl ||
-      firstSong.cover ||
-      firstSong.albumCover ||
-      "https://via.placeholder.com/40"
-    );
+    const firstSong = playlist.songs[0]
+    return firstSong.al?.picUrl || firstSong.cover || firstSong.albumCover || ''
   }
-  return "https://via.placeholder.com/40";
-};
+  return ''
+}
 
 const handleCreateNewPlaylist = () => {
-  addToPlaylistModalVisible.value = false;
-  feedback.info("请在侧边栏创建新歌单");
-};
+  addToPlaylistModalVisible.value = false
+  feedback.info('请在侧边栏创建新歌单')
+}
 </script>
 
 <style scoped lang="scss">
@@ -822,7 +779,7 @@ const handleCreateNewPlaylist = () => {
   padding: 8px 24px 10px;
   background: linear-gradient(
     135deg,
-    color-mix(in srgb, var(--n-primary-color) 16%, transparent) 0%,
+    color-mix(in srgb, var(--primary-color, var(--n-primary-color)) 16%, transparent) 0%,
     var(--n-card-color) 50%,
     var(--n-color) 100%
   );
@@ -830,7 +787,10 @@ const handleCreateNewPlaylist = () => {
   position: relative;
   overflow: hidden;
   max-height: 160px;
-  transition: max-height 0.28s ease, padding 0.28s ease, opacity 0.2s ease,
+  transition:
+    max-height 0.28s ease,
+    padding 0.28s ease,
+    opacity 0.2s ease,
     border-color 0.2s ease;
 
   &.hidden {
@@ -843,7 +803,7 @@ const handleCreateNewPlaylist = () => {
   }
 
   &::before {
-    content: "";
+    content: '';
     position: absolute;
     top: -50%;
     right: -10%;
@@ -851,7 +811,7 @@ const handleCreateNewPlaylist = () => {
     height: 380px;
     background: radial-gradient(
       circle,
-      color-mix(in srgb, var(--n-primary-color) 24%, transparent) 0%,
+      color-mix(in srgb, var(--primary-color, var(--n-primary-color)) 24%, transparent) 0%,
       transparent 70%
     );
     opacity: 0.3;
@@ -876,11 +836,7 @@ const handleCreateNewPlaylist = () => {
         color: var(--n-text-color);
         margin: 0 0 4px 0;
         letter-spacing: -1px;
-        background: linear-gradient(
-          135deg,
-          var(--n-text-color) 0%,
-          var(--n-primary-color) 100%
-        );
+        background: linear-gradient(135deg, var(--n-text-color) 0%, var(--primary-color, var(--n-primary-color)) 100%);
         background-clip: text;
       }
 
@@ -891,11 +847,11 @@ const handleCreateNewPlaylist = () => {
         font-weight: 500;
 
         .count {
-          color: var(--n-primary-color);
+          color: var(--primary-color, var(--n-primary-color));
           font-weight: 700;
           font-size: 14px;
           padding: 0 6px;
-          background: color-mix(in srgb, var(--n-primary-color) 16%, transparent);
+          background: color-mix(in srgb, var(--primary-color, var(--n-primary-color)) 16%, transparent);
           border-radius: 4px;
           margin: 0 4px;
         }
@@ -929,7 +885,10 @@ const handleCreateNewPlaylist = () => {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
   max-height: 80px;
   overflow: hidden;
-  transition: max-height 0.24s ease, opacity 0.2s ease, border-color 0.2s ease,
+  transition:
+    max-height 0.24s ease,
+    opacity 0.2s ease,
+    border-color 0.2s ease,
     box-shadow 0.2s ease;
 
   &.hidden {
@@ -970,7 +929,7 @@ const handleCreateNewPlaylist = () => {
         border-radius: 8px 8px 0 0;
 
         &::after {
-          content: "";
+          content: '';
           position: absolute;
           bottom: 0;
           left: 50%;
@@ -980,7 +939,7 @@ const handleCreateNewPlaylist = () => {
           background: linear-gradient(
             90deg,
             transparent 0%,
-            var(--n-primary-color) 50%,
+            var(--primary-color, var(--n-primary-color)) 50%,
             transparent 100%
           );
           border-radius: 2px;
@@ -1021,7 +980,7 @@ const handleCreateNewPlaylist = () => {
         }
 
         &.active {
-          color: var(--n-primary-color);
+          color: var(--primary-color, var(--n-primary-color));
           font-weight: 600;
 
           &::after {
@@ -1029,8 +988,8 @@ const handleCreateNewPlaylist = () => {
           }
 
           .tab-count {
-            background: color-mix(in srgb, var(--n-primary-color) 24%, transparent);
-            color: var(--n-primary-color);
+            background: color-mix(in srgb, var(--primary-color, var(--n-primary-color)) 24%, transparent);
+            color: var(--primary-color, var(--n-primary-color));
           }
 
           .tab-icon {
@@ -1130,19 +1089,25 @@ const handleCreateNewPlaylist = () => {
       padding: 6px 14px;
       border-radius: 8px;
       cursor: pointer;
-      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      transition:
+        background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+        border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+        transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+        box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
       position: relative;
       margin-bottom: 2px;
       border: 1px solid transparent;
+      content-visibility: auto;
+      contain-intrinsic-size: auto 54px;
 
       &::before {
-        content: "";
+        content: '';
         position: absolute;
         inset: 0;
         border-radius: 8px;
         background: linear-gradient(
           135deg,
-          color-mix(in srgb, var(--n-primary-color) 16%, transparent) 0%,
+          color-mix(in srgb, var(--primary-color, var(--n-primary-color)) 16%, transparent) 0%,
           transparent 100%
         );
         opacity: 0;
@@ -1169,20 +1134,19 @@ const handleCreateNewPlaylist = () => {
       }
 
       &.active {
-        background: color-mix(in srgb, var(--n-primary-color) 16%, transparent);
-        border-color: var(--n-primary-color);
+        background: color-mix(in srgb, var(--primary-color, var(--n-primary-color)) 16%, transparent);
+        border-color: var(--primary-color, var(--n-primary-color));
 
         .song-name {
-          color: var(--n-primary-color);
+          color: var(--primary-color, var(--n-primary-color));
           font-weight: 600;
         }
       }
 
       &.playing {
         .song-cover {
-          border: 2px solid var(--n-primary-color);
-          box-shadow: 0 0 0 4px
-            color-mix(in srgb, var(--n-primary-color) 24%, transparent);
+          border: 2px solid var(--primary-color, var(--n-primary-color));
+          box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary-color, var(--n-primary-color)) 24%, transparent);
         }
       }
 
@@ -1207,7 +1171,7 @@ const handleCreateNewPlaylist = () => {
           transition: opacity 0.2s;
 
           .play-btn {
-            color: var(--n-primary-color);
+            color: var(--primary-color, var(--n-primary-color));
             font-size: 22px;
             transition: all 0.2s;
 
@@ -1260,7 +1224,7 @@ const handleCreateNewPlaylist = () => {
             justify-content: center;
             background: rgba(0, 0, 0, 0.4);
             backdrop-filter: blur(2px);
-            color: var(--n-primary-color);
+            color: var(--primary-color, var(--n-primary-color));
             font-size: 18px;
             animation: pulse 1.5s infinite;
           }
@@ -1388,11 +1352,16 @@ const handleCreateNewPlaylist = () => {
   border-radius: 10px;
   border: 1px solid var(--n-border-color);
   background: var(--n-card-color);
-  transition: all 0.25s ease;
+  transition:
+    background-color 0.25s ease,
+    border-color 0.25s ease,
+    transform 0.25s ease;
+  content-visibility: auto;
+  contain-intrinsic-size: auto 100px;
 
   &:hover {
-    background: color-mix(in srgb, var(--n-primary-color) 8%, var(--n-card-color));
-    border-color: color-mix(in srgb, var(--n-primary-color) 32%, var(--n-border-color));
+    background: color-mix(in srgb, var(--primary-color, var(--n-primary-color)) 8%, var(--n-card-color));
+    border-color: color-mix(in srgb, var(--primary-color, var(--n-primary-color)) 32%, var(--n-border-color));
     transform: translateY(-1px);
   }
 }
@@ -1529,11 +1498,7 @@ const handleCreateNewPlaylist = () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: radial-gradient(
-    circle at 50% 50%,
-    var(--n-hover-color) 0%,
-    var(--n-color) 100%
-  );
+  background: radial-gradient(circle at 50% 50%, var(--n-hover-color) 0%, var(--n-color) 100%);
 
   .welcome-content {
     text-align: center;
@@ -1541,7 +1506,7 @@ const handleCreateNewPlaylist = () => {
 
     .welcome-icon {
       font-size: 120px;
-      color: var(--n-primary-color);
+      color: var(--primary-color, var(--n-primary-color));
       margin-bottom: 32px;
       opacity: 0.8;
       animation: float 3s ease-in-out infinite;
@@ -1671,8 +1636,8 @@ const handleCreateNewPlaylist = () => {
       }
 
       &.selected {
-        background-color: color-mix(in srgb, var(--n-primary-color) 16%, transparent);
-        border: 1px solid var(--n-primary-color);
+        background-color: color-mix(in srgb, var(--primary-color, var(--n-primary-color)) 16%, transparent);
+        border: 1px solid var(--primary-color, var(--n-primary-color));
       }
 
       .playlist-cover {
@@ -1702,7 +1667,7 @@ const handleCreateNewPlaylist = () => {
       }
 
       .check-icon {
-        color: var(--n-primary-color);
+        color: var(--primary-color, var(--n-primary-color));
         font-size: 20px;
       }
     }

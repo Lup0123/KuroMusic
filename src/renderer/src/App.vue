@@ -15,9 +15,9 @@
 <script setup>
 import { computed, ref, provide, onMounted, watchEffect } from 'vue'
 import { darkTheme, NConfigProvider } from 'naive-ui'
-  import AIPlaylistModal from '@/components/ai/AIPlaylistModal.vue'
-  import { useAiPlaylistStore } from '@/stores/aiPlaylistStore'
-  import { usePlaylistStore } from '@/stores/playlistStore'
+import AIPlaylistModal from '@/components/ai/AIPlaylistModal.vue'
+import { useAiPlaylistStore } from '@/stores/aiPlaylistStore'
+import { usePlaylistStore } from '@/stores/playlistStore'
 
 const isDarkMode = ref(false)
 const windowRole = ref('unknown')
@@ -61,10 +61,14 @@ const applyPrimaryTheme = (color, hoverColor) => {
 
 const currentTheme = computed(() => (isDarkMode.value ? darkTheme : null))
 
+const APP_FONT_FAMILY =
+  "'Tektur', 'YouAiHei', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', 'Hiragino Sans GB', sans-serif"
+
 const themeOverrides = computed(() => ({
   common: {
     primaryColor: primaryColor.value,
-    primaryColorHover: primaryHoverColor.value
+    primaryColorHover: primaryHoverColor.value,
+    fontFamily: APP_FONT_FAMILY
   },
   Slider: {
     fillColor: primaryColor.value,
@@ -88,6 +92,29 @@ watchEffect(() => {
   document.documentElement.style.setProperty('--primary-hover-color', primaryHoverColor.value)
 })
 
+// 让原生控件（滚动条、输入框等）跟随明暗主题
+watchEffect(() => {
+  document.documentElement.style.colorScheme = isDarkMode.value ? 'dark' : 'light'
+})
+
+// 深色玻璃外壳：浅色主题下调低透明度更通透，深色主题下更实，二者都像玻璃
+watchEffect(() => {
+  const root = document.documentElement.style
+  if (isDarkMode.value) {
+    root.setProperty('--glass-shell-bg', 'rgba(20, 22, 28, 0.62)')
+    root.setProperty('--glass-shell-border', 'rgba(255, 255, 255, 0.08)')
+    // 弹窗/抽屉：深色玻璃
+    root.setProperty('--glass-panel-bg', 'rgba(24, 26, 32, 0.86)')
+    root.setProperty('--glass-panel-border', 'rgba(255, 255, 255, 0.1)')
+  } else {
+    root.setProperty('--glass-shell-bg', 'rgba(24, 26, 32, 0.4)')
+    root.setProperty('--glass-shell-border', 'rgba(255, 255, 255, 0.14)')
+    // 弹窗/抽屉：浅色玻璃（跟随明暗主题）
+    root.setProperty('--glass-panel-bg', 'rgba(255, 255, 255, 0.72)')
+    root.setProperty('--glass-panel-border', 'rgba(0, 0, 0, 0.08)')
+  }
+})
+
 onMounted(() => {
   // 恢复主题设置
   const savedMode = localStorage.getItem('theme-mode')
@@ -102,17 +129,17 @@ onMounted(() => {
 
   globalThis?.window?.api
     ?.getWindowRole?.()
-      .then((role) => {
-        windowRole.value = role === 'ai' ? 'ai' : 'main'
-        if (windowRole.value === 'ai') {
-          aiPlaylistStore.openModal()
-        } else {
-          // AI 窗口等其它窗口创建/修改本地歌单后，主窗口自动刷新列表
-          window.api?.onPlaylistsChanged?.(() => {
-            usePlaylistStore().loadLocalPlaylists()
-          })
-        }
-      })
+    .then((role) => {
+      windowRole.value = role === 'ai' ? 'ai' : 'main'
+      if (windowRole.value === 'ai') {
+        aiPlaylistStore.openModal()
+      } else {
+        // AI 窗口等其它窗口创建/修改本地歌单后，主窗口自动刷新列表
+        window.api?.onPlaylistsChanged?.(() => {
+          usePlaylistStore().loadLocalPlaylists()
+        })
+      }
+    })
     .catch(() => {
       windowRole.value = 'main'
     })

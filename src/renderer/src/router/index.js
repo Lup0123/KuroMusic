@@ -1,5 +1,6 @@
 import { createMemoryHistory, createRouter } from 'vue-router'
 import { ROUTE_NAMES } from './routeNames'
+import { recordNavigation } from './navHistory'
 
 const routes = [
   {
@@ -31,6 +32,11 @@ const routes = [
         component: () => import('@/components/content/Myplaylist/playlistDetail.vue')
       },
       {
+        path: 'album/:id',
+        name: ROUTE_NAMES.ALBUM_DETAIL,
+        component: () => import('@/components/content/artist/albumDetail.vue')
+      },
+      {
         path: 'artist/:id',
         name: ROUTE_NAMES.ARTIST_DETAIL,
         component: () => import('@/components/content/artist/artistDetail.vue')
@@ -41,6 +47,10 @@ const routes = [
 const router = createRouter({
   history: createMemoryHistory(),
   routes
+})
+
+router.afterEach((to, from) => {
+  recordNavigation(to, from)
 })
 
 export default router

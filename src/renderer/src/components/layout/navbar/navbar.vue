@@ -5,28 +5,28 @@
       <span class="app-title">Kuromusic</span>
     </div>
 
-    <div class="header-center draggable-area">
-      <n-input
-        v-model:value="searchKeyword"
-        placeholder="搜索音乐、歌手、专辑..."
-        size="large"
-        class="no-drag search-input"
-        clearable
-        @keyup.enter="handleSearch"
-      >
-        <template #prefix>
-          <n-icon><SearchOutline /></n-icon>
-        </template>
-      </n-input>
-    </div>
+    <div class="header-spacer draggable-area"></div>
 
     <div class="header-right">
       <!-- 暗黑模式切换按钮 -->
-      <n-button text size="large" class="no-drag" @click="toggleDarkMode">
-        <img v-if="!isDarkMode" src="@/assets/icon/sun.png" width="20" height="20" />
-        <img v-else src="@/assets/icon/moon.png" width="20" height="20" />
+      <n-button
+        text
+        size="large"
+        class="no-drag"
+        :aria-label="isDarkMode ? '切换到浅色模式' : '切换到深色模式'"
+        @click="toggleDarkMode"
+      >
+        <img
+          v-if="!isDarkMode"
+          src="@/assets/icon/sun.png"
+          width="20"
+          height="20"
+          alt=""
+          aria-hidden="true"
+        />
+        <img v-else src="@/assets/icon/moon.png" width="20" height="20" alt="" aria-hidden="true" />
       </n-button>
-      <n-button text size="large" class="no-drag" @click="handleuserinfo">
+      <n-button text size="large" class="no-drag" aria-label="设置" @click="handleuserinfo">
         <template #icon>
           <n-icon><SettingsOutline /></n-icon>
         </template>
@@ -41,7 +41,7 @@
         :show-arrow="false"
       >
         <template #trigger>
-          <div class="user-menu-trigger no-drag">
+          <button type="button" class="user-menu-trigger no-drag" aria-label="用户菜单">
             <n-avatar
               v-if="userInfo?.avatarUrl"
               round
@@ -50,7 +50,7 @@
               :src="userInfo.avatarUrl"
             />
             <n-icon class="trigger-arrow" size="14"><ChevronDownOutline /></n-icon>
-          </div>
+          </button>
         </template>
 
         <div class="user-profile-card no-drag">
@@ -98,7 +98,7 @@
           </div>
         </div>
       </n-popover>
-      <n-button v-else text size="large" class="no-drag" @click="openLoginModal">
+      <n-button v-else text size="large" class="no-drag" aria-label="登录" @click="openLoginModal">
         <template #icon>
           <n-icon><PersonOutline /></n-icon>
         </template>
@@ -106,17 +106,17 @@
 
       <!-- 自定义窗口控制按钮 -->
       <div class="window-controls">
-        <n-button class="no-drag" text size="large" @click="minimizeWindow">
+        <n-button class="no-drag" text size="large" aria-label="最小化" @click="minimizeWindow">
           <template #icon>
             <n-icon><RemoveOutline /></n-icon>
           </template>
         </n-button>
-        <n-button class="no-drag" text size="large" @click="maximizeWindow">
+        <n-button class="no-drag" text size="large" aria-label="最大化" @click="maximizeWindow">
           <template #icon>
             <n-icon><ExpandOutline /></n-icon>
           </template>
         </n-button>
-        <n-button class="no-drag" text size="large" @click="closeWindow">
+        <n-button class="no-drag" text size="large" aria-label="关闭" @click="closeWindow">
           <template #icon>
             <n-icon><CloseOutline /></n-icon>
           </template>
@@ -135,193 +135,203 @@
     >
       <template v-if="showLoginModal">
         <div class="login-container">
-        <!-- 左侧品牌区 -->
-        <div class="login-brand">
-          <div class="brand-content">
-            <img class="brand-logo" :src="appIcon" alt="Kuromusic" />
-            <h1 class="brand-title">Kuromusic</h1>
-            <p class="brand-subtitle">发现更多好音乐</p>
-            <div class="brand-features">
-              <div class="feature-item">
-                <n-icon><HeadsetOutline /></n-icon>
-                <span>海量曲库</span>
-              </div>
-              <div class="feature-item">
-                <n-icon><HeartOutline /></n-icon>
-                <span>个性推荐</span>
-              </div>
-              <div class="feature-item">
-                <n-icon><DownloadOutline /></n-icon>
-                <span>无损下载</span>
+          <!-- 左侧品牌区 -->
+          <div class="login-brand">
+            <div class="brand-content">
+              <img class="brand-logo" :src="appIcon" alt="Kuromusic" />
+              <h1 class="brand-title">Kuromusic</h1>
+              <p class="brand-subtitle">发现更多好音乐</p>
+              <div class="brand-features">
+                <div class="feature-item">
+                  <n-icon><HeadsetOutline /></n-icon>
+                  <span>海量曲库</span>
+                </div>
+                <div class="feature-item">
+                  <n-icon><HeartOutline /></n-icon>
+                  <span>个性推荐</span>
+                </div>
+                <div class="feature-item">
+                  <n-icon><DownloadOutline /></n-icon>
+                  <span>无损下载</span>
+                </div>
               </div>
             </div>
           </div>
-        </div>
 
-        <!-- 右侧登录区 -->
-        <div class="login-form-section">
-          <div class="login-header">
-            <h2>欢迎回来</h2>
-            <p>登录以享受完整功能</p>
-          </div>
-          <!-- 登录方式切换 -->
-          <n-radio-group v-model:value="loginTab" class="login-method-switch">
-            <n-radio-button value="qrcode">扫码登录</n-radio-button>
-            <n-radio-button value="password">账号登录</n-radio-button>
-          </n-radio-group>
+          <!-- 右侧登录区 -->
+          <div class="login-form-section">
+            <div class="login-header">
+              <h2>欢迎回来</h2>
+              <p>登录以享受完整功能</p>
+            </div>
+            <!-- 登录方式切换 -->
+            <n-radio-group v-model:value="loginTab" class="login-method-switch">
+              <n-radio-button value="qrcode">扫码登录</n-radio-button>
+              <n-radio-button value="password">账号登录</n-radio-button>
+            </n-radio-group>
 
-          <!-- 二维码登录 -->
-          <div v-if="loginTab === 'qrcode'" class="qrcode-section">
-            <div class="qrcode-box">
-              <div v-if="qrCodeImg" class="qrcode-wrapper">
-                <img :src="qrCodeImg" alt="二维码" class="qrcode-img" />
-                <div v-if="qrCodeStatus === 'scanned'" class="qrcode-overlay scanned">
-                  <n-icon size="40" color="#18a058"><CheckmarkCircleOutline /></n-icon>
-                  <span>扫码成功</span>
-                  <p>请在手机上确认登录</p>
+            <!-- 二维码登录 -->
+            <div v-if="loginTab === 'qrcode'" class="qrcode-section">
+              <div class="qrcode-box">
+                <div v-if="qrCodeImg" class="qrcode-wrapper">
+                  <img
+                    :src="qrCodeImg"
+                    alt="登录二维码"
+                    class="qrcode-img"
+                    width="180"
+                    height="180"
+                  />
+                  <div v-if="qrCodeStatus === 'scanned'" class="qrcode-overlay scanned">
+                    <n-icon size="40" color="#18a058"><CheckmarkCircleOutline /></n-icon>
+                    <span>扫码成功</span>
+                    <p>请在手机上确认登录</p>
+                  </div>
+                  <div v-if="qrCodeStatus === 'expired'" class="qrcode-overlay expired">
+                    <n-icon size="32"><RefreshOutline /></n-icon>
+                    <span>二维码已过期</span>
+                    <n-button type="primary" size="small" @click="refreshQrCode">点击刷新</n-button>
+                  </div>
                 </div>
-                <div v-if="qrCodeStatus === 'expired'" class="qrcode-overlay expired">
-                  <n-icon size="32"><RefreshOutline /></n-icon>
-                  <span>二维码已过期</span>
-                  <n-button type="primary" size="small" @click="refreshQrCode">点击刷新</n-button>
+                <div v-else class="qrcode-placeholder">
+                  <n-spin v-if="qrCodeLoading" size="large" />
+                  <template v-else>
+                    <n-icon size="48" color="#ccc"><QrCodeOutline /></n-icon>
+                    <n-button type="primary" @click="refreshQrCode">获取二维码</n-button>
+                  </template>
                 </div>
               </div>
-              <div v-else class="qrcode-placeholder">
-                <n-spin v-if="qrCodeLoading" size="large" />
-                <template v-else>
-                  <n-icon size="48" color="#ccc"><QrCodeOutline /></n-icon>
-                  <n-button type="primary" @click="refreshQrCode">获取二维码</n-button>
+              <p class="qrcode-hint">
+                <n-icon><PhonePortraitOutline /></n-icon>
+                使用网易云音乐 App 扫码登录
+              </p>
+            </div>
+
+            <!-- 账号登录 -->
+            <div v-else class="account-section">
+              <n-form :model="loginForm" class="account-form">
+                <!-- 账号类型切换 -->
+                <div class="account-type-switch">
+                  <span
+                    :class="['type-option', { active: loginType === 'phone' }]"
+                    @click="loginType = 'phone'"
+                    >手机号登录</span
+                  >
+                  <span class="type-divider">|</span>
+                  <span
+                    :class="['type-option', { active: loginType === 'email' }]"
+                    @click="loginType = 'email'"
+                    >邮箱登录</span
+                  >
+                </div>
+
+                <template v-if="loginType === 'phone'">
+                  <n-form-item>
+                    <n-input-group>
+                      <n-select
+                        v-model:value="loginForm.countryCode"
+                        :options="countryCodeOptions"
+                        style="width: 100px"
+                      />
+                      <n-input
+                        v-model:value="loginForm.phone"
+                        placeholder="请输入手机号"
+                        clearable
+                        style="flex: 1"
+                      >
+                        <template #prefix>
+                          <n-icon><CallOutline /></n-icon>
+                        </template>
+                      </n-input>
+                    </n-input-group>
+                  </n-form-item>
+
+                  <n-form-item v-if="phoneLoginMode === 'password'" class="password-field">
+                    <n-input
+                      v-model:value="loginForm.password"
+                      type="password"
+                      show-password-on="click"
+                      placeholder="请输入密码"
+                      clearable
+                    >
+                      <template #prefix>
+                        <n-icon><LockClosedOutline /></n-icon>
+                      </template>
+                    </n-input>
+                    <span class="switch-login-mode" @click="phoneLoginMode = 'captcha'"
+                      >验证码登录</span
+                    >
+                  </n-form-item>
+
+                  <n-form-item v-else class="captcha-field">
+                    <n-input-group>
+                      <n-input
+                        v-model:value="loginForm.captcha"
+                        placeholder="请输入验证码"
+                        clearable
+                      >
+                        <template #prefix>
+                          <n-icon><ShieldCheckmarkOutline /></n-icon>
+                        </template>
+                      </n-input>
+                      <n-button :disabled="smsCountdown > 0" @click="handleSendCaptcha">
+                        {{ smsCountdown > 0 ? `${smsCountdown}s` : '获取验证码' }}
+                      </n-button>
+                    </n-input-group>
+                    <span class="switch-login-mode" @click="phoneLoginMode = 'password'"
+                      >密码登录</span
+                    >
+                  </n-form-item>
                 </template>
-              </div>
+
+                <template v-else>
+                  <n-form-item>
+                    <n-input-group>
+                      <n-input
+                        v-model:value="loginForm.emailPrefix"
+                        placeholder="请输入邮箱前缀"
+                        clearable
+                        style="flex: 1"
+                      >
+                        <template #prefix>
+                          <n-icon><MailOutline /></n-icon>
+                        </template>
+                      </n-input>
+                      <n-input-group-label>@163.com</n-input-group-label>
+                    </n-input-group>
+                  </n-form-item>
+
+                  <n-form-item>
+                    <n-input
+                      v-model:value="loginForm.password"
+                      type="password"
+                      show-password-on="click"
+                      placeholder="请输入密码"
+                      clearable
+                    >
+                      <template #prefix>
+                        <n-icon><LockClosedOutline /></n-icon>
+                      </template>
+                    </n-input>
+                  </n-form-item>
+                </template>
+
+                <n-form-item class="submit-item">
+                  <n-button
+                    type="primary"
+                    block
+                    size="large"
+                    :loading="loginLoading"
+                    class="login-btn"
+                    @click="handlePasswordLogin"
+                  >
+                    {{
+                      loginType === 'phone' && phoneLoginMode === 'captcha' ? '验证码登录' : '登录'
+                    }}
+                  </n-button>
+                </n-form-item>
+              </n-form>
             </div>
-            <p class="qrcode-hint">
-              <n-icon><PhonePortraitOutline /></n-icon>
-              使用网易云音乐 App 扫码登录
-            </p>
           </div>
-
-          <!-- 账号登录 -->
-          <div v-else class="account-section">
-            <n-form :model="loginForm" class="account-form">
-              <!-- 账号类型切换 -->
-              <div class="account-type-switch">
-                <span
-                  :class="['type-option', { active: loginType === 'phone' }]"
-                  @click="loginType = 'phone'"
-                  >手机号登录</span
-                >
-                <span class="type-divider">|</span>
-                <span
-                  :class="['type-option', { active: loginType === 'email' }]"
-                  @click="loginType = 'email'"
-                  >邮箱登录</span
-                >
-              </div>
-
-              <template v-if="loginType === 'phone'">
-                <n-form-item>
-                  <n-input-group>
-                    <n-select
-                      v-model:value="loginForm.countryCode"
-                      :options="countryCodeOptions"
-                      style="width: 100px"
-                    />
-                    <n-input
-                      v-model:value="loginForm.phone"
-                      placeholder="请输入手机号"
-                      clearable
-                      style="flex: 1"
-                    >
-                      <template #prefix>
-                        <n-icon><CallOutline /></n-icon>
-                      </template>
-                    </n-input>
-                  </n-input-group>
-                </n-form-item>
-
-                <n-form-item v-if="phoneLoginMode === 'password'" class="password-field">
-                  <n-input
-                    v-model:value="loginForm.password"
-                    type="password"
-                    show-password-on="click"
-                    placeholder="请输入密码"
-                    clearable
-                  >
-                    <template #prefix>
-                      <n-icon><LockClosedOutline /></n-icon>
-                    </template>
-                  </n-input>
-                  <span class="switch-login-mode" @click="phoneLoginMode = 'captcha'"
-                    >验证码登录</span
-                  >
-                </n-form-item>
-
-                <n-form-item v-else class="captcha-field">
-                  <n-input-group>
-                    <n-input v-model:value="loginForm.captcha" placeholder="请输入验证码" clearable>
-                      <template #prefix>
-                        <n-icon><ShieldCheckmarkOutline /></n-icon>
-                      </template>
-                    </n-input>
-                    <n-button :disabled="smsCountdown > 0" @click="handleSendCaptcha">
-                      {{ smsCountdown > 0 ? `${smsCountdown}s` : '获取验证码' }}
-                    </n-button>
-                  </n-input-group>
-                  <span class="switch-login-mode" @click="phoneLoginMode = 'password'"
-                    >密码登录</span
-                  >
-                </n-form-item>
-              </template>
-
-              <template v-else>
-                <n-form-item>
-                  <n-input-group>
-                    <n-input
-                      v-model:value="loginForm.emailPrefix"
-                      placeholder="请输入邮箱前缀"
-                      clearable
-                      style="flex: 1"
-                    >
-                      <template #prefix>
-                        <n-icon><MailOutline /></n-icon>
-                      </template>
-                    </n-input>
-                    <n-input-group-label>@163.com</n-input-group-label>
-                  </n-input-group>
-                </n-form-item>
-
-                <n-form-item>
-                  <n-input
-                    v-model:value="loginForm.password"
-                    type="password"
-                    show-password-on="click"
-                    placeholder="请输入密码"
-                    clearable
-                  >
-                    <template #prefix>
-                      <n-icon><LockClosedOutline /></n-icon>
-                    </template>
-                  </n-input>
-                </n-form-item>
-              </template>
-
-              <n-form-item class="submit-item">
-                <n-button
-                  type="primary"
-                  block
-                  size="large"
-                  :loading="loginLoading"
-                  class="login-btn"
-                  @click="handlePasswordLogin"
-                >
-                  {{
-                    loginType === 'phone' && phoneLoginMode === 'captcha' ? '验证码登录' : '登录'
-                  }}
-                </n-button>
-              </n-form-item>
-            </n-form>
-          </div>
-        </div>
         </div>
       </template>
     </n-modal>
@@ -333,15 +343,11 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted, computed, inject, defineAsyncComponent } from 'vue'
-import { useRouter } from 'vue-router'
-import { useSearchStore } from '@/stores/searchStore'
 import { useUserStore } from '@/stores/userStore'
 import { storeToRefs } from 'pinia'
 import { NIcon } from 'naive-ui'
-import { ROUTE_NAMES } from '@/router/routeNames'
 import { useAppFeedback } from '@/composables/useAppFeedback'
 import {
-  SearchOutline,
   SettingsOutline,
   PersonOutline,
   ChevronDownOutline,
@@ -363,11 +369,7 @@ import {
 import appIcon from '@/assets/icon/icon.png'
 const SettingDrawer = defineAsyncComponent(() => import('@/components/content/setting/setting.vue'))
 
-const router = useRouter()
 const feedback = useAppFeedback()
-
-const searchStore = useSearchStore()
-const { setSearchKeyword } = searchStore
 
 const userStore = useUserStore()
 const { userInfo, isLoggedIn, loginLoading, qrCodeImg, qrCodeStatus } = storeToRefs(userStore)
@@ -384,7 +386,6 @@ const userVipTag = computed(() => {
   return isBlackVip ? '黑胶VIP' : ''
 })
 
-const searchKeyword = ref('')
 const isDarkMode = computed(() => isDarkModeInjected?.value ?? false)
 
 const formatProfileCount = (value) => {
@@ -458,15 +459,6 @@ const isPhoneValid = (phone) => /^\d{5,15}$/.test((phone || '').trim())
 const build163Email = () => {
   const prefix = (loginForm.value.emailPrefix || '').trim()
   return prefix ? `${prefix}@163.com` : ''
-}
-
-const handleSearch = async () => {
-  if (!searchKeyword.value.trim()) {
-    feedback.warning('请输入搜索关键词')
-    return
-  }
-  setSearchKeyword(searchKeyword.value.trim())
-  router.push({ name: ROUTE_NAMES.SONG_SEARCH })
 }
 
 const minimizeWindow = () => {
@@ -622,14 +614,23 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: var(--n-color);
-  border-bottom: 1px solid var(--n-border-color);
+  background: var(--glass-shell-bg, rgba(20, 22, 28, 0.62));
+  border-bottom: 1px solid var(--glass-shell-border, rgba(255, 255, 255, 0.08));
   padding: 0 20px;
   height: 60px !important;
   flex-shrink: 0;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.28);
+  backdrop-filter: blur(24px) saturate(150%);
   z-index: 1000;
+
+  // 深色玻璃上统一浅色图标/文字
+  :deep(.n-button) {
+    --n-text-color: rgba(255, 255, 255, 0.82);
+    --n-text-color-hover: #ffffff;
+    --n-text-color-pressed: #ffffff;
+    --n-text-color-focus: #ffffff;
+    color: rgba(255, 255, 255, 0.82);
+  }
 }
 
 .draggable-area {
@@ -658,21 +659,13 @@ onUnmounted(() => {
 .app-title {
   font-size: 20px;
   font-weight: 700;
-  color: var(--n-text-color);
+  color: rgba(255, 255, 255, 0.92);
   letter-spacing: 0.5px;
 }
 
-.header-center {
+.header-spacer {
   flex: 1;
-  display: flex;
-  justify-content: center;
-  max-width: 600px;
-  margin: 0 auto;
-
-  .search-input {
-    width: 100%;
-    max-width: 500px;
-  }
+  height: 100%;
 }
 
 .header-right {
@@ -689,7 +682,9 @@ onUnmounted(() => {
 
 .user-avatar {
   border: 2px solid rgba(128, 128, 128, 0.2);
-  transition: all 0.3s ease;
+  transition:
+    border-color 0.3s ease,
+    transform 0.3s ease;
 
   &:hover {
     border-color: var(--primary-hover-color, #4080ff);
@@ -704,45 +699,51 @@ onUnmounted(() => {
   padding: 4px 10px 4px 4px;
   border-radius: 999px;
   cursor: pointer;
-  background: color-mix(in srgb, var(--n-color) 85%, transparent);
-  border: 1px solid color-mix(in srgb, var(--n-border-color) 70%, transparent);
-  transition: all 0.25s ease;
+  color: inherit;
+  font: inherit;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  transition:
+    background-color 0.25s ease,
+    border-color 0.25s ease,
+    transform 0.25s ease,
+    box-shadow 0.25s ease;
+
+  &:focus-visible {
+    outline: 2px solid var(--primary-color, var(--n-primary-color));
+    outline-offset: 2px;
+  }
 
   &:hover {
-    background: color-mix(in srgb, var(--n-color-modal) 90%, transparent);
-    border-color: color-mix(in srgb, var(--n-primary-color) 30%, var(--n-border-color));
+    background: rgba(255, 255, 255, 0.14);
+    border-color: rgba(255, 255, 255, 0.2);
     transform: translateY(-1px);
-    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
 
     .trigger-arrow {
-      color: var(--n-primary-color);
+      color: #ffffff;
       transform: translateY(1px);
     }
   }
 }
 
 .trigger-arrow {
-  color: var(--n-text-color-3);
-  transition: all 0.2s ease;
+  color: rgba(255, 255, 255, 0.6);
+  transition:
+    color 0.2s ease,
+    transform 0.2s ease;
 }
 
 :deep(.user-profile-card) {
   width: 100%;
   min-width: 250px;
-  padding: 10px;
-  border-radius: 12px;
-  background:
-    radial-gradient(
-      circle at 12% 16%,
-      color-mix(in srgb, var(--n-primary-color) 14%, transparent),
-      transparent 48%
-    ),
-    linear-gradient(
-      155deg,
-      color-mix(in srgb, var(--n-color-modal) 92%, transparent),
-      var(--n-color)
-    );
-  border: 1px solid color-mix(in srgb, var(--n-primary-color) 14%, var(--n-border-color));
+  padding: 12px;
+  border-radius: 14px;
+  color: var(--n-text-color);
+  background: var(--glass-panel-bg, var(--n-color-modal, var(--n-color)));
+  backdrop-filter: blur(28px) saturate(150%);
+  border: 1px solid var(--glass-panel-border, var(--n-border-color));
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.24);
 }
 
 :deep(.profile-top) {
@@ -752,7 +753,7 @@ onUnmounted(() => {
 
   :deep(.n-avatar) {
     box-shadow:
-      0 0 0 2px color-mix(in srgb, var(--n-primary-color) 24%, transparent),
+      0 0 0 2px color-mix(in srgb, var(--primary-color, var(--n-primary-color)) 24%, transparent),
       0 8px 18px rgba(0, 0, 0, 0.16);
   }
 }
@@ -1042,7 +1043,7 @@ onUnmounted(() => {
 
       &.scanned {
         background: color-mix(in srgb, var(--n-color) 90%, transparent);
-        color: var(--n-primary-color);
+        color: var(--primary-color, var(--n-primary-color));
 
         span {
           font-size: 16px;
@@ -1150,7 +1151,9 @@ onUnmounted(() => {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     border: none;
     box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
-    transition: all 0.3s ease;
+    transition:
+      transform 0.3s ease,
+      box-shadow 0.3s ease;
 
     &:hover {
       transform: translateY(-2px);
@@ -1162,9 +1165,6 @@ onUnmounted(() => {
 @media (max-width: 768px) {
   .header {
     padding: 0 12px;
-  }
-  .header-center {
-    display: none;
   }
   .app-title {
     font-size: 16px;

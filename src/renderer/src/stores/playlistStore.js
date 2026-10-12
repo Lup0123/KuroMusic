@@ -83,7 +83,7 @@ export const usePlaylistStore = defineStore('playlist', {
         album: song.al?.name || song.album || '未知专辑',
         albumId: song.al?.id || song.albumId,
         cover:
-          song.al?.picUrl || song.cover || song.albumCover || 'https://via.placeholder.com/200',
+          song.al?.picUrl || song.cover || song.albumCover || '',
         duration: normalizedDuration,
         dt: song.dt || song.durationMs || durationMs, // 保留毫秒用于播放器
         fee: song.fee || 0,

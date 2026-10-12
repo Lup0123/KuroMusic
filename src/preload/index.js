@@ -77,6 +77,10 @@ const api = {
   getArtistTopSongs: (artistId) => ipcRenderer.invoke('get-artist-top-songs', artistId),
   getArtistAlbums: (artistId, limit, offset) =>
     ipcRenderer.invoke('get-artist-albums', artistId, limit, offset),
+  getArtistSongs: (artistId, order, offset, limit) =>
+    ipcRenderer.invoke('get-artist-songs', artistId, order, offset, limit),
+  getArtistDesc: (artistId) => ipcRenderer.invoke('get-artist-desc', artistId),
+  getAlbumDetail: (albumId) => ipcRenderer.invoke('get-album-detail', albumId),
   aiRecommendPlaylist: (prompt, context) =>
     ipcRenderer.invoke('ai-recommend-playlist', prompt, context),
   aiRerankCandidates: (payload) => ipcRenderer.invoke('ai-rerank-candidates', payload),

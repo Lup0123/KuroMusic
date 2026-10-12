@@ -59,7 +59,7 @@
     <div class="control-bar">
       <n-input
         v-model:value="filterKeyword"
-        placeholder="搜索歌曲、艺术家..."
+        placeholder="搜索歌曲、艺术家…"
         clearable
         class="search-box"
       >
@@ -441,7 +441,7 @@ onMounted(async () => {
           letter-spacing: -0.5px;
 
           .title-icon {
-            color: var(--n-primary-color);
+            color: var(--primary-color, var(--n-primary-color));
           }
         }
 
@@ -454,7 +454,7 @@ onMounted(async () => {
 
           .stat-badge {
             background: rgba(var(--n-primary-color-rgb, 22, 119, 255), 0.1);
-            color: var(--n-primary-color);
+            color: var(--primary-color, var(--n-primary-color));
             padding: 2px 10px;
             border-radius: 12px;
             font-weight: 600;
@@ -530,11 +530,11 @@ onMounted(async () => {
         padding: 12px 20px;
 
         &:hover {
-          color: var(--n-primary-color);
+          color: var(--primary-color, var(--n-primary-color));
         }
 
         &.ant-tabs-tab-active {
-          color: var(--n-primary-color);
+          color: var(--primary-color, var(--n-primary-color));
         }
       }
 
@@ -703,7 +703,11 @@ onMounted(async () => {
           padding: 12px 16px;
           gap: 16px;
           cursor: pointer;
-          transition: all 0.15s ease;
+          transition:
+            background-color 0.15s ease,
+            transform 0.15s ease;
+          content-visibility: auto;
+          contain-intrinsic-size: auto 52px;
           border-radius: 8px;
           margin: 2px 0;
           position: relative;
@@ -728,7 +732,7 @@ onMounted(async () => {
             background: rgba(var(--n-primary-color-rgb, 22, 119, 255), 0.15);
 
             .song-title {
-              color: var(--n-primary-color);
+              color: var(--primary-color, var(--n-primary-color));
               font-weight: 600;
             }
 
@@ -738,7 +742,7 @@ onMounted(async () => {
 
             .play-icon-wrapper {
               opacity: 1;
-              color: var(--n-primary-color);
+              color: var(--primary-color, var(--n-primary-color));
             }
 
             .td-actions .action-buttons {
@@ -820,7 +824,7 @@ onMounted(async () => {
                 transition: color 0.15s ease;
 
                 &:hover {
-                  color: var(--n-primary-color);
+                  color: var(--primary-color, var(--n-primary-color));
                 }
               }
             }
@@ -840,7 +844,7 @@ onMounted(async () => {
                 transition: color 0.15s ease;
 
                 &:hover {
-                  color: var(--n-primary-color);
+                  color: var(--primary-color, var(--n-primary-color));
                 }
               }
             }

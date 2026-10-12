@@ -34,30 +34,38 @@
         </div>
       </div>
 
-      <div class="playlist-content">
-        <transition-group name="song-list" tag="div">
+      <div ref="scrollContainerRef" class="playlist-content">
+        <div
+          v-if="playlist.length > 0"
+          class="playlist-render-layer"
+          :style="{ height: `${virtualizerTotalSize}px` }"
+        >
           <div
-            v-for="(song, index) in playlist"
-            :key="song.id || index"
-            class="playlist-item"
-            :class="{ active: currentSongIndex === index, selected: selectedIds.has(song.id) }"
-            @click="selectMode ? toggleSelect(song) : playSong(index)"
+            v-for="item in virtualRowItems"
+            :key="item.song.id || item.row.index"
+            class="playlist-item virtual-row"
+            :class="{
+              active: currentSongIndex === item.row.index,
+              selected: selectedIds.has(item.song.id)
+            }"
+            :style="{ transform: `translateY(${item.row.start}px)` }"
+            @click="selectMode ? toggleSelect(item.song) : playSong(item.row.index)"
           >
             <div class="song-index">
               <n-checkbox
                 v-if="selectMode"
-                :checked="selectedIds.has(song.id)"
+                :checked="selectedIds.has(item.song.id)"
                 @click.stop
-                @update:checked="toggleSelect(song)"
+                @update:checked="toggleSelect(item.song)"
               />
-              <span v-else-if="currentSongIndex !== index">{{ index + 1 }}</span>
+              <span v-else-if="currentSongIndex !== item.row.index">{{ item.row.index + 1 }}</span>
               <n-icon v-else class="playing-icon"><PlayOutline /></n-icon>
             </div>
             <div class="song-info">
-              <div class="song-title">{{ song.name }}</div>
-              <div class="song-artist">{{ song.artist }}</div>
+              <div class="song-title">{{ item.song.name }}</div>
+              <div class="song-artist">{{ item.song.artist }}</div>
             </div>
-            <div class="song-duration">{{ formatDuration(song.duration) }}</div>
+            <div class="song-duration">{{ formatDuration(item.song.duration) }}</div>
             <div class="song-actions">
               <n-button
                 v-if="!selectMode"
@@ -65,7 +73,8 @@
                 circle
                 size="small"
                 title="移除"
-                @click.stop="removeSong(index)"
+                aria-label="从队列移除"
+                @click.stop="removeSong(item.row.index)"
               >
                 <template #icon
                   ><n-icon><CloseOutline /></n-icon
@@ -73,7 +82,7 @@
               </n-button>
             </div>
           </div>
-        </transition-group>
+        </div>
 
         <div v-if="playlist.length === 0" class="empty-state">
           <n-icon size="60"><HeadsetOutline /></n-icon>
@@ -98,7 +107,8 @@
 
 <script setup>
 import { computed, ref } from 'vue'
-import { useDialog, useMessage, useThemeVars } from 'naive-ui'
+import { useVirtualizer } from '@tanstack/vue-virtual'
+import { useDialog, useMessage } from 'naive-ui'
 import { useSongStore } from '@/stores/songStore'
 import { formatDuration } from '@/utils/utils'
 import { storeToRefs } from 'pinia'
@@ -112,7 +122,6 @@ import {
 
 const dialog = useDialog()
 const message = useMessage()
-const themeVars = useThemeVars()
 const songStore = useSongStore()
 const { playlist, currentSongIndex } = storeToRefs(songStore)
 const selectMode = ref(false)
@@ -121,11 +130,30 @@ const selectedIds = ref(new Set())
 const props = defineProps({ visible: { type: Boolean, default: false } })
 const emit = defineEmits(['update:visible'])
 
+// 播放队列可能很长，使用虚拟列表只渲染可视区域的行
+const scrollContainerRef = ref(null)
+const rowVirtualizer = useVirtualizer(
+  computed(() => ({
+    count: playlist.value.length,
+    getScrollElement: () => scrollContainerRef.value,
+    estimateSize: () => 76,
+    overscan: 8,
+    enabled: props.visible
+  }))
+)
+const virtualRowItems = computed(() =>
+  rowVirtualizer.value
+    .getVirtualItems()
+    .map((row) => ({ row, song: playlist.value[row.index] }))
+    .filter((item) => Boolean(item.song))
+)
+const virtualizerTotalSize = computed(() => rowVirtualizer.value.getTotalSize())
+
 const drawerStyle = computed(() => {
-  const drawerBg = themeVars.value.cardColor || themeVars.value.bodyColor
+  const glass = 'var(--glass-panel-bg, rgba(24, 26, 32, 0.86))'
   return {
-    '--playlist-drawer-bg': drawerBg,
-    backgroundColor: drawerBg
+    '--playlist-drawer-bg': glass,
+    backgroundColor: glass
   }
 })
 
@@ -245,6 +273,11 @@ const clearPlaylist = async () => {
   }
 }
 
+.playlist-render-layer {
+  position: relative;
+  width: 100%;
+}
+
 .playlist-item {
   display: flex;
   justify-content: space-between;
@@ -253,8 +286,15 @@ const clearPlaylist = async () => {
   border-radius: 8px;
   margin: 4px 12px;
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
+
+  &.virtual-row {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+  }
 
   &::before {
     content: '';
@@ -264,7 +304,7 @@ const clearPlaylist = async () => {
     transform: translateY(-50%);
     width: 3px;
     height: 0;
-    background: var(--n-primary-color);
+    background: var(--primary-color, var(--n-primary-color));
     border-radius: 0 2px 2px 0;
     transition: height 0.3s ease;
   }
@@ -281,30 +321,30 @@ const clearPlaylist = async () => {
   &.active {
     background: linear-gradient(
       90deg,
-      color-mix(in srgb, var(--n-primary-color) 16%, transparent) 0%,
-      color-mix(in srgb, var(--n-primary-color) 24%, transparent) 100%
+      color-mix(in srgb, var(--primary-color, var(--n-primary-color)) 16%, transparent) 0%,
+      color-mix(in srgb, var(--primary-color, var(--n-primary-color)) 24%, transparent) 100%
     );
-    color: var(--n-primary-color);
+    color: var(--primary-color, var(--n-primary-color));
 
     &::before {
       height: 60%;
     }
 
     .song-title {
-      color: var(--n-primary-color);
+      color: var(--primary-color, var(--n-primary-color));
       font-weight: 600;
     }
 
     .song-index {
-      color: var(--n-primary-color);
+      color: var(--primary-color, var(--n-primary-color));
     }
   }
 
   &.selected {
-    background-color: color-mix(in srgb, var(--n-primary-color) 20%, transparent);
+    background-color: color-mix(in srgb, var(--primary-color, var(--n-primary-color)) 20%, transparent);
 
     .song-title {
-      color: var(--n-primary-color);
+      color: var(--primary-color, var(--n-primary-color));
       font-weight: 600;
     }
   }
@@ -387,20 +427,23 @@ const clearPlaylist = async () => {
 }
 
 .playlist-drawer {
-  --playlist-drawer-bg: var(--n-card-color, var(--n-color, #1f1f1f));
+  --playlist-drawer-bg: var(--glass-panel-bg, rgba(24, 26, 32, 0.86));
   position: fixed;
   top: 60px;
   right: 0;
   bottom: 80px;
   width: 420px;
   background-color: var(--playlist-drawer-bg) !important;
-  box-shadow: -4px 0 24px var(--n-pressed-color);
+  backdrop-filter: blur(28px) saturate(150%);
+  border-left: 1px solid var(--glass-panel-border, rgba(255, 255, 255, 0.1));
+  box-shadow: -8px 0 32px rgba(0, 0, 0, 0.4);
   z-index: 1001;
   display: flex;
   flex-direction: column;
   min-height: 0;
   border-radius: 16px 0 0 16px;
   overflow: hidden;
+  color: var(--n-text-color);
 
   .empty-state {
     display: flex;
@@ -441,22 +484,6 @@ const clearPlaylist = async () => {
 .slide-enter-from,
 .slide-leave-to {
   transform: translateX(100%);
-}
-
-/* 列表项动�?*/
-.song-list-enter-active,
-.song-list-leave-active {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.song-list-enter-from {
-  opacity: 0;
-  transform: translateX(30px);
-}
-
-.song-list-leave-to {
-  opacity: 0;
-  transform: translateX(-30px);
 }
 
 .song-list-move {

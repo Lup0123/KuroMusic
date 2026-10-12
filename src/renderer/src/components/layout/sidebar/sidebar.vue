@@ -7,49 +7,66 @@
     :style="siderStyle"
     :native-scrollbar="false"
   >
+    <div class="sidebar-search">
+      <n-input
+        v-model:value="searchText"
+        placeholder="搜索音乐、歌手、专辑…"
+        clearable
+        round
+        @keyup.enter="doSearch"
+      >
+        <template #prefix>
+          <n-icon><SearchOutline /></n-icon>
+        </template>
+      </n-input>
+    </div>
+
     <n-menu
       :options="menuOptions"
       :value="selectedMenuKey"
       :root-indent="18"
       :indent="18"
+      :theme-overrides="menuThemeOverrides"
       @update:value="handleMenuClick"
     />
 
     <!-- 创建歌单弹窗 -->
-    <n-modal
-      v-model:show="createModalVisible"
-      preset="dialog"
-      title="创建歌单"
-      :mask-closable="true"
-    >
-      <n-form :model="newPlaylist">
-        <n-form-item label="歌单名称" required>
-          <n-input
-            ref="nameInputRef"
-            v-model:value="newPlaylist.name"
-            placeholder="请输入歌单名称"
-            :maxlength="40"
-            clearable
-            @keyup.enter="handleCreatePlaylist"
-          />
-        </n-form-item>
-        <n-form-item label="歌单描述">
-          <n-input
-            v-model:value="newPlaylist.description"
-            type="textarea"
-            placeholder="请输入歌单描述"
-            :maxlength="200"
-            :rows="3"
-          />
-        </n-form-item>
-      </n-form>
-      <template #action>
-        <n-button @click="handleCancelCreate">取消</n-button>
-        <n-button type="primary" :loading="createLoading" @click="handleCreatePlaylist"
-          >创建</n-button
-        >
-      </template>
-    </n-modal>
+    <n-config-provider :theme-overrides="modalThemeOverrides">
+      <n-modal
+        v-model:show="createModalVisible"
+        preset="dialog"
+        title="创建歌单"
+        :mask-closable="true"
+      >
+        <n-form :model="newPlaylist">
+          <n-form-item label="歌单名称" required>
+            <n-input
+              ref="nameInputRef"
+              v-model:value="newPlaylist.name"
+              placeholder="请输入歌单名称"
+              :maxlength="40"
+              clearable
+              @keyup.enter="handleCreatePlaylist"
+            />
+          </n-form-item>
+          <n-form-item label="歌单描述">
+            <n-input
+              v-model:value="newPlaylist.description"
+              type="textarea"
+              placeholder="请输入歌单描述"
+              :maxlength="200"
+              :rows="3"
+            />
+          </n-form-item>
+        </n-form>
+        <template #action>
+          <n-button @click="handleCancelCreate">取消</n-button>
+          <n-button type="primary" :loading="createLoading" @click="handleCreatePlaylist"
+            >创建</n-button
+          >
+        </template>
+      </n-modal>
+    </n-config-provider>
   </n-layout-sider>
 </template>
 
@@ -59,9 +76,11 @@ import { useRoute, useRouter } from 'vue-router'
 import { useIndexStore } from '@/stores/indexStore'
 import { usePlaylistStore } from '@/stores/playlistStore'
 import { useUserStore } from '@/stores/userStore'
+import { useSearchStore } from '@/stores/searchStore'
 import { storeToRefs } from 'pinia'
 import { useMessage, useDialog, NIcon, useThemeVars } from 'naive-ui'
 import { ROUTE_NAMES } from '@/router/routeNames'
+import { normalizeCoverUrl } from '@/utils/image'
 import {
   HomeOutline,
   HeadsetOutline,
@@ -72,7 +91,9 @@ import {
   TrashOutline,
   CreateOutline,
   PersonOutline,
-  HeartOutline
+  HeartOutline,
+  SearchOutline,
+  SparklesOutline
 } from '@vicons/ionicons5'
 
 const router = useRouter()
@@ -83,6 +104,47 @@ const themeVars = useThemeVars()
 const indexStore = useIndexStore()
 const playlistStore = usePlaylistStore()
 const userStore = useUserStore()
+const searchStore = useSearchStore()
+
+// 搜索（由顶栏迁移至侧边栏）
+const searchText = ref('')
+const doSearch = () => {
+  const keyword = searchText.value.trim()
+  if (!keyword) return
+  searchStore.setSearchKeyword(keyword)
+  router.push({ name: ROUTE_NAMES.SONG_SEARCH })
+}
+
+// 深色玻璃侧栏：菜单统一浅色
+const menuThemeOverrides = {
+  itemTextColor: 'rgba(255, 255, 255, 0.7)',
+  itemTextColorHover: '#ffffff',
+  itemTextColorActive: '#ffffff',
+  itemTextColorActiveHover: '#ffffff',
+  itemTextColorChildActive: '#ffffff',
+  itemTextColorChildActiveHover: '#ffffff',
+  itemIconColor: 'rgba(255, 255, 255, 0.6)',
+  itemIconColorHover: '#ffffff',
+  itemIconColorActive: '#ffffff',
+  itemIconColorActiveHover: '#ffffff',
+  itemIconColorChildActive: '#ffffff',
+  itemColorHover: 'rgba(255, 255, 255, 0.08)',
+  itemColorActive: 'rgba(255, 255, 255, 0.14)',
+  itemColorActiveHover: 'rgba(255, 255, 255, 0.18)',
+  itemColorActiveCollapsed: 'rgba(255, 255, 255, 0.14)',
+  arrowColor: 'rgba(255, 255, 255, 0.5)',
+  arrowColorHover: '#ffffff',
+  arrowColorActive: '#ffffff',
+  arrowColorChildActive: '#ffffff',
+  groupTextColor: 'rgba(255, 255, 255, 0.45)'
+}
+
+// 创建歌单弹窗：玻璃底跟随明暗主题
+const modalThemeOverrides = {
+  Dialog: {
+    color: 'var(--glass-panel-bg, rgba(24, 26, 32, 0.9))'
+  }
+}
 
 const siderStyle = computed(() => {
   const sidebarBg = themeVars.value.cardColor || themeVars.value.bodyColor
@@ -116,6 +178,26 @@ const NAV_ROUTE_NAMES = [ROUTE_NAMES.MAIN_PAGE, ROUTE_NAMES.MY_MUSIC, ROUTE_NAME
 // 渲染图标
 const renderIcon = (icon) => () => h(NIcon, null, { default: () => h(icon) })
 
+// 渲染歌单封面缩略图（无封面时回退到通用图标），对标 Spotify/Apple Music 侧栏
+const renderPlaylistCover = (playlist, FallbackIcon) => () => {
+  const raw = playlist?.cover || playlist?.coverImgUrl || playlist?.picUrl || ''
+  const src = normalizeCoverUrl(raw, 48)
+  if (src) {
+    return h('img', {
+      src,
+      width: 20,
+      height: 20,
+      alt: '',
+      style:
+        'width: 20px; height: 20px; border-radius: 4px; object-fit: cover; display: block; flex-shrink: 0;',
+      onError: (e) => {
+        e.target.style.display = 'none'
+      }
+    })
+  }
+  return h(NIcon, null, { default: () => h(FallbackIcon) })
+}
+
 // 渲染带编辑/删除按钮的歌单项
 const renderPlaylistLabel =
   (playlist, { onDelete, onRename }) =>
@@ -141,7 +223,7 @@ const renderPlaylistLabel =
               NIcon,
               {
                 size: 14,
-                style: 'opacity: 0; cursor: pointer; flex-shrink: 0; transition: all 0.2s;',
+                style: 'opacity: 0; cursor: pointer; flex-shrink: 0; transition: opacity 0.2s;',
                 class: 'rename-icon',
                 onClick: (e) => {
                   e.stopPropagation()
@@ -154,7 +236,7 @@ const renderPlaylistLabel =
               NIcon,
               {
                 size: 14,
-                style: 'opacity: 0; cursor: pointer; flex-shrink: 0; transition: all 0.2s;',
+                style: 'opacity: 0; cursor: pointer; flex-shrink: 0; transition: opacity 0.2s;',
                 class: 'delete-icon',
                 onClick: (e) => {
                   e.stopPropagation()
@@ -180,6 +262,11 @@ const menuOptions = computed(() => {
       label: '我的音乐',
       key: ROUTE_NAMES.MY_MUSIC,
       icon: renderIcon(HeadsetOutline)
+    },
+    {
+      label: 'AI 助手',
+      key: 'ai-assistant',
+      icon: renderIcon(SparklesOutline)
     },
     { type: 'divider' },
     {
@@ -221,7 +308,7 @@ const menuOptions = computed(() => {
                     onRename: handleRenamePlaylist
                   }),
                   key: `created-${playlist.id}`,
-                  icon: renderIcon(ListOutline)
+                  icon: renderPlaylistCover(playlist, ListOutline)
                 }))
               : [{ label: '暂无歌单', key: 'no-created', disabled: true }]
         },
@@ -234,7 +321,7 @@ const menuOptions = computed(() => {
               ? favoritePlaylists.value.map((playlist) => ({
                   label: renderPlaylistLabel(playlist, handleDeleteFavoritePlaylist),
                   key: `favorite-${playlist.id}`,
-                  icon: renderIcon(StarOutline)
+                  icon: renderPlaylistCover(playlist, StarOutline)
                 }))
               : [{ label: '暂无收藏', key: 'no-favorite', disabled: true }]
         }
@@ -263,7 +350,7 @@ const menuOptions = computed(() => {
       children: filteredUserPlaylists.value.map((playlist) => ({
         label: playlist.name,
         key: `user-${playlist.id}`,
-        icon: renderIcon(ListOutline)
+        icon: renderPlaylistCover(playlist, ListOutline)
       }))
     })
   }
@@ -287,6 +374,12 @@ const selectedMenuKey = computed(() => {
 const handleMenuClick = (key) => {
   // 忽略空值或禁用项
   if (!key || key.startsWith('no-')) return
+
+  // AI 助手：打开独立 AI 窗口（原悬浮球的功能）
+  if (key === 'ai-assistant') {
+    void globalThis?.window?.api?.openAiWindow?.()
+    return
+  }
 
   // 导航路由
   if (NAV_ROUTE_NAMES.includes(key)) {
@@ -487,19 +580,38 @@ watch(isLoggedIn, async (newValue) => {
 </script>
 
 <style scoped lang="scss">
+.sidebar-search {
+  padding: 14px 12px 6px;
+
+  :deep(.n-input) {
+    --n-color: rgba(255, 255, 255, 0.08);
+    --n-color-focus: rgba(255, 255, 255, 0.12);
+    --n-text-color: rgba(255, 255, 255, 0.9);
+    --n-placeholder-color: rgba(255, 255, 255, 0.4);
+    --n-icon-color: rgba(255, 255, 255, 0.5);
+    --n-icon-color-hover: rgba(255, 255, 255, 0.8);
+    --n-border: 1px solid rgba(255, 255, 255, 0.12);
+    --n-border-hover: 1px solid rgba(255, 255, 255, 0.24);
+    --n-border-focus: 1px solid rgba(255, 255, 255, 0.36);
+    --n-box-shadow-focus: 0 0 0 2px rgba(255, 255, 255, 0.1);
+  }
+}
+
 .sidebar {
-  background-color: var(--n-color) !important;
+  background-color: var(--glass-shell-bg, rgba(20, 22, 28, 0.62)) !important;
+  backdrop-filter: blur(24px) saturate(150%);
+  border-right: 1px solid var(--glass-shell-border, rgba(255, 255, 255, 0.08));
   height: calc(100vh - 60px - 80px);
   overflow-y: auto;
   overflow-x: hidden;
   flex-shrink: 0;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 
   animation: slideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 
   :deep(.n-layout-sider-scroll-container),
   :deep(.n-layout-sider-content) {
-    background-color: var(--n-color) !important;
+    background-color: transparent !important;
   }
 }
 

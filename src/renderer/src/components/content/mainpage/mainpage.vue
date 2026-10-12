@@ -1,9 +1,24 @@
 ﻿<template>
   <div class="mainpage">
-    <!-- 加载中状态 -->
-    <div v-if="loading" class="loading-container">
-      <n-spin size="large" />
-      <p class="loading-text">正在加载内容...</p>
+    <!-- 加载中状态：Spotify 式骨架屏 -->
+    <div v-if="loading" class="mainpage-content skeleton-page" aria-busy="true">
+      <div v-for="s in 2" :key="'sk-sec-' + s" class="section">
+        <div class="section-header">
+          <n-skeleton :width="160" :height="24" :sharp="false" />
+          <n-skeleton :width="220" :height="14" :sharp="false" style="margin-top: 10px" />
+        </div>
+        <div class="playlist-grid" :class="playlistLayoutClass">
+          <div v-for="n in 10" :key="'sk-card-' + s + '-' + n" class="playlist-card skeleton-card">
+            <div class="skeleton-cover">
+              <n-skeleton :sharp="false" style="width: 100%; height: 100%; border-radius: 12px" />
+            </div>
+            <div class="playlist-info">
+              <n-skeleton text width="90%" :sharp="false" />
+              <n-skeleton text width="55%" :sharp="false" style="margin-top: 6px" />
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <div v-else class="mainpage-content">
@@ -133,7 +148,10 @@
       </div>
 
       <!-- 每日推荐歌单（仅登录用户） -->
-      <div v-if="isLoggedIn && recommendPlaylists.length > 0 && showSecondaryContent" class="section">
+      <div
+        v-if="isLoggedIn && recommendPlaylists.length > 0 && showSecondaryContent"
+        class="section"
+      >
         <div class="section-header">
           <h2 class="section-title">
             <n-icon color="#ff6b6b"><FlameOutline /></n-icon>
@@ -141,7 +159,7 @@
           </h2>
           <p class="section-subtitle">根据你的音乐口味为你推荐</p>
         </div>
-        <div class="playlist-grid">
+        <div class="playlist-grid" :class="playlistLayoutClass">
           <div
             v-for="playlist in recommendPlaylists"
             :key="'rec-' + playlist.id"
@@ -175,7 +193,7 @@
           </h2>
           <p class="section-subtitle">发现更多好音乐</p>
         </div>
-        <div class="playlist-grid">
+        <div class="playlist-grid" :class="playlistLayoutClass">
           <div
             v-for="playlist in personalizedPlaylists"
             :key="'per-' + playlist.id"
@@ -207,7 +225,7 @@
           </h2>
           <p class="section-subtitle">最受欢迎的精选歌单</p>
         </div>
-        <div class="playlist-grid">
+        <div class="playlist-grid" :class="playlistLayoutClass">
           <div
             v-for="playlist in topPlaylists"
             :key="'top-' + playlist.id"
@@ -279,6 +297,21 @@ const showSecondaryContent = ref(false)
 const secondaryContentSentinel = ref(null)
 let secondaryContentObserver = null
 let secondaryContentRequested = false
+
+// 首页歌单显示方式：网格 / 横向货架（在设置中切换，跟随实时生效）
+const playlistLayout = ref('grid')
+const readPlaylistLayout = () => {
+  try {
+    const saved = JSON.parse(localStorage.getItem('appSettings') || '{}')
+    playlistLayout.value = saved.playlistLayout === 'shelf' ? 'shelf' : 'grid'
+  } catch {
+    playlistLayout.value = 'grid'
+  }
+}
+const handleSettingsChanged = () => readPlaylistLayout()
+const playlistLayoutClass = computed(() =>
+  playlistLayout.value === 'shelf' ? 'is-shelf' : 'is-grid'
+)
 
 const topSongsTabs = [
   { label: '全部', value: 0 },
@@ -491,12 +524,11 @@ const loadTopPlaylists = async () => {
 }
 
 onMounted(async () => {
+  readPlaylistLayout()
+  window.addEventListener('app-settings-changed', handleSettingsChanged)
   try {
     loading.value = true
-    await Promise.all([
-      loadRecommendSongs(),
-      loadPersonalFM()
-    ])
+    await Promise.all([loadRecommendSongs(), loadPersonalFM()])
     showFirstFoldContent.value = true
     loading.value = false
     await nextTick()
@@ -530,6 +562,7 @@ onMounted(async () => {
 onBeforeUnmount(() => {
   secondaryContentObserver?.disconnect()
   secondaryContentObserver = null
+  window.removeEventListener('app-settings-changed', handleSettingsChanged)
 })
 </script>
 
@@ -699,7 +732,7 @@ onBeforeUnmount(() => {
 
             &.ant-btn-primary {
               background: var(--n-color);
-              color: var(--n-primary-color);
+              color: var(--primary-color, var(--n-primary-color));
 
               &:hover {
                 background: color-mix(in srgb, var(--n-color) 90%, transparent);
@@ -821,8 +854,8 @@ onBeforeUnmount(() => {
           }
 
           &.active {
-            color: var(--n-primary-color);
-            border-bottom-color: var(--n-primary-color);
+            color: var(--primary-color, var(--n-primary-color));
+            border-bottom-color: var(--primary-color, var(--n-primary-color));
             font-weight: 600;
           }
         }
@@ -924,11 +957,17 @@ onBeforeUnmount(() => {
     }
 
     .playlist-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      display: flex;
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      overflow-y: hidden;
+      scroll-snap-type: x proximity;
       gap: 20px;
+      padding-bottom: 8px;
 
       .playlist-card {
+        flex: 0 0 190px;
+        scroll-snap-align: start;
         background: var(--n-card-color);
         border-radius: 12px;
         overflow: hidden;
@@ -947,6 +986,7 @@ onBeforeUnmount(() => {
         .playlist-cover {
           position: relative;
           width: 100%;
+          aspect-ratio: 1;
           overflow: hidden;
           background: var(--n-hover-color);
 
@@ -1024,7 +1064,7 @@ onBeforeUnmount(() => {
               }
 
               .ant-icon {
-                color: var(--n-primary-color);
+                color: var(--primary-color, var(--n-primary-color));
               }
             }
           }
@@ -1172,8 +1212,8 @@ onBeforeUnmount(() => {
           height: 20px;
           background: linear-gradient(
             180deg,
-            var(--n-primary-color) 0%,
-            var(--n-primary-color) 100%
+            var(--primary-color, var(--n-primary-color)) 0%,
+            var(--primary-color, var(--n-primary-color)) 100%
           );
           border-radius: 2px;
         }
@@ -1184,7 +1224,7 @@ onBeforeUnmount(() => {
         font-weight: 500;
 
         &:hover {
-          color: var(--n-primary-color);
+          color: var(--primary-color, var(--n-primary-color));
         }
       }
     }
@@ -1193,11 +1233,17 @@ onBeforeUnmount(() => {
   // 推荐歌单
   .recommend-playlists {
     .playlist-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      display: flex;
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      overflow-y: hidden;
+      scroll-snap-type: x proximity;
       gap: 24px;
+      padding-bottom: 8px;
 
       .playlist-card {
+        flex: 0 0 190px;
+        scroll-snap-align: start;
         cursor: pointer;
         transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
         border-radius: 12px;
@@ -1317,8 +1363,8 @@ onBeforeUnmount(() => {
           font-weight: 700;
           background: linear-gradient(
             135deg,
-            var(--n-primary-color) 0%,
-            var(--n-primary-color) 100%
+            var(--primary-color, var(--n-primary-color)) 0%,
+            var(--primary-color, var(--n-primary-color)) 100%
           );
           -webkit-background-clip: text;
           -webkit-text-fill-color: transparent;
@@ -1403,12 +1449,12 @@ onBeforeUnmount(() => {
           box-shadow: 0 8px 24px var(--n-pressed-color);
           background: linear-gradient(
             135deg,
-            color-mix(in srgb, var(--n-primary-color) 16%, transparent) 0%,
+            color-mix(in srgb, var(--primary-color, var(--n-primary-color)) 16%, transparent) 0%,
             var(--n-card-color) 100%
           );
 
           :deep(.ant-avatar) {
-            box-shadow: 0 8px 24px var(--n-primary-color);
+            box-shadow: 0 8px 24px var(--primary-color, var(--n-primary-color));
             border-color: var(--color-primary-light-4);
           }
         }
@@ -1545,6 +1591,42 @@ onBeforeUnmount(() => {
   }
   50% {
     height: 14px;
+  }
+}
+
+/* 长列表/网格性能优化：跳过视口外卡片的渲染与布局（保留占位尺寸避免滚动跳动） */
+.playlist-card {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 230px;
+}
+
+/* 歌单显示方式：网格（is-grid）覆盖默认的横向货架（is-shelf 即基础样式） */
+.playlist-grid.is-grid {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  overflow: visible !important;
+}
+.playlist-grid.is-grid .playlist-card {
+  flex: none !important;
+}
+.song-card {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 190px;
+}
+
+/* 骨架屏 */
+.skeleton-page {
+  .skeleton-card {
+    cursor: default;
+  }
+  .skeleton-cover {
+    width: 100%;
+    aspect-ratio: 1;
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .playlist-info {
+    padding: 10px 4px 4px;
   }
 }
 </style>

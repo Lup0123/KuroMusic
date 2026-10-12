@@ -39,7 +39,10 @@ import {
   top_song,
   fm_trash,
   artist_top_song,
-  artist_album
+  artist_album,
+  artist_songs,
+  artist_desc,
+  album
 } from '@neteasecloudmusicapienhanced/api'
 
 let mainWindow = null
@@ -526,9 +529,7 @@ if (!gotLock) {
 
         const semanticExpander = async ({ prompt: userPrompt, intent, artist, include }) => {
           try {
-            const query = [userPrompt, intent, artist, ...(include || [])]
-              .filter(Boolean)
-              .join(' ')
+            const query = [userPrompt, intent, artist, ...(include || [])].filter(Boolean).join(' ')
             const vectors = await embedTexts([query])
             if (!vectors || !vectors[0]) return []
             const tags = await findNearestTags(vectors[0], 3, embedTexts)
@@ -953,7 +954,10 @@ if (!gotLock) {
       try {
         const response = await playlist_detail({ id: playlistId, cookie: getCookie() })
         try {
-          ragService.indexPlaylist(playlistId, response?.body?.playlist || response?.body || response)
+          ragService.indexPlaylist(
+            playlistId,
+            response?.body?.playlist || response?.body || response
+          )
         } catch (error) {
           console.error('[RAG] 索引歌单失败:', error)
         }
@@ -1350,6 +1354,57 @@ if (!gotLock) {
       } catch (error) {
         console.error('获取歌手专辑失败:', error)
         return { body: { hotAlbums: [] } }
+      }
+    })
+
+    // 获取歌手全部歌曲（分页，order: hot | time）
+    ipcMain.handle(
+      'get-artist-songs',
+      async (event, artistId, order = 'hot', offset = 0, limit = 50) => {
+        try {
+          const response = await artist_songs({
+            id: artistId,
+            order,
+            offset,
+            limit,
+            cookie: getCookie(),
+            timestamp: Date.now()
+          })
+          return response
+        } catch (error) {
+          console.error('获取歌手全部歌曲失败:', error)
+          return { body: { songs: [], more: false, total: 0 } }
+        }
+      }
+    )
+
+    // 获取歌手简介
+    ipcMain.handle('get-artist-desc', async (event, artistId) => {
+      try {
+        const response = await artist_desc({
+          id: artistId,
+          cookie: getCookie(),
+          timestamp: Date.now()
+        })
+        return response
+      } catch (error) {
+        console.error('获取歌手简介失败:', error)
+        return { body: {} }
+      }
+    })
+
+    // 获取专辑详情（含曲目）
+    ipcMain.handle('get-album-detail', async (event, albumId) => {
+      try {
+        const response = await album({
+          id: albumId,
+          cookie: getCookie(),
+          timestamp: Date.now()
+        })
+        return response
+      } catch (error) {
+        console.error('获取专辑详情失败:', error)
+        return { body: {} }
       }
     })
 
