@@ -1,5 +1,15 @@
 <template>
   <div class="artist-detail-page">
+    <!-- 返回 -->
+    <div class="page-bar">
+      <n-button text class="back-btn" aria-label="返回" @click="goBack">
+        <template #icon>
+          <n-icon size="20"><ArrowBackOutline /></n-icon>
+        </template>
+        返回
+      </n-button>
+    </div>
+
     <div class="artist-card">
       <div class="avatar-wrap">
         <n-avatar round :size="88" :src="artist.avatar">
@@ -207,6 +217,7 @@ import { useSongStore } from '@/stores/songStore'
 import { usePlaylistStore } from '@/stores/playlistStore'
 import { storeToRefs } from 'pinia'
 import { ROUTE_NAMES } from '@/router/routeNames'
+import { goBackOrHome } from '@/router/navHistory'
 import AppCover from '@/components/common/AppCover.vue'
 import SongDurationText from '@/components/common/SongDurationText.vue'
 import StateView from '@/components/common/StateView.vue'
@@ -216,7 +227,8 @@ import {
   PlayOutline,
   PlaySkipForwardOutline,
   AddCircleOutline,
-  CheckmarkCircle
+  CheckmarkCircle,
+  ArrowBackOutline
 } from '@vicons/ionicons5'
 
 const route = useRoute()
@@ -282,6 +294,10 @@ const artist = computed(() => {
     albumSize: Number(query.albumSize) || 0
   }
 })
+
+const goBack = () => {
+  goBackOrHome(router)
+}
 
 const formatCount = (value) => {
   const count = Number(value) || 0
@@ -588,6 +604,19 @@ onBeforeUnmount(() => {
   gap: 20px;
 }
 
+.page-bar {
+  display: flex;
+  align-items: center;
+
+  .back-btn {
+    color: var(--n-text-color-3);
+
+    &:hover {
+      color: var(--primary-color, var(--n-primary-color));
+    }
+  }
+}
+
 .content-grid {
   display: grid;
   grid-template-columns: 2fr 1fr;
@@ -694,7 +723,7 @@ onBeforeUnmount(() => {
   cursor: pointer;
 
   &:hover {
-    background: var(--n-hover-color);
+    background: color-mix(in srgb, var(--primary-color, var(--n-primary-color)) 12%, transparent);
   }
 }
 
@@ -868,7 +897,7 @@ onBeforeUnmount(() => {
     cursor: pointer;
 
     &:hover {
-      background: var(--n-hover-color);
+      background: color-mix(in srgb, var(--primary-color, var(--n-primary-color)) 12%, transparent);
     }
   }
 }
@@ -887,7 +916,7 @@ onBeforeUnmount(() => {
     cursor: pointer;
 
     &:hover {
-      background: var(--n-hover-color);
+      background: color-mix(in srgb, var(--primary-color, var(--n-primary-color)) 12%, transparent);
     }
 
     &.selected {

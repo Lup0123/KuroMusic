@@ -22,53 +22,13 @@
     </div>
 
     <div v-else class="mainpage-content">
-      <!-- 私人FM（仅登录用户） -->
-      <div v-if="isLoggedIn && fmSong && showFirstFoldContent" class="section fm-section">
-        <div class="section-header">
-          <h2 class="section-title">
-            <span style="color: #ff6b6b">@</span>
-            私人FM
-          </h2>
-          <p class="section-subtitle">根据你的口味智能推荐</p>
-        </div>
-        <div class="fm-card">
-          <div class="fm-cover">
-            <AppCover :src="fmSong.cover" :size="220" />
-            <div class="fm-playing-indicator" :class="{ active: isCurrentFmPlaying }">
-              <span></span><span></span><span></span>
-            </div>
-          </div>
-          <div class="fm-info">
-            <h3 class="fm-title">{{ fmSong.name }}</h3>
-            <p class="fm-artist">{{ fmSong.artist }}</p>
-            <p class="fm-album">{{ fmSong.album }}</p>
-            <p class="fm-duration">{{ formatDuration(fmSong.duration) }}</p>
-            <div class="fm-actions">
-              <n-button type="primary" circle size="large" @click="playFmSong">
-                <template #icon>
-                  <n-icon size="20">
-                    <PauseOutline v-if="isCurrentFmPlaying" />
-                    <PlayOutline v-else />
-                  </n-icon>
-                </template>
-              </n-button>
-              <n-button circle size="large" @click="nextFmSong">
-                <template #icon
-                  ><n-icon size="18"><PlaySkipForwardOutline /></n-icon
-                ></template>
-              </n-button>
-              <n-button circle size="large" @click="trashFmSong">
-                <template #icon
-                  ><n-icon size="16"><ThumbsDownOutline /></n-icon
-                ></template>
-              </n-button>
-            </div>
-          </div>
-        </div>
-      </div>
-
       <!-- 每日推荐歌曲（仅登录用户） -->
-      <div v-if="isLoggedIn && recommendSongs.length > 0 && showFirstFoldContent" class="section">
+      <div
+        v-if="
+          homeSections.dailySongs && isLoggedIn && recommendSongs.length > 0 && showFirstFoldContent
+        "
+        class="section"
+      >
         <div class="section-header">
           <h2 class="section-title">
             <n-icon color="#6366f1"><CalendarOutline /></n-icon>
@@ -109,7 +69,10 @@
       <div ref="secondaryContentSentinel" class="secondary-content-sentinel"></div>
 
       <!-- 新歌速递（所有用户） -->
-      <div v-if="topSongs.length > 0 && showSecondaryContent" class="section new-songs-section">
+      <div
+        v-if="homeSections.newSongs && topSongs.length > 0 && showSecondaryContent"
+        class="section new-songs-section"
+      >
         <div class="section-header">
           <h2 class="section-title">
             <n-icon color="#f59e0b"><HappyOutline /></n-icon>
@@ -149,7 +112,12 @@
 
       <!-- 每日推荐歌单（仅登录用户） -->
       <div
-        v-if="isLoggedIn && recommendPlaylists.length > 0 && showSecondaryContent"
+        v-if="
+          homeSections.recommendPlaylists &&
+          isLoggedIn &&
+          recommendPlaylists.length > 0 &&
+          showSecondaryContent
+        "
         class="section"
       >
         <div class="section-header">
@@ -161,7 +129,7 @@
         </div>
         <div class="playlist-grid" :class="playlistLayoutClass">
           <div
-            v-for="playlist in recommendPlaylists"
+            v-for="playlist in gridDisplay(recommendPlaylists, 'recommend')"
             :key="'rec-' + playlist.id"
             class="playlist-card"
             @click="gotodetail(playlist)"
@@ -182,10 +150,18 @@
             </div>
           </div>
         </div>
+        <div v-if="recommendPlaylists.length > HOME_GRID_CAP" class="show-more">
+          <n-button tertiary size="small" @click="toggleGrid('recommend')">
+            {{ expandedGrids.recommend ? '收起' : `显示更多 (${recommendPlaylists.length})` }}
+          </n-button>
+        </div>
       </div>
 
       <!-- 个性化推荐歌单 -->
-      <div v-if="personalizedPlaylists.length > 0 && showSecondaryContent" class="section">
+      <div
+        v-if="homeSections.personalized && personalizedPlaylists.length > 0 && showSecondaryContent"
+        class="section"
+      >
         <div class="section-header">
           <h2 class="section-title">
             <n-icon color="#ffd93d"><StarOutline /></n-icon>
@@ -195,7 +171,7 @@
         </div>
         <div class="playlist-grid" :class="playlistLayoutClass">
           <div
-            v-for="playlist in personalizedPlaylists"
+            v-for="playlist in gridDisplay(personalizedPlaylists, 'personalized')"
             :key="'per-' + playlist.id"
             class="playlist-card"
             @click="gotodetail(playlist)"
@@ -215,9 +191,17 @@
             </div>
           </div>
         </div>
+        <div v-if="personalizedPlaylists.length > HOME_GRID_CAP" class="show-more">
+          <n-button tertiary size="small" @click="toggleGrid('personalized')">
+            {{ expandedGrids.personalized ? '收起' : `显示更多 (${personalizedPlaylists.length})` }}
+          </n-button>
+        </div>
       </div>
 
-      <div v-if="topPlaylists.length > 0 && showSecondaryContent" class="section">
+      <div
+        v-if="homeSections.topPlaylists && topPlaylists.length > 0 && showSecondaryContent"
+        class="section"
+      >
         <div class="section-header">
           <h2 class="section-title">
             <n-icon color="#ff6b6b"><FlameOutline /></n-icon>
@@ -227,7 +211,7 @@
         </div>
         <div class="playlist-grid" :class="playlistLayoutClass">
           <div
-            v-for="playlist in topPlaylists"
+            v-for="playlist in gridDisplay(topPlaylists, 'top')"
             :key="'top-' + playlist.id"
             class="playlist-card"
             @click="gotodetail(playlist)"
@@ -248,6 +232,11 @@
             </div>
           </div>
         </div>
+        <div v-if="topPlaylists.length > HOME_GRID_CAP" class="show-more">
+          <n-button tertiary size="small" @click="toggleGrid('top')">
+            {{ expandedGrids.top ? '收起' : `显示更多 (${topPlaylists.length})` }}
+          </n-button>
+        </div>
       </div>
     </div>
   </div>
@@ -259,9 +248,6 @@ import { useRouter } from 'vue-router'
 import { useMessage } from 'naive-ui'
 import {
   PlayOutline,
-  PauseOutline,
-  PlaySkipForwardOutline,
-  ThumbsDownOutline,
   CalendarOutline,
   HappyOutline,
   FlameOutline,
@@ -281,14 +267,11 @@ const { setCurrentPlaylist } = playlistStore
 const userStore = useUserStore()
 const { isLoggedIn } = storeToRefs(userStore)
 const songStore = useSongStore()
-const { currentSong, isPlaying } = storeToRefs(songStore)
 
 const recommendPlaylists = ref([])
 const personalizedPlaylists = ref([])
 const topPlaylists = ref([])
 const recommendSongs = ref([])
-const fmSongs = ref([])
-const fmSong = ref(null)
 const topSongs = ref([])
 const topSongsType = ref(0)
 const loading = ref(true)
@@ -300,15 +283,36 @@ let secondaryContentRequested = false
 
 // 首页歌单显示方式：网格 / 横向货架（在设置中切换，跟随实时生效）
 const playlistLayout = ref('grid')
-const readPlaylistLayout = () => {
+
+// 首页各区块显示开关（设置中自定义）
+const DEFAULT_HOME_SECTIONS = {
+  dailySongs: true,
+  newSongs: true,
+  recommendPlaylists: true,
+  personalized: true,
+  topPlaylists: true
+}
+const homeSections = ref({ ...DEFAULT_HOME_SECTIONS })
+
+// 歌单网格默认显示上限 + 展开状态
+const HOME_GRID_CAP = 24
+const expandedGrids = ref({ recommend: false, personalized: false, top: false })
+const gridDisplay = (list, key) => (expandedGrids.value[key] ? list : list.slice(0, HOME_GRID_CAP))
+const toggleGrid = (key) => {
+  expandedGrids.value = { ...expandedGrids.value, [key]: !expandedGrids.value[key] }
+}
+
+const readHomeSettings = () => {
   try {
     const saved = JSON.parse(localStorage.getItem('appSettings') || '{}')
     playlistLayout.value = saved.playlistLayout === 'shelf' ? 'shelf' : 'grid'
+    homeSections.value = { ...DEFAULT_HOME_SECTIONS, ...(saved.homeSections || {}) }
   } catch {
     playlistLayout.value = 'grid'
+    homeSections.value = { ...DEFAULT_HOME_SECTIONS }
   }
 }
-const handleSettingsChanged = () => readPlaylistLayout()
+const handleSettingsChanged = () => readHomeSettings()
 const playlistLayoutClass = computed(() =>
   playlistLayout.value === 'shelf' ? 'is-shelf' : 'is-grid'
 )
@@ -320,11 +324,6 @@ const topSongsTabs = [
   { label: '日本', value: 8 },
   { label: '韩国', value: 16 }
 ]
-
-const isCurrentFmPlaying = computed(() => {
-  if (!fmSong.value || !currentSong.value) return false
-  return currentSong.value.id === fmSong.value.id && isPlaying.value
-})
 
 const formatPlayCount = (count) => {
   if (!count) return '0'
@@ -358,32 +357,6 @@ const playSong = async (song) => {
   } catch (error) {
     console.error('播放歌曲失败:', error)
     message.error('播放失败')
-  }
-}
-
-const playFmSong = async () => {
-  if (!fmSong.value) return
-  if (isCurrentFmPlaying.value) {
-    songStore.setPlaying(false)
-    return
-  }
-  await playSong(fmSong.value)
-}
-
-const nextFmSong = async () => {
-  fmSongs.value.shift()
-  if (fmSongs.value.length < 2) await loadPersonalFM()
-  if (fmSongs.value.length > 0) fmSong.value = fmSongs.value[0]
-}
-
-const trashFmSong = async () => {
-  if (!fmSong.value) return
-  try {
-    await window.api.fmTrash(fmSong.value.id)
-    message.success('已标记为不喜欢')
-    await nextFmSong()
-  } catch (error) {
-    console.error('FM垃圾桶操作失败:', error)
   }
 }
 
@@ -428,28 +401,6 @@ const loadRecommendSongs = async () => {
     }
   } catch (error) {
     console.error('获取每日推荐歌曲失败:', error)
-  }
-}
-
-const loadPersonalFM = async () => {
-  if (!isLoggedIn.value) return
-  try {
-    const response = await window.api.getPersonalFM()
-    console.log('私人FM数据:', response)
-    if (response.body?.data) {
-      const newSongs = response.body.data.map((s) => ({
-        id: s.id,
-        name: s.name,
-        artist: s.artists?.map((a) => a.name).join(' / ') || '未知歌手',
-        album: s.album?.name || '未知专辑',
-        cover: s.album?.picUrl || '',
-        duration: s.duration || 0
-      }))
-      fmSongs.value = [...fmSongs.value, ...newSongs]
-      if (!fmSong.value && fmSongs.value.length > 0) fmSong.value = fmSongs.value[0]
-    }
-  } catch (error) {
-    console.error('获取私人FM失败:', error)
   }
 }
 
@@ -524,11 +475,11 @@ const loadTopPlaylists = async () => {
 }
 
 onMounted(async () => {
-  readPlaylistLayout()
+  readHomeSettings()
   window.addEventListener('app-settings-changed', handleSettingsChanged)
   try {
     loading.value = true
-    await Promise.all([loadRecommendSongs(), loadPersonalFM()])
+    await loadRecommendSongs()
     showFirstFoldContent.value = true
     loading.value = false
     await nextTick()
@@ -571,6 +522,13 @@ onBeforeUnmount(() => {
   padding: 30px;
   max-width: 1400px;
   margin: 0 auto;
+
+  // 显示更多/收起按钮
+  .show-more {
+    display: flex;
+    justify-content: center;
+    margin-top: 16px;
+  }
 
   // 加载中容器样式
   .loading-container {
@@ -615,131 +573,6 @@ onBeforeUnmount(() => {
         font-size: 14px;
         margin: 0;
         padding-left: 34px;
-      }
-    }
-
-    // 私人FM样式
-    &.fm-section {
-      .fm-card {
-        display: flex;
-        gap: 24px;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border-radius: 20px;
-        padding: 24px;
-        color: white;
-        box-shadow: 0 10px 40px rgba(102, 126, 234, 0.3);
-      }
-
-      .fm-cover {
-        position: relative;
-        width: 180px;
-        height: 180px;
-        flex-shrink: 0;
-        border-radius: 16px;
-        overflow: hidden;
-        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
-
-        :deep(.ant-image) {
-          width: 100%;
-          height: 100%;
-
-          img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-          }
-        }
-
-        .fm-playing-indicator {
-          position: absolute;
-          bottom: 12px;
-          left: 12px;
-          display: flex;
-          gap: 3px;
-          padding: 6px 10px;
-          background: rgba(0, 0, 0, 0.5);
-          border-radius: 12px;
-          opacity: 0;
-          transition: opacity 0.3s ease;
-
-          &.active {
-            opacity: 1;
-
-            span {
-              animation: equalizer 1s ease-in-out infinite;
-
-              &:nth-child(1) {
-                animation-delay: 0s;
-              }
-              &:nth-child(2) {
-                animation-delay: 0.2s;
-              }
-              &:nth-child(3) {
-                animation-delay: 0.4s;
-              }
-            }
-          }
-
-          span {
-            width: 3px;
-            height: 14px;
-            border-radius: 2px;
-          }
-        }
-      }
-
-      .fm-info {
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-
-        .fm-title {
-          font-size: 24px;
-          font-weight: 700;
-          margin: 0 0 8px 0;
-        }
-
-        .fm-artist {
-          font-size: 16px;
-          opacity: 0.9;
-          margin: 0 0 4px 0;
-        }
-
-        .fm-album {
-          font-size: 14px;
-          opacity: 0.7;
-          margin: 0 0 4px 0;
-        }
-
-        .fm-duration {
-          font-size: 13px;
-          opacity: 0.75;
-          margin: 0 0 20px 0;
-        }
-
-        .fm-actions {
-          display: flex;
-          gap: 12px;
-
-          :deep(.ant-btn) {
-            border: none;
-            backdrop-filter: blur(10px);
-
-            &:hover {
-              transform: scale(1.1);
-            }
-
-            &.ant-btn-primary {
-              background: var(--n-color);
-              color: var(--primary-color, var(--n-primary-color));
-
-              &:hover {
-                background: color-mix(in srgb, var(--n-color) 90%, transparent);
-              }
-            }
-          }
-        }
       }
     }
 
@@ -876,7 +709,11 @@ onBeforeUnmount(() => {
         transition: all 0.2s ease;
 
         &:hover {
-          background: var(--n-hover-color);
+          background: color-mix(
+            in srgb,
+            var(--primary-color, var(--n-primary-color)) 12%,
+            transparent
+          );
         }
 
         .song-index {
@@ -1348,7 +1185,11 @@ onBeforeUnmount(() => {
         margin-bottom: 4px;
 
         &:hover {
-          background: var(--n-hover-color);
+          background: color-mix(
+            in srgb,
+            var(--primary-color, var(--n-primary-color)) 12%,
+            transparent
+          );
           transform: translateX(4px);
 
           .song-actions {
@@ -1570,16 +1411,6 @@ onBeforeUnmount(() => {
       grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
       gap: 16px;
     }
-
-    .section.fm-section .fm-card {
-      flex-direction: column;
-      align-items: center;
-      text-align: center;
-    }
-
-    .section.fm-section .fm-info .fm-actions {
-      justify-content: center;
-    }
   }
 }
 
@@ -1612,6 +1443,14 @@ onBeforeUnmount(() => {
 .song-card {
   content-visibility: auto;
   contain-intrinsic-size: auto 190px;
+}
+
+/* 卡片悬浮主色高光环（跟随圆角），覆盖各区块原有 hover 阴影 */
+.playlist-card:hover,
+.song-card:hover {
+  box-shadow:
+    0 8px 24px rgba(0, 0, 0, 0.14),
+    0 0 0 2px color-mix(in srgb, var(--primary-color, var(--n-primary-color)) 45%, transparent) !important;
 }
 
 /* 骨架屏 */

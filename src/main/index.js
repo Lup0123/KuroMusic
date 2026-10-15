@@ -1,4 +1,14 @@
-import { app, shell, BrowserWindow, ipcMain, dialog, Tray, Menu, globalShortcut } from 'electron'
+import {
+  app,
+  shell,
+  BrowserWindow,
+  ipcMain,
+  dialog,
+  Tray,
+  Menu,
+  globalShortcut,
+  session
+} from 'electron'
 import { autoUpdater } from 'electron-updater'
 import { join } from 'path'
 import { writeFileSync, readFileSync, existsSync, unlinkSync } from 'fs'
@@ -9,6 +19,9 @@ import icon from '../../resources/icon.png?asset'
 import * as musicMetadata from 'music-metadata'
 import { playlistConfig } from './getLocalConfig/playlistconfig'
 import { aiConfig } from './getLocalConfig/aiConfig'
+import { uiConfig, UI_ZOOM_LEVELS } from './getLocalConfig/uiConfig'
+import { deviceConfig } from './getLocalConfig/deviceConfig'
+import { buildSubscribeRequest } from './netease/playlistSubscribe'
 import { auth, getCookie } from './auth/login'
 import { recommendPlaylistByLLM } from './ai/llmPlaylist'
 import { runLangChainRecommend, rerankCandidates } from './ai/langchainRecommend'
@@ -30,14 +43,13 @@ import {
   playlist_detail,
   playlist_track_all,
   user_playlist,
+  api as neteaseApi,
   like,
   likelist,
   recommend_resource,
   recommend_songs,
   personalized,
-  personal_fm,
   top_song,
-  fm_trash,
   artist_top_song,
   artist_album,
   artist_songs,
@@ -45,10 +57,58 @@ import {
   album
 } from '@neteasecloudmusicapienhanced/api'
 
+// 网易云 API 库只在其自带服务端启动时（register_anonimous）生成 global.deviceId，
+// 作为模块直接调用时它为空，eapi 请求头会带上 "deviceId=undefined"，写操作容易被风控拦截。
+// 这里使用持久化的固定设备 ID。
+global.deviceId = deviceConfig.getDeviceId()
+
 let mainWindow = null
 let aiWindow = null
 let normalWindowBounds = null
 const MINI_WINDOW_SIZE = { width: 380, height: 88 }
+let isMiniWindow = false
+
+// 界面缩放：主窗口与 AI 窗口共用同一档位；迷你模式固定 100%，避免撑破 380×88 窗口。
+// 注意 Chromium 缩放按同源共享，迷你模式期间若 AI 窗口开着也会暂时回到 100%。
+function applyUiZoom() {
+  const factor = uiConfig.getZoomFactor()
+  if (aiWindow && !aiWindow.isDestroyed()) aiWindow.webContents.setZoomFactor(factor)
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.setZoomFactor(isMiniWindow ? 1 : factor)
+  }
+}
+
+function setUiZoom(factor) {
+  const next = uiConfig.setZoomFactor(factor)
+  applyUiZoom()
+  for (const win of [mainWindow, aiWindow]) {
+    if (win && !win.isDestroyed()) win.webContents.send('ui-zoom-changed', next)
+  }
+  return next
+}
+
+// Ctrl/Cmd + = / - / 0 调整缩放（接管 Chromium 默认缩放，统一走档位并持久化）
+const ZOOM_KEY_DIRECTIONS = {
+  Equal: 1,
+  NumpadAdd: 1,
+  Minus: -1,
+  NumpadSubtract: -1,
+  Digit0: 0,
+  Numpad0: 0
+}
+
+function watchZoomShortcuts(window) {
+  window.webContents.on('before-input-event', (event, input) => {
+    if (input.type !== 'keyDown' || !(input.control || input.meta) || input.alt) return
+    const direction = ZOOM_KEY_DIRECTIONS[input.code]
+    if (direction === undefined) return
+    event.preventDefault()
+    if (isMiniWindow && window === mainWindow) return
+    setUiZoom(direction === 0 ? 1 : uiConfig.stepZoomFactor(direction))
+  })
+  // 页面加载/刷新后重新应用，保证与存储档位一致
+  window.webContents.on('did-finish-load', applyUiZoom)
+}
 const gotLock = app.requestSingleInstanceLock()
 
 function createAiWindow() {
@@ -74,7 +134,8 @@ function createAiWindow() {
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false,
-      webSecurity: false
+      webSecurity: false,
+      zoomFactor: uiConfig.getZoomFactor()
     }
   })
 
@@ -122,7 +183,8 @@ function createWindow() {
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false,
-      webSecurity: false // 添加这行,允许跨域加载资源
+      webSecurity: false, // 添加这行,允许跨域加载资源
+      zoomFactor: uiConfig.getZoomFactor()
     }
   })
 
@@ -337,7 +399,15 @@ if (!gotLock) {
     // see https://github.com/alex8088/electron-toolkit/tree/master/packages/utils
     app.on('browser-window-created', (_, window) => {
       optimizer.watchWindowShortcuts(window)
+      watchZoomShortcuts(window)
     })
+
+    ipcMain.handle('get-ui-zoom', () => ({
+      factor: uiConfig.getZoomFactor(),
+      levels: UI_ZOOM_LEVELS
+    }))
+
+    ipcMain.handle('set-ui-zoom', (event, factor) => setUiZoom(factor))
 
     // IPC test
     ipcMain.handle('select-music-files', async () => {
@@ -1141,16 +1211,45 @@ if (!gotLock) {
             playCount: playlist.playCount || 0,
             trackCount: playlist.trackCount || 0,
             creator: playlist.creator?.nickname || '',
+            creatorId: playlist.creator?.userId ?? playlist.userId ?? null,
+            // true 表示收藏（订阅）的他人歌单，false 为自己创建的
+            subscribed: Boolean(playlist.subscribed),
             createTime: playlist.createTime,
             updateTime: playlist.updateTime,
             isLocal: false
           }))
         }
 
-        return []
+        // 返回 null 表示获取失败，渲染层保留已有列表
+        return null
       } catch (error) {
         console.error('获取用户歌单失败:', error)
-        return []
+        return null
+      }
+    })
+
+    // 收藏/取消收藏网易云歌单（与手机端互通）
+    ipcMain.handle('subscribe-playlist', async (event, playlistId, subscribe) => {
+      try {
+        const cookie = getCookie()
+        if (!cookie) {
+          return { code: 301, message: '未登录' }
+        }
+
+        const response = await neteaseApi(
+          buildSubscribeRequest({ cookie, playlistId, subscribe, deviceId: global.deviceId })
+        )
+        const body = response.body || {}
+        console.log(
+          `${subscribe ? '收藏' : '取消收藏'}歌单 ${playlistId}:`,
+          body.code,
+          body.message || body.msg || ''
+        )
+        return body
+      } catch (error) {
+        console.error('收藏歌单操作失败:', error?.body || error)
+        // 接口异常时 error 里通常带有网易云返回的 body（如 code/message）
+        return error?.body || { code: 500, message: error.message }
       }
     })
 
@@ -1169,6 +1268,15 @@ if (!gotLock) {
           cookie: cookie,
           timestamp: Date.now()
         })
+
+        // 通知所有窗口（主窗口 / AI 窗口各有一份 store），保持喜欢状态一致
+        if (response.body?.code === 200) {
+          for (const win of BrowserWindow.getAllWindows()) {
+            if (!win.isDestroyed()) {
+              win.webContents.send('liked-song-changed', { songId, liked: Boolean(isLike) })
+            }
+          }
+        }
 
         return response.body
       } catch (error) {
@@ -1201,15 +1309,16 @@ if (!gotLock) {
 
         console.log('喜欢列表API响应:', response.body ? '成功' : '失败')
 
-        if (response.body && response.body.ids) {
+        if (response.body && Array.isArray(response.body.ids)) {
           console.log('获取到喜欢列表，共', response.body.ids.length, '首')
           return response.body.ids
         }
 
-        return []
+        // 返回 null 表示本次获取失败，渲染层保留已有状态，避免误清空
+        return null
       } catch (error) {
         console.error('获取喜欢列表失败:', error)
-        return []
+        return null
       }
     })
 
@@ -1269,26 +1378,6 @@ if (!gotLock) {
       }
     })
 
-    // 获取私人FM（需要登录）
-    ipcMain.handle('get-personal-fm', async () => {
-      try {
-        const cookie = getCookie()
-        if (!cookie) {
-          console.log('未登录，返回空私人FM')
-          return { body: { data: [] } }
-        }
-
-        const response = await personal_fm({
-          cookie: cookie,
-          timestamp: Date.now()
-        })
-        return response
-      } catch (error) {
-        console.error('获取私人FM失败:', error)
-        return { body: { data: [] } }
-      }
-    })
-
     // 获取新歌速递
     // type: 0-全部, 7-华语, 96-欧美, 8-日本, 16-韩国
     ipcMain.handle('get-top-songs', async (event, type = 0) => {
@@ -1302,26 +1391,6 @@ if (!gotLock) {
       } catch (error) {
         console.error('获取新歌速递失败:', error)
         return { body: { data: [] } }
-      }
-    })
-
-    // 将歌曲添加到FM垃圾桶（不再推荐）
-    ipcMain.handle('fm-trash', async (event, songId) => {
-      try {
-        const cookie = getCookie()
-        if (!cookie) {
-          return { code: 301, message: '未登录' }
-        }
-
-        const response = await fm_trash({
-          id: songId,
-          cookie: cookie,
-          timestamp: Date.now()
-        })
-        return response.body
-      } catch (error) {
-        console.error('FM垃圾桶操作失败:', error)
-        return { code: 500, message: error.message }
       }
     })
 
@@ -1751,6 +1820,9 @@ if (!gotLock) {
     ipcMain.handle('set-mini-mode', async (event, isMini) => {
       if (!mainWindow || mainWindow.isDestroyed()) return { ok: false }
 
+      isMiniWindow = Boolean(isMini)
+      applyUiZoom()
+
       if (isMini) {
         if (mainWindow.isMaximized()) mainWindow.unmaximize()
         normalWindowBounds = mainWindow.getBounds()
@@ -1838,6 +1910,8 @@ app.on('window-all-closed', () => {
 // code. You can also put them in separate files and require them here.
 app.on('before-quit', () => {
   isQuitting = true
+  // localStorage 惰性落盘，退出前强制刷写，避免丢失最后的音量/播放状态
+  session.defaultSession?.flushStorageData()
 })
 
 app.on('will-quit', () => {

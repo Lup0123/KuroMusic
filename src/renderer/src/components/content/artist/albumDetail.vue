@@ -39,11 +39,7 @@
     </div>
 
     <!-- 曲目列表 -->
-    <StateView
-      :loading="loading"
-      :empty="!loading && songs.length === 0"
-      empty-text="暂无曲目数据"
-    >
+    <StateView :loading="loading" :empty="!loading && songs.length === 0" empty-text="暂无曲目数据">
       <template #loading>
         <div class="section-loading">
           <n-spin size="small" />
@@ -91,7 +87,12 @@
         <n-icon><DiscOutline /></n-icon><span>查看专辑</span>
       </div>
     </div>
-    <div v-if="menu.visible" class="context-mask" @click="closeMenu" @contextmenu.prevent="closeMenu"></div>
+    <div
+      v-if="menu.visible"
+      class="context-mask"
+      @click="closeMenu"
+      @contextmenu.prevent="closeMenu"
+    ></div>
 
     <!-- 添加到歌单弹窗 -->
     <n-modal
@@ -605,7 +606,7 @@ onBeforeUnmount(() => {
     cursor: pointer;
 
     &:hover {
-      background: var(--n-hover-color);
+      background: color-mix(in srgb, var(--primary-color, var(--n-primary-color)) 12%, transparent);
     }
   }
 }
@@ -624,7 +625,7 @@ onBeforeUnmount(() => {
     cursor: pointer;
 
     &:hover {
-      background: var(--n-hover-color);
+      background: color-mix(in srgb, var(--primary-color, var(--n-primary-color)) 12%, transparent);
     }
 
     &.selected {

@@ -1,6 +1,12 @@
 import { defineStore } from 'pinia'
 import { formatDuration } from '../utils/utils'
 import { useSongStore } from './songStore'
+import { useUserStore } from './userStore'
+
+// 云端喜欢列表的最短刷新间隔：多个页面同时挂载时只请求一次
+const LIKED_REFRESH_MIN_INTERVAL = 3000
+let likedRefreshPromise = null
+let likedRefreshedAt = 0
 
 function toSerializableObject(value, fallback = null) {
   try {
@@ -46,6 +52,10 @@ export const usePlaylistStore = defineStore('playlist', {
     // 获取所有本地歌单
     allLocalPlaylists: (state) => [...state.createdPlaylists, ...state.favoritePlaylists],
 
+    // 网易云账号下自己创建的歌单 / 收藏的歌单
+    cloudCreatedPlaylists: (state) => state.userPlaylists.filter((p) => !p.subscribed),
+    cloudSubscribedPlaylists: (state) => state.userPlaylists.filter((p) => p.subscribed),
+
     // 通过 ID 获取歌单
     getPlaylistById: (state) => (id) => {
       return (
@@ -82,8 +92,7 @@ export const usePlaylistStore = defineStore('playlist', {
         artist: song.ar?.map((a) => a.name).join(' / ') || song.artist || '未知艺术家',
         album: song.al?.name || song.album || '未知专辑',
         albumId: song.al?.id || song.albumId,
-        cover:
-          song.al?.picUrl || song.cover || song.albumCover || '',
+        cover: song.al?.picUrl || song.cover || song.albumCover || '',
         duration: normalizedDuration,
         dt: song.dt || song.durationMs || durationMs, // 保留毫秒用于播放器
         fee: song.fee || 0,
@@ -167,15 +176,15 @@ export const usePlaylistStore = defineStore('playlist', {
         }
         this.loading = true
         const playlists = await window.api.getUserPlaylists(userId)
-        this.userPlaylists = playlists || []
+        // null 表示请求失败：保留已有列表，避免后台刷新时侧栏被清空
+        if (Array.isArray(playlists)) this.userPlaylists = playlists
 
         // 异步加载喜欢的歌曲列表，不阻塞歌单显示
-        this.loadLikedSongs(userId).catch((err) => {
+        this.refreshLikedSongs().catch((err) => {
           console.error('异步加载喜欢列表失败:', err)
         })
       } catch (error) {
         console.error('加载用户歌单失败:', error)
-        this.userPlaylists = []
       } finally {
         this.loading = false
       }
@@ -193,8 +202,14 @@ export const usePlaylistStore = defineStore('playlist', {
         console.log('playlistStore: 开始加载喜欢列表，用户ID:', userId)
 
         const ids = await window.api.getLikedSongs(userId)
+        // null 表示请求失败：保留已有状态，避免一次网络抖动清空所有喜欢标记
+        if (!Array.isArray(ids)) {
+          console.warn('playlistStore: 喜欢列表获取失败，保留现有状态')
+          return
+        }
         // 将数组转换为Set以优化查找性能
-        this.likedSongIds = new Set(ids || [])
+        this.likedSongIds = new Set(ids)
+        likedRefreshedAt = Date.now()
 
         const loadTime = (performance.now() - startTime).toFixed(2)
         console.log(
@@ -202,7 +217,6 @@ export const usePlaylistStore = defineStore('playlist', {
         )
       } catch (error) {
         console.error('加载喜欢列表失败:', error)
-        this.likedSongIds = new Set()
       }
     },
 
@@ -211,13 +225,7 @@ export const usePlaylistStore = defineStore('playlist', {
       try {
         const response = await window.api.likeMusic(songId, isLike)
         if (response.code === 200) {
-          if (isLike) {
-            // 添加到喜欢列表
-            this.likedSongIds.add(songId)
-          } else {
-            // 从喜欢列表移除
-            this.likedSongIds.delete(songId)
-          }
+          this.applyLikedChange(songId, isLike)
           return true
         }
         return false
@@ -227,9 +235,73 @@ export const usePlaylistStore = defineStore('playlist', {
       }
     },
 
+    // 歌单是否已在网易云收藏
+    isPlaylistSubscribed(playlistId) {
+      return this.userPlaylists.some((p) => String(p.id) === String(playlistId) && p.subscribed)
+    },
+
+    // 是否为当前账号自己创建的网易云歌单（不能收藏自己的歌单）
+    isOwnCloudPlaylist(playlistId) {
+      return this.userPlaylists.some((p) => String(p.id) === String(playlistId) && !p.subscribed)
+    },
+
+    // 收藏/取消收藏网易云歌单；成功后直接更新侧栏列表，后续焦点同步会与云端对齐
+    async toggleSubscribePlaylist(playlist, subscribe) {
+      const response = await window.api.subscribePlaylist(playlist.id, subscribe)
+      if (response?.code !== 200) {
+        return { success: false, message: response?.message || response?.msg || '' }
+      }
+      const exists = this.userPlaylists.some((p) => String(p.id) === String(playlist.id))
+      if (subscribe && !exists) {
+        this.userPlaylists = [
+          ...this.userPlaylists,
+          {
+            id: playlist.id,
+            name: playlist.name,
+            description: playlist.description || '',
+            cover: playlist.cover || '',
+            playCount: playlist.playCount || 0,
+            trackCount: playlist.trackCount || 0,
+            creator: playlist.creator || '',
+            creatorId: null,
+            subscribed: true,
+            createTime: playlist.createTime,
+            isLocal: false
+          }
+        ]
+      } else if (!subscribe) {
+        this.userPlaylists = this.userPlaylists.filter(
+          (p) => !(String(p.id) === String(playlist.id) && p.subscribed)
+        )
+      }
+      return { success: true }
+    },
+
+    // 本地更新喜欢状态（自身操作或其他窗口广播）
+    applyLikedChange(songId, liked) {
+      if (liked) this.likedSongIds.add(songId)
+      else this.likedSongIds.delete(songId)
+    },
+
     // 检查歌曲是否被喜欢
     isSongLiked(songId) {
       return this.likedSongIds.has(songId)
+    },
+
+    // 从云端刷新喜欢状态（其他设备上的喜欢/取消喜欢会同步过来）。
+    // 并发调用共用同一个请求，短时间内重复调用直接跳过；force 跳过间隔限制
+    refreshLikedSongs({ force = false } = {}) {
+      const userStore = useUserStore()
+      const userId = userStore.userInfo?.userId || userStore.userInfo?.id
+      if (!userId) return Promise.resolve()
+      if (likedRefreshPromise) return likedRefreshPromise
+      if (!force && Date.now() - likedRefreshedAt < LIKED_REFRESH_MIN_INTERVAL) {
+        return Promise.resolve()
+      }
+      likedRefreshPromise = this.loadLikedSongs(userId).finally(() => {
+        likedRefreshPromise = null
+      })
+      return likedRefreshPromise
     },
 
     // 创建新歌单

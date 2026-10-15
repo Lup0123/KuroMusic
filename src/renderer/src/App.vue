@@ -13,11 +13,12 @@
 </template>
 
 <script setup>
-import { computed, ref, provide, onMounted, watchEffect } from 'vue'
+import { computed, ref, provide, onMounted, onBeforeUnmount, watchEffect } from 'vue'
 import { darkTheme, NConfigProvider } from 'naive-ui'
 import AIPlaylistModal from '@/components/ai/AIPlaylistModal.vue'
 import { useAiPlaylistStore } from '@/stores/aiPlaylistStore'
 import { usePlaylistStore } from '@/stores/playlistStore'
+import { useUserStore } from '@/stores/userStore'
 
 const isDarkMode = ref(false)
 const windowRole = ref('unknown')
@@ -57,6 +58,29 @@ const applyPrimaryTheme = (color, hoverColor) => {
   primaryHoverColor.value = resolvePrimaryHoverColor(normalizedColor, hoverColor)
   localStorage.setItem('primary-color', normalizedColor)
   localStorage.setItem('primary-hover-color', primaryHoverColor.value)
+}
+
+// 云端状态同步：在手机等其他设备上的喜欢 / 歌单 / 资料变更，
+// 在主窗口重新获得焦点时后台拉取（30 秒内最多一次）
+const CLOUD_SYNC_MIN_INTERVAL = 30 * 1000
+let lastCloudSyncAt = 0
+let unsubscribeLikedChanged = null
+
+const syncCloudState = async () => {
+  const userStore = useUserStore()
+  const uid = userStore.userInfo?.userId || userStore.userInfo?.id
+  if (!uid) return
+  if (Date.now() - lastCloudSyncAt < CLOUD_SYNC_MIN_INTERVAL) return
+  lastCloudSyncAt = Date.now()
+  const playlistStore = usePlaylistStore()
+  await Promise.allSettled([playlistStore.loadUserPlaylists(uid), userStore.refreshUserInfo()])
+}
+
+const handleWindowFocus = () => {
+  void syncCloudState()
+}
+const handleVisibilityChange = () => {
+  if (document.visibilityState === 'visible') void syncCloudState()
 }
 
 const currentTheme = computed(() => (isDarkMode.value ? darkTheme : null))
@@ -127,6 +151,12 @@ onMounted(() => {
     applyPrimaryTheme(savedColor, savedHoverColor)
   }
 
+  // 任一窗口喜欢 / 取消喜欢后，主进程广播，各窗口的 store 同步更新
+  unsubscribeLikedChanged =
+    window.api?.onLikedSongChanged?.(({ songId, liked } = {}) => {
+      if (songId) usePlaylistStore().applyLikedChange(songId, liked)
+    }) || null
+
   globalThis?.window?.api
     ?.getWindowRole?.()
     .then((role) => {
@@ -138,11 +168,19 @@ onMounted(() => {
         window.api?.onPlaylistsChanged?.(() => {
           usePlaylistStore().loadLocalPlaylists()
         })
+        window.addEventListener('focus', handleWindowFocus)
+        document.addEventListener('visibilitychange', handleVisibilityChange)
       }
     })
     .catch(() => {
       windowRole.value = 'main'
     })
+})
+
+onBeforeUnmount(() => {
+  unsubscribeLikedChanged?.()
+  window.removeEventListener('focus', handleWindowFocus)
+  document.removeEventListener('visibilitychange', handleVisibilityChange)
 })
 </script>
 

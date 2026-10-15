@@ -22,7 +22,14 @@
             ></template>
             下载
           </n-button>
-          <n-button circle :disabled="playlist.isLocal" @click="toggleFavorite">
+          <n-button
+            circle
+            :disabled="favoriteDisabled"
+            :loading="isFavoriteUpdating"
+            :title="favoriteTitle"
+            :aria-label="favoriteTitle"
+            @click="toggleFavorite"
+          >
             <template #icon>
               <n-icon><Star v-if="isFavorited" /><StarOutline v-else /></n-icon>
             </template>
@@ -74,7 +81,14 @@
                 ></template>
                 下载
               </n-button>
-              <n-button size="large" round :disabled="playlist.isLocal" @click="toggleFavorite">
+              <n-button
+                size="large"
+                round
+                :disabled="favoriteDisabled"
+                :loading="isFavoriteUpdating"
+                :title="favoriteTitle"
+                @click="toggleFavorite"
+              >
                 <template #icon>
                   <n-icon><Star v-if="isFavorited" /><StarOutline v-else /></n-icon>
                 </template>
@@ -129,9 +143,14 @@
               v-for="item in virtualRowItems"
               :key="item.row.key"
               class="song-item virtual-row"
-              :class="{ active: currentSong?.id === item.song.id }"
+              :class="{
+                active: currentSong?.id === item.song.id,
+                selected: isSelected(item.song)
+              }"
               :style="{ transform: `translateY(${item.row.start - listScrollMargin}px)` }"
+              @click="onRowClick($event, item.song, item.row.index)"
               @dblclick="playSong(item.song, item.row.index)"
+              @contextmenu.prevent="openMenu($event, item.song, item.row.index)"
             >
               <div class="col-index">
                 <span class="index-number">
@@ -214,10 +233,12 @@
               <div class="col-like">
                 <div
                   class="like-btn"
-                  :class="{ liked: item.song.liked }"
+                  :class="{ liked: playlistStore.isSongLiked(item.song.id) }"
                   @click.stop="toggleLike(item.song)"
                 >
-                  <n-icon><Heart v-if="item.song.liked" /><HeartOutline v-else /></n-icon>
+                  <n-icon
+                    ><Heart v-if="playlistStore.isSongLiked(item.song.id)" /><HeartOutline v-else
+                  /></n-icon>
                 </div>
               </div>
 
@@ -227,6 +248,40 @@
         </div>
       </div>
     </div>
+
+    <!-- 右键菜单：多选时批量操作 -->
+    <div
+      v-if="menu.visible"
+      class="context-menu"
+      :style="{ left: menu.x + 'px', top: menu.y + 'px' }"
+      @click.stop
+    >
+      <div class="menu-item" @click="menuAction('play')">
+        <n-icon><PlaySharp /></n-icon><span>播放</span>
+      </div>
+      <div class="menu-item" @click="menuAction('playNext')">
+        <n-icon><PlaySkipForwardOutline /></n-icon>
+        <span>下一首播放{{ selectionSuffix }}</span>
+      </div>
+      <div class="menu-item" @click="menuAction('addToPlaylist')">
+        <n-icon><FolderOpenOutline /></n-icon>
+        <span>添加到歌单{{ selectionSuffix }}</span>
+      </div>
+      <div class="menu-item" @click="menuAction('download')">
+        <n-icon><DownloadOutline /></n-icon>
+        <span>下载{{ selectionSuffix }}</span>
+      </div>
+      <div v-if="playlist.isLocal" class="menu-item danger" @click="menuAction('delete')">
+        <n-icon><TrashOutline /></n-icon>
+        <span>从歌单中删除{{ selectionSuffix }}</span>
+      </div>
+    </div>
+    <div
+      v-if="menu.visible"
+      class="context-mask"
+      @click="closeMenu"
+      @contextmenu.prevent="closeMenu"
+    ></div>
 
     <!-- 添加到歌单弹窗 -->
     <n-modal
@@ -277,7 +332,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount, toRaw, watch, computed, nextTick } from 'vue'
+import { ref, reactive, onMounted, onBeforeUnmount, toRaw, watch, computed, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useVirtualizer } from '@tanstack/vue-virtual'
 import { useDialog } from 'naive-ui'
@@ -300,6 +355,7 @@ import {
 import { usePlaylistStore } from '@/stores/playlistStore'
 import { useIndexStore } from '@/stores/indexStore'
 import { useSongStore } from '@/stores/songStore'
+import { useUserStore } from '@/stores/userStore'
 import { storeToRefs } from 'pinia'
 import { formatDate } from '@/utils/utils'
 import { downloadSong, downloadSongs } from '@/utils/downloadUtils'
@@ -322,6 +378,7 @@ const songStore = useSongStore()
 const { currentPlaylistInfo, createdPlaylists } = storeToRefs(playlistStore)
 const { currentSong } = storeToRefs(songStore)
 const { refreshKey } = storeToRefs(indexStore)
+const { isLoggedIn } = storeToRefs(useUserStore())
 
 // 歌单信息
 const playlist = ref({
@@ -342,10 +399,111 @@ const isLoading = ref(false)
 // 添加到歌单相关
 const addToPlaylistModalVisible = ref(false)
 const selectedPlaylistId = ref(null)
-const currentSongToAdd = ref(null)
+const songsToAdd = ref([])
 
-// 收藏状态
-const isFavorited = ref(false)
+// 收藏状态：登录后以网易云收藏为准（与手机端互通），未登录时退回本地收藏
+const isFavoriteUpdating = ref(false)
+const isFavorited = computed(() => {
+  if (playlist.value.isLocal) return false
+  if (isLoggedIn.value) return playlistStore.isPlaylistSubscribed(playlist.value.id)
+  return playlistStore.favoritePlaylists.some((p) => String(p.id) === String(playlist.value.id))
+})
+const isOwnPlaylist = computed(
+  () => isLoggedIn.value && playlistStore.isOwnCloudPlaylist(playlist.value.id)
+)
+const favoriteDisabled = computed(() => playlist.value.isLocal || isOwnPlaylist.value)
+const favoriteTitle = computed(() => {
+  if (playlist.value.isLocal) return '本地歌单无需收藏'
+  if (isOwnPlaylist.value) return '自己创建的歌单无需收藏'
+  return isFavorited.value ? '取消收藏' : '收藏歌单'
+})
+
+// 多选：单击选中，Ctrl/Cmd 切换，Shift 范围选择
+const selectedIds = ref(new Set())
+let lastClickedIndex = -1
+const idKey = (id) => String(id ?? '')
+const isSelected = (song) => selectedIds.value.has(idKey(song.id))
+// 按列表顺序返回选中的歌曲
+const selectedSongs = () => songs.value.filter((s) => selectedIds.value.has(idKey(s.id)))
+const selectionSuffix = computed(() =>
+  selectedIds.value.size > 1 ? ` (${selectedIds.value.size})` : ''
+)
+const clearSelection = () => {
+  selectedIds.value = new Set()
+  lastClickedIndex = -1
+}
+
+const onRowClick = (event, song, index) => {
+  const key = idKey(song.id)
+  if (event.ctrlKey || event.metaKey) {
+    const next = new Set(selectedIds.value)
+    if (next.has(key)) next.delete(key)
+    else next.add(key)
+    selectedIds.value = next
+    lastClickedIndex = index
+  } else if (event.shiftKey && lastClickedIndex >= 0) {
+    const [start, end] = [lastClickedIndex, index].sort((a, b) => a - b)
+    const next = new Set(selectedIds.value)
+    for (let i = start; i <= end; i++) next.add(idKey(songs.value[i]?.id))
+    selectedIds.value = next
+  } else {
+    selectedIds.value = new Set([key])
+    lastClickedIndex = index
+  }
+}
+
+// 右键菜单
+const menu = reactive({ visible: false, x: 0, y: 0, song: null, index: -1 })
+const MENU_SIZE = { width: 200, height: 230 }
+
+const openMenu = (event, song, index) => {
+  // 右键未选中的歌曲时，只操作这一首
+  if (!isSelected(song)) {
+    selectedIds.value = new Set([idKey(song.id)])
+    lastClickedIndex = index
+  }
+  menu.song = song
+  menu.index = index
+  menu.x = Math.min(event.clientX, window.innerWidth - MENU_SIZE.width)
+  menu.y = Math.min(event.clientY, window.innerHeight - MENU_SIZE.height)
+  menu.visible = true
+}
+
+const closeMenu = () => {
+  menu.visible = false
+}
+
+const menuAction = async (action) => {
+  const target = menu.song
+  const targetIndex = menu.index
+  closeMenu()
+  const list = selectedSongs()
+  const batch = list.length > 0 ? list : target ? [target] : []
+  if (batch.length === 0) return
+
+  if (action === 'play') {
+    if (target) playSong(target, targetIndex)
+  } else if (action === 'playNext') {
+    // 逆序插入，保证播放顺序与列表顺序一致
+    for (const song of [...batch].reverse()) songStore.playSongNext(song)
+    feedback.success(`已添加 ${batch.length} 首到下一首播放`)
+  } else if (action === 'addToPlaylist') {
+    openAddToPlaylist(batch)
+  } else if (action === 'download') {
+    await downloadSongs(batch)
+  } else if (action === 'delete') {
+    deleteSongsFromPlaylist(batch)
+  }
+}
+
+const handleGlobalKeydown = (event) => {
+  if (event.key !== 'Escape') return
+  if (menu.visible) closeMenu()
+  else clearSelection()
+}
+const handleGlobalClick = () => {
+  if (menu.visible) closeMenu()
+}
 
 // 下载状态
 const isDownloading = ref(false)
@@ -432,7 +590,7 @@ const playSong = (song, index) => {
 }
 
 const toggleLike = async (song) => {
-  const newLikedState = !song.liked
+  const newLikedState = !playlistStore.isSongLiked(song.id)
 
   try {
     const success = await playlistStore.toggleLikeSong(song.id, newLikedState)
@@ -448,26 +606,40 @@ const toggleLike = async (song) => {
   }
 }
 
-// 从歌单中删除歌曲
-const deleteSongFromPlaylist = async (song) => {
+// 从歌单中删除歌曲（支持多首）
+const deleteSongsFromPlaylist = (list) => {
+  if (list.length === 0) return
   dialog.warning({
     title: '确认删除',
-    content: `确定要从歌单中删除「${song.name}」吗？`,
+    content:
+      list.length > 1
+        ? `确定要从歌单中删除选中的 ${list.length} 首歌曲吗？`
+        : `确定要从歌单中删除「${list[0].name}」吗？`,
     positiveText: '删除',
     negativeText: '取消',
     onPositiveClick: async () => {
       try {
-        const success = await playlistStore.removeSongFromLocalPlaylist(playlist.value.id, song.id)
-        if (success) {
-          songs.value = songs.value.filter((s) => s.id !== song.id)
-          if (songs.value.length > 0 && songs.value[0].cover) {
-            playlist.value.cover = songs.value[0].cover
+        const removed = new Set()
+        for (const song of list) {
+          if (await playlistStore.removeSongFromLocalPlaylist(playlist.value.id, song.id)) {
+            removed.add(song.id)
           }
-          feedback.success('删除成功')
-          await playlistStore.loadLocalPlaylists()
-        } else {
-          feedback.error('删除失败')
         }
+        if (removed.size === 0) {
+          feedback.error('删除失败')
+          return
+        }
+        songs.value = songs.value.filter((s) => !removed.has(s.id))
+        if (songs.value.length > 0 && songs.value[0].cover) {
+          playlist.value.cover = songs.value[0].cover
+        }
+        clearSelection()
+        feedback.success(
+          removed.size === list.length
+            ? `已删除 ${removed.size} 首`
+            : `已删除 ${removed.size} 首，${list.length - removed.size} 首删除失败`
+        )
+        await playlistStore.loadLocalPlaylists()
       } catch (error) {
         console.error('删除歌曲失败:', error)
         feedback.errorWith(error, '删除失败，请稍后重试')
@@ -476,11 +648,15 @@ const deleteSongFromPlaylist = async (song) => {
   })
 }
 
-const addToPlaylist = (song) => {
-  currentSongToAdd.value = song
+const deleteSongFromPlaylist = (song) => deleteSongsFromPlaylist([song])
+
+const openAddToPlaylist = (list) => {
+  songsToAdd.value = list
   selectedPlaylistId.value = null
   addToPlaylistModalVisible.value = true
 }
+
+const addToPlaylist = (song) => openAddToPlaylist([song])
 
 const playSongNext = (song) => {
   songStore.playSongNext(song)
@@ -497,28 +673,31 @@ const handleAddToPlaylist = async () => {
     return false
   }
 
-  if (!currentSongToAdd.value) {
+  if (songsToAdd.value.length === 0) {
     feedback.error('没有选择要添加的歌曲')
     return false
   }
 
   try {
-    const songToAdd = toRaw(currentSongToAdd.value)
     const playlistId = selectedPlaylistId.value
+    let added = 0
+    for (const song of songsToAdd.value) {
+      if (await playlistStore.addSongToLocalPlaylist(playlistId, toRaw(song))) added++
+    }
+    const total = songsToAdd.value.length
 
-    const success = await playlistStore.addSongToLocalPlaylist(playlistId, songToAdd)
-
-    if (success) {
-      feedback.success('添加成功')
-      await playlistStore.loadLocalPlaylists()
-      currentSongToAdd.value = null
-      selectedPlaylistId.value = null
-      addToPlaylistModalVisible.value = false
-      return true
-    } else {
-      feedback.warning('歌曲已存在于该歌单中')
+    if (added === 0) {
+      feedback.warning(total > 1 ? '所选歌曲都已在该歌单中' : '歌曲已存在于该歌单中')
       return false
     }
+    feedback.success(
+      added === total ? `已添加 ${added} 首` : `已添加 ${added} 首，${total - added} 首已存在`
+    )
+    await playlistStore.loadLocalPlaylists()
+    songsToAdd.value = []
+    selectedPlaylistId.value = null
+    addToPlaylistModalVisible.value = false
+    return true
   } catch (error) {
     console.error('添加歌曲到歌单失败:', error)
     feedback.errorWith(error, '添加失败，请稍后重试')
@@ -528,7 +707,7 @@ const handleAddToPlaylist = async () => {
 
 const handleCancelAddToPlaylist = () => {
   addToPlaylistModalVisible.value = false
-  currentSongToAdd.value = null
+  songsToAdd.value = []
   selectedPlaylistId.value = null
 }
 
@@ -543,32 +722,31 @@ const getPlaylistCover = (playlist) => {
   }
   if (playlist.songs && playlist.songs.length > 0) {
     const firstSong = playlist.songs[0]
-    return (
-      firstSong.al?.picUrl ||
-      firstSong.cover ||
-      firstSong.albumCover ||
-      ''
-    )
+    return firstSong.al?.picUrl || firstSong.cover || firstSong.albumCover || ''
   }
   return ''
 }
 
 const toggleFavorite = async () => {
-  if (playlist.value.isLocal) {
-    feedback.warning('本地歌单无需收藏')
-    return
-  }
-
+  if (favoriteDisabled.value || isFavoriteUpdating.value) return
+  const subscribe = !isFavorited.value
+  isFavoriteUpdating.value = true
   try {
-    if (isFavorited.value) {
-      const success = await playlistStore.removeFromFavoritePlaylist(playlist.value.id)
-      if (success) {
-        isFavorited.value = false
-        feedback.success('已取消收藏')
+    if (isLoggedIn.value) {
+      const result = await playlistStore.toggleSubscribePlaylist(
+        { ...playlist.value, createTime: currentPlaylistInfo.value.createTime },
+        subscribe
+      )
+      if (result.success) {
+        feedback.success(subscribe ? '已收藏到网易云' : '已取消收藏')
       } else {
-        feedback.error('取消收藏失败')
+        feedback.error(result.message || (subscribe ? '收藏失败' : '取消收藏失败'))
       }
-    } else {
+      return
+    }
+
+    // 未登录：本地收藏
+    if (subscribe) {
       const success = await playlistStore.addToFavoritePlaylist({
         id: playlist.value.id,
         name: playlist.value.name,
@@ -577,16 +755,18 @@ const toggleFavorite = async () => {
         createTime: playlist.value.createTime,
         isLocal: false
       })
-      if (success) {
-        isFavorited.value = true
-        feedback.success('收藏成功')
-      } else {
-        feedback.warning('该歌单已收藏')
-      }
+      if (success) feedback.success('已收藏到本地（登录后可收藏到网易云）')
+      else feedback.warning('该歌单已收藏')
+    } else {
+      const success = await playlistStore.removeFromFavoritePlaylist(playlist.value.id)
+      if (success) feedback.success('已取消收藏')
+      else feedback.error('取消收藏失败')
     }
   } catch (error) {
     console.error('收藏操作失败:', error)
     feedback.error('操作失败')
+  } finally {
+    isFavoriteUpdating.value = false
   }
 }
 
@@ -594,7 +774,12 @@ const loadPlaylistData = async () => {
   if (!currentPlaylistInfo.value.id) return
 
   isLoading.value = true
+  clearSelection()
+  closeMenu()
   const loadStartTime = performance.now()
+
+  // 后台同步云端喜欢状态（心形直接读 store，刷新完成后自动更新）
+  void playlistStore.refreshLikedSongs()
 
   playlist.value = {
     id: currentPlaylistInfo.value.id,
@@ -607,7 +792,6 @@ const loadPlaylistData = async () => {
 
   try {
     if (currentPlaylistInfo.value.isLocal) {
-      isFavorited.value = false
       const localPlaylist = await window.api.getPlaylistById(playlist.value.id)
       if (localPlaylist && localPlaylist.songs) {
         songs.value = localPlaylist.songs.map((song) => playlistStore.normalizeSong(song))
@@ -619,7 +803,6 @@ const loadPlaylistData = async () => {
         }
       }
     } else {
-      isFavorited.value = playlistStore.favoritePlaylists.some((p) => p.id === playlist.value.id)
       const responseSongs = await window.api.getPlaylistsAllSongs(playlist.value.id)
       if (responseSongs && responseSongs.body.songs) {
         songs.value = responseSongs.body.songs.map((song) => playlistStore.normalizeSong(song))
@@ -642,10 +825,14 @@ onMounted(async () => {
   updateListScrollMargin()
   rowVirtualizer.value.measure()
   window.addEventListener('resize', updateListScrollMargin)
+  window.addEventListener('keydown', handleGlobalKeydown)
+  window.addEventListener('click', handleGlobalClick)
 })
 
 onBeforeUnmount(() => {
   window.removeEventListener('resize', updateListScrollMargin)
+  window.removeEventListener('keydown', handleGlobalKeydown)
+  window.removeEventListener('click', handleGlobalClick)
 })
 
 watch(
@@ -936,10 +1123,16 @@ watch([() => currentPlaylistInfo.value.id, refreshKey], async () => {
         border-radius: 4px;
         padding: 0 var(--row-horizontal-padding);
         margin: 0 calc(-1 * var(--row-horizontal-padding));
-        transition: background 0.2s;
+        transition: background-color 0.15s ease;
+        cursor: default;
+        user-select: none;
 
         &:hover {
-          background: var(--n-hover-color); // 鎮仠鑳屾櫙
+          background: color-mix(
+            in srgb,
+            var(--primary-color, var(--n-primary-color)) 12%,
+            transparent
+          );
 
           .col-index {
             .index-number {
@@ -952,6 +1145,40 @@ watch([() => currentPlaylistInfo.value.id, refreshKey], async () => {
 
           .col-operations {
             display: flex;
+          }
+        }
+
+        // 选中：主色底 + 左侧色条
+        &.selected {
+          background: color-mix(
+            in srgb,
+            var(--primary-color, var(--n-primary-color)) 28%,
+            transparent
+          );
+
+          &::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 3px;
+            height: 60%;
+            border-radius: 0 3px 3px 0;
+            background: var(--primary-color, var(--n-primary-color));
+          }
+
+          .song-name {
+            color: var(--primary-color, var(--n-primary-color));
+            font-weight: 600;
+          }
+
+          &:hover {
+            background: color-mix(
+              in srgb,
+              var(--primary-color, var(--n-primary-color)) 36%,
+              transparent
+            );
           }
         }
 
@@ -1231,7 +1458,11 @@ watch([() => currentPlaylistInfo.value.id, refreshKey], async () => {
       }
 
       &.selected {
-        background-color: color-mix(in srgb, var(--primary-color, var(--n-primary-color)) 16%, transparent);
+        background-color: color-mix(
+          in srgb,
+          var(--primary-color, var(--n-primary-color)) 16%,
+          transparent
+        );
         border: 1px solid var(--primary-color, var(--n-primary-color));
       }
 
@@ -1282,6 +1513,44 @@ watch([() => currentPlaylistInfo.value.id, refreshKey], async () => {
       &:hover {
         background: var(--n-pressed-color);
       }
+    }
+  }
+}
+
+/* 右键菜单 */
+.context-mask {
+  position: fixed;
+  inset: 0;
+  z-index: 3000;
+}
+
+.context-menu {
+  position: fixed;
+  z-index: 3001;
+  min-width: 180px;
+  padding: 4px;
+  border-radius: 10px;
+  background: var(--glass-panel-bg, var(--n-color-modal, #fff));
+  backdrop-filter: blur(20px) saturate(150%);
+  border: 1px solid var(--glass-panel-border, var(--n-border-color));
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.24);
+
+  .menu-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border-radius: 7px;
+    font-size: 13px;
+    color: var(--n-text-color);
+    cursor: pointer;
+
+    &:hover {
+      background: color-mix(in srgb, var(--primary-color, var(--n-primary-color)) 12%, transparent);
+    }
+
+    &.danger {
+      color: #f53f3f;
     }
   }
 }

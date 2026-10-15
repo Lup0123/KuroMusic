@@ -26,22 +26,30 @@
             </div>
           </div>
           <n-divider />
-          <!-- 字体大小设置 -->
+          <!-- 界面缩放 -->
           <div class="setting-section">
             <h3 class="setting-title">
-              <n-icon><TextOutline /></n-icon> 字体大小
+              <n-icon><TextOutline /></n-icon> 界面缩放
             </h3>
-            <n-space vertical :size="16" style="width: 100%">
-              <n-slider
-                v-model:value="settings.fontSize"
-                :min="12"
-                :max="20"
-                :step="1"
-                :marks="{ 12: '小', 16: '中', 20: '大' }"
-                @update:value="changeFontSize"
-              />
-              <div class="preview-text" :style="{ fontSize: settings.fontSize + 'px' }">
-                预览文本效果 - 这是{{ settings.fontSize }}px 的字体
+            <n-space vertical :size="12" style="width: 100%">
+              <div class="setting-item">
+                <div class="item-info">
+                  <span class="item-label">缩放比例</span
+                  ><span class="item-desc"
+                    >整体放大或缩小界面，AI 助手窗口同步。快捷键 Ctrl + = / Ctrl + - / Ctrl +
+                    0</span
+                  >
+                </div>
+                <n-radio-group
+                  :value="uiZoom"
+                  size="small"
+                  aria-label="界面缩放比例"
+                  @update:value="changeUiZoom"
+                >
+                  <n-radio-button v-for="level in uiZoomLevels" :key="level" :value="level">
+                    {{ Math.round(level * 100) }}%
+                  </n-radio-button>
+                </n-radio-group>
               </div>
             </n-space>
           </div>
@@ -102,6 +110,25 @@
                   <n-radio-button value="grid">网格</n-radio-button>
                   <n-radio-button value="shelf">横向</n-radio-button>
                 </n-radio-group>
+              </div>
+            </n-space>
+          </div>
+          <n-divider />
+          <!-- 首页显示 -->
+          <div class="setting-section">
+            <h3 class="setting-title">
+              <n-icon><PlayCircleOutline /></n-icon> 首页显示
+            </h3>
+            <n-space vertical :size="12" style="width: 100%">
+              <div v-for="item in homeSectionOptions" :key="item.key" class="setting-item">
+                <div class="item-info">
+                  <span class="item-label">{{ item.label }}</span
+                  ><span class="item-desc">{{ item.desc }}</span>
+                </div>
+                <n-switch
+                  v-model:value="settings.homeSections[item.key]"
+                  @update:value="saveSettings"
+                />
               </div>
             </n-space>
           </div>
@@ -366,12 +393,18 @@ const settingThemeOverrides = {
 
 const defaultSettings = {
   themeColor: 'arcoblue',
-  fontSize: 14,
   autoPlayNext: true,
   enableFade: true,
   showLyrics: true,
   lyricFontSize: 22,
   playlistLayout: 'grid',
+  homeSections: {
+    dailySongs: true,
+    newSongs: true,
+    recommendPlaylists: true,
+    personalized: true,
+    topPlaylists: true
+  },
   globalShortcutsEnabled: true,
   globalShortcuts: { ...DEFAULT_GLOBAL_SHORTCUTS },
   autoLaunch: false,
@@ -384,6 +417,14 @@ const defaultSettings = {
   aiBaseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1'
 }
 const settings = ref({ ...defaultSettings })
+
+const homeSectionOptions = [
+  { key: 'dailySongs', label: '每日推荐歌曲', desc: '每日更新的推荐歌曲横向列表' },
+  { key: 'newSongs', label: '新歌速递', desc: '最新发布的热门歌曲榜' },
+  { key: 'recommendPlaylists', label: '每日推荐歌单', desc: '根据口味推荐的歌单' },
+  { key: 'personalized', label: '为你推荐 / 精选歌单', desc: '个性化推荐歌单' },
+  { key: 'topPlaylists', label: '热门歌单', desc: '最受欢迎的精选歌单' }
+]
 const behaviorEnabled = ref(true)
 
 const themeColors = [
@@ -410,14 +451,25 @@ const applyThemeColor = (colorScheme) => {
   const targetThemeColor = themeColorMap[colorScheme] || themeColorMap.arcoblue
   if (setPrimaryColor) setPrimaryColor(targetThemeColor.color, targetThemeColor.hover)
 }
-const changeFontSize = (value) => {
-  settings.value.fontSize = value
-  applyFontSize(value)
-  saveSettings()
+// 界面缩放由主进程持久化并应用到所有窗口，这里只负责展示与切换
+const uiZoomLevels = ref([0.9, 1, 1.1, 1.25])
+const uiZoom = ref(1)
+let unsubscribeUiZoom = null
+const loadUiZoom = async () => {
+  try {
+    const result = await window.api?.getUiZoom?.()
+    if (Array.isArray(result?.levels) && result.levels.length) uiZoomLevels.value = result.levels
+    if (typeof result?.factor === 'number') uiZoom.value = result.factor
+  } catch (error) {
+    console.error('读取界面缩放失败:', error)
+  }
 }
-const applyFontSize = (size) => {
-  document.documentElement.style.setProperty('--base-font-size', size + 'px')
-  document.documentElement.style.fontSize = size + 'px'
+const changeUiZoom = async (factor) => {
+  try {
+    uiZoom.value = (await window.api?.setUiZoom?.(factor)) ?? factor
+  } catch (error) {
+    console.error('设置界面缩放失败:', error)
+  }
 }
 const globalShortcutLabels = GLOBAL_SHORTCUT_COMMANDS
 const recordingFor = ref(null)
@@ -573,9 +625,13 @@ const loadSettings = () => {
   const saved = localStorage.getItem('appSettings')
   if (saved) {
     try {
-      settings.value = { ...defaultSettings, ...JSON.parse(saved) }
+      const parsed = JSON.parse(saved)
+      settings.value = {
+        ...defaultSettings,
+        ...parsed,
+        homeSections: { ...defaultSettings.homeSections, ...(parsed.homeSections || {}) }
+      }
       applyThemeColor(settings.value.themeColor)
-      applyFontSize(settings.value.fontSize)
     } catch (e) {
       console.error('加载设置失败:', e)
     }
@@ -615,7 +671,7 @@ const confirmReset = () => {
 const resetSettings = () => {
   settings.value = { ...defaultSettings }
   applyThemeColor(defaultSettings.themeColor)
-  applyFontSize(defaultSettings.fontSize)
+  changeUiZoom(1)
   localStorage.removeItem('appSettings')
   applyGlobalShortcuts()
   syncCloseToTray(settings.value)
@@ -633,6 +689,12 @@ onMounted(() => {
     .catch(() => {})
   window.addEventListener('keydown', handleRecordKeydown, true)
   unsubscribeUpdateStatus = window.api?.onUpdateStatus?.(handleUpdateStatus) || null
+  loadUiZoom()
+  // 快捷键或其他窗口改了缩放时同步选中状态
+  unsubscribeUiZoom =
+    window.api?.onUiZoomChanged?.((factor) => {
+      uiZoom.value = factor
+    }) || null
 })
 
 async function handleBehaviorToggle(value) {
@@ -649,6 +711,7 @@ async function handleBehaviorToggle(value) {
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', handleRecordKeydown, true)
   unsubscribeUpdateStatus?.()
+  unsubscribeUiZoom?.()
 })
 defineExpose({
   show: () => {
@@ -725,17 +788,6 @@ defineExpose({
       .slider-wrapper {
         padding: 0 8px;
         margin-bottom: 8px;
-      }
-
-      .preview-text {
-        padding: 20px;
-        background: var(--n-hover-color);
-        border-radius: 12px;
-        text-align: center;
-        color: var(--n-text-color);
-        transition: font-size 0.3s ease;
-        font-weight: 500;
-        border: 2px dashed var(--n-border-color);
       }
     }
 

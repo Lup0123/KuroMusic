@@ -37,6 +37,17 @@ export const useUserStore = defineStore('user', () => {
     }
   }
 
+  // 从服务器刷新用户资料；失败或未返回资料时保留本地信息，不自动登出
+  const refreshUserInfo = async () => {
+    if (!userInfo.value) return
+    try {
+      const response = await window.api.getUserAccount()
+      if (response?.profile) setUserInfo(response.profile)
+    } catch (error) {
+      console.error('刷新用户信息失败:', error)
+    }
+  }
+
   // 退出登录
   const logout = async () => {
     try {
@@ -200,6 +211,7 @@ export const useUserStore = defineStore('user', () => {
     qrCodeStatus,
     setUserInfo,
     restoreUserInfo,
+    refreshUserInfo,
     logout,
     loginByPhone,
     loginByPhoneCaptcha,

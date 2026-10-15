@@ -25,6 +25,11 @@
   box-sizing: border-box;
 }
 
+/* 基准字号固定 14px（原「字体大小」设置的默认值）；整体大小改由界面缩放控制 */
+html {
+  font-size: 14px;
+}
+
 html,
 body {
   width: 100%;

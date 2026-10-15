@@ -601,6 +601,8 @@ const openLoginModal = () => {
 
 onMounted(() => {
   userStore.restoreUserInfo()
+  // 本地缓存先显示，再从服务器同步最新资料（头像、昵称可能在其他设备改过）
+  void userStore.refreshUserInfo()
 })
 onUnmounted(() => {
   stopQrCodePolling()

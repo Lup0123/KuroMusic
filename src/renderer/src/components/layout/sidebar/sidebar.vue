@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <n-layout-sider
     width="240px"
     class="sidebar"
@@ -173,6 +173,14 @@ const filteredUserPlaylists = computed(() => {
   return userPlaylists.value
 })
 
+// 网易云账号下自己创建的 / 收藏的歌单（收藏状态与手机端互通）
+const cloudCreatedPlaylists = computed(() =>
+  filteredUserPlaylists.value.filter((p) => !p.subscribed)
+)
+const cloudSubscribedPlaylists = computed(() =>
+  filteredUserPlaylists.value.filter((p) => p.subscribed)
+)
+
 const NAV_ROUTE_NAMES = [ROUTE_NAMES.MAIN_PAGE, ROUTE_NAMES.MY_MUSIC, ROUTE_NAMES.SONG_SEARCH]
 
 // 渲染图标
@@ -219,19 +227,20 @@ const renderPlaylistLabel =
             style: 'display: flex; align-items: center; gap: 8px; margin-left: 8px;'
           },
           [
-            h(
-              NIcon,
-              {
-                size: 14,
-                style: 'opacity: 0; cursor: pointer; flex-shrink: 0; transition: opacity 0.2s;',
-                class: 'rename-icon',
-                onClick: (e) => {
-                  e.stopPropagation()
-                  onRename(playlist)
-                }
-              },
-              { default: () => h(CreateOutline) }
-            ),
+            onRename &&
+              h(
+                NIcon,
+                {
+                  size: 14,
+                  style: 'opacity: 0; cursor: pointer; flex-shrink: 0; transition: opacity 0.2s;',
+                  class: 'rename-icon',
+                  onClick: (e) => {
+                    e.stopPropagation()
+                    onRename(playlist)
+                  }
+                },
+                { default: () => h(CreateOutline) }
+              ),
             h(
               NIcon,
               {
@@ -283,7 +292,7 @@ const menuOptions = computed(() => {
               NIcon,
               {
                 size: 16,
-                style: 'cursor: pointer; opacity: 0.7;',
+                style: 'cursor: pointer; opacity: 0.7;margin-right: 10px; flex-shrink: 0;',
                 onClick: (e) => {
                   e.stopPropagation()
                   showCreateModal()
@@ -313,13 +322,13 @@ const menuOptions = computed(() => {
               : [{ label: '暂无歌单', key: 'no-created', disabled: true }]
         },
         {
-          label: `收藏的歌单 (${favoritePlaylists.value.length})`,
+          label: `本地收藏 (${favoritePlaylists.value.length})`,
           key: 'favorite-playlists',
           icon: renderIcon(StarOutline),
           children:
             favoritePlaylists.value.length > 0
               ? favoritePlaylists.value.map((playlist) => ({
-                  label: renderPlaylistLabel(playlist, handleDeleteFavoritePlaylist),
+                  label: renderPlaylistLabel(playlist, { onDelete: handleDeleteFavoritePlaylist }),
                   key: `favorite-${playlist.id}`,
                   icon: renderPlaylistCover(playlist, StarOutline)
                 }))
@@ -342,13 +351,26 @@ const menuOptions = computed(() => {
     })
   }
 
-  if (filteredUserPlaylists.value.length > 0) {
+  if (cloudCreatedPlaylists.value.length > 0) {
     options.push({
-      label: `在线歌单 (${filteredUserPlaylists.value.length})`,
-      key: 'user-playlists',
+      label: `创建的歌单 (${cloudCreatedPlaylists.value.length})`,
+      key: 'cloud-created',
       icon: renderIcon(PersonOutline),
-      children: filteredUserPlaylists.value.map((playlist) => ({
+      children: cloudCreatedPlaylists.value.map((playlist) => ({
         label: playlist.name,
+        key: `user-${playlist.id}`,
+        icon: renderPlaylistCover(playlist, ListOutline)
+      }))
+    })
+  }
+
+  if (cloudSubscribedPlaylists.value.length > 0) {
+    options.push({
+      label: `收藏的歌单 (${cloudSubscribedPlaylists.value.length})`,
+      key: 'cloud-subscribed',
+      icon: renderIcon(StarOutline),
+      children: cloudSubscribedPlaylists.value.map((playlist) => ({
+        label: renderPlaylistLabel(playlist, { onDelete: handleUnsubscribeCloudPlaylist }),
         key: `user-${playlist.id}`,
         icon: renderPlaylistCover(playlist, ListOutline)
       }))
@@ -478,6 +500,25 @@ const handleDeletePlaylist = async (playlist) => {
       } catch (error) {
         console.error('删除歌单失败:', error)
         message.error('删除失败')
+      }
+    }
+  })
+}
+
+const handleUnsubscribeCloudPlaylist = (playlist) => {
+  dialog.warning({
+    title: '确认取消收藏',
+    content: `确定要在网易云取消收藏歌单 "${playlist.name}" 吗？`,
+    positiveText: '取消收藏',
+    negativeText: '保留',
+    onPositiveClick: async () => {
+      try {
+        const result = await playlistStore.toggleSubscribePlaylist(playlist, false)
+        if (result.success) message.success('已取消收藏')
+        else message.error(result.message || '取消收藏失败')
+      } catch (error) {
+        console.error('取消收藏失败:', error)
+        message.error('操作失败')
       }
     }
   })

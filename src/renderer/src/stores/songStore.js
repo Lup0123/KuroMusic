@@ -1,6 +1,11 @@
 import { defineStore } from 'pinia'
 
 const PLAYBACK_STATE_STORAGE_KEY = 'playerPlaybackState'
+// 音量/静音单独存储：只由音量操作写入，避免其他窗口（AI 助手）写播放状态时用旧快照覆盖
+const VOLUME_STORAGE_KEY = 'playerVolume'
+const DEFAULT_VOLUME = 70
+// 在音量为 0 时取消静音，恢复到的音量
+const UNMUTE_FALLBACK_VOLUME = 50
 
 function clampNumber(value, min, max, fallback) {
   const numeric = Number(value)
@@ -30,6 +35,15 @@ function safeWritePlaybackState(payload) {
   }
 }
 
+function safeReadVolumeState() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(VOLUME_STORAGE_KEY) || 'null')
+    return parsed && typeof parsed === 'object' ? parsed : null
+  } catch {
+    return null
+  }
+}
+
 function normalizeRestoredPlaylist(playlist) {
   return playlist.map((song) => {
     if (!song || typeof song !== 'object') return song
@@ -52,7 +66,8 @@ export const useSongStore = defineStore('song', {
     showLyric: false,
     currentTime: 0,
     duration: 0,
-    volume: 70,
+    volume: DEFAULT_VOLUME,
+    muted: false,
     lyric: '',
     audioElement: null,
     playMode: 'list', // 'list', 'single', 'random'
@@ -284,8 +299,31 @@ export const useSongStore = defineStore('song', {
     },
 
     setVolume(vol) {
-      this.volume = Math.max(0, Math.min(100, vol))
-      this.persistPlaybackState()
+      this.volume = clampNumber(vol, 0, 100, this.volume)
+      // 拖动音量即视为取消静音
+      if (this.volume > 0) this.muted = false
+      this.persistVolumeState()
+    },
+
+    toggleMute() {
+      if (this.muted || this.volume === 0) {
+        this.muted = false
+        if (this.volume === 0) this.volume = UNMUTE_FALLBACK_VOLUME
+      } else {
+        this.muted = true
+      }
+      this.persistVolumeState()
+    },
+
+    persistVolumeState() {
+      try {
+        localStorage.setItem(
+          VOLUME_STORAGE_KEY,
+          JSON.stringify({ volume: this.volume, muted: this.muted })
+        )
+      } catch (error) {
+        console.error('保存音量失败:', error)
+      }
     },
 
     setProgress(prog) {
@@ -369,13 +407,16 @@ export const useSongStore = defineStore('song', {
         playlist,
         currentSongIndex,
         currentTime: Math.max(0, Number(this.currentTime) || 0),
-        volume: clampNumber(this.volume, 0, 100, 70),
         playMode: ['list', 'single', 'random'].includes(this.playMode) ? this.playMode : 'list'
       })
     },
 
     restorePlaybackState() {
+      // 音量独立恢复；兼容旧版本存在播放状态里的 volume
+      const savedVolume = safeReadVolumeState()
       const saved = safeReadPlaybackState()
+      this.volume = clampNumber(savedVolume?.volume ?? saved?.volume, 0, 100, DEFAULT_VOLUME)
+      this.muted = Boolean(savedVolume?.muted)
       if (!saved) return
 
       const rawPlaylist = Array.isArray(saved.playlist) ? saved.playlist : []
@@ -386,7 +427,6 @@ export const useSongStore = defineStore('song', {
       this.currentSongIndex =
         maxIndex >= 0 ? clampNumber(saved.currentSongIndex, -1, maxIndex, -1) : -1
       this.currentTime = Math.max(0, Number(saved.currentTime) || 0)
-      this.volume = clampNumber(saved.volume, 0, 100, 70)
       this.playMode = ['list', 'single', 'random'].includes(saved.playMode)
         ? saved.playMode
         : 'list'

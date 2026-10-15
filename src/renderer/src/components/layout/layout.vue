@@ -269,7 +269,7 @@ onUnmounted(stopLyricIdleWatch)
 
 // 上拉动画
 .slide-up-enter-active {
-  animation: slideUp 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  animation: slideUp 0.38s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .slide-up-leave-active {

@@ -78,6 +78,63 @@ describe('songStore', () => {
     expect(restored.isPlaying).toBe(false)
   })
 
+  describe('volume', () => {
+    it('persists volume separately so playback-state writes cannot clobber it', () => {
+      const store = useSongStore()
+      store.setVolume(35)
+      // 模拟另一个窗口用旧快照写播放状态
+      localStorage.setItem(
+        'playerPlaybackState',
+        JSON.stringify({ version: 1, playlist: [], currentSongIndex: -1, volume: 70 })
+      )
+
+      const restored = useSongStore()
+      restored.restorePlaybackState()
+      expect(restored.volume).toBe(35)
+    })
+
+    it('falls back to legacy volume in playback state', () => {
+      localStorage.setItem(
+        'playerPlaybackState',
+        JSON.stringify({ version: 1, playlist: [], currentSongIndex: -1, volume: 22 })
+      )
+      const store = useSongStore()
+      store.restorePlaybackState()
+      expect(store.volume).toBe(22)
+      expect(store.muted).toBe(false)
+    })
+
+    it('toggles mute without losing the volume and restores it', () => {
+      const store = useSongStore()
+      store.setVolume(40)
+      store.toggleMute()
+      expect(store.muted).toBe(true)
+      expect(store.volume).toBe(40)
+
+      const restored = useSongStore()
+      restored.restorePlaybackState()
+      expect(restored.muted).toBe(true)
+      expect(restored.volume).toBe(40)
+
+      restored.toggleMute()
+      expect(restored.muted).toBe(false)
+      expect(restored.volume).toBe(40)
+    })
+
+    it('unmutes when the slider is moved, and recovers from volume 0', () => {
+      const store = useSongStore()
+      store.setVolume(60)
+      store.toggleMute()
+      store.setVolume(30)
+      expect(store.muted).toBe(false)
+
+      store.setVolume(0)
+      store.toggleMute()
+      expect(store.muted).toBe(false)
+      expect(store.volume).toBe(50)
+    })
+  })
+
   describe('playNext in list mode', () => {
     it('advances and wraps around', () => {
       const store = useSongStore()

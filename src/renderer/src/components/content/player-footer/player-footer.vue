@@ -28,22 +28,6 @@
             <div class="song-artist">{{ currentSong.artist }}</div>
           </div>
         </button>
-        <n-button
-          v-if="!isMiniMode"
-          text
-          size="small"
-          :loading="isLikeUpdating"
-          :disabled="!currentSong.id"
-          :aria-label="isCurrentSongLiked ? '取消喜欢' : '喜欢'"
-          :aria-pressed="isCurrentSongLiked"
-          @click.stop="handleToggleLike"
-        >
-          <template #icon
-            ><n-icon>
-              <Heart v-if="isCurrentSongLiked" />
-              <HeartOutline v-else /> </n-icon
-          ></template>
-        </n-button>
       </div>
 
       <!-- 播放控制 -->
@@ -95,6 +79,22 @@
           v-if="!isMiniMode"
           text
           size="large"
+          :loading="isLikeUpdating"
+          :disabled="!currentSong.id"
+          :aria-label="isCurrentSongLiked ? '取消喜欢' : '喜欢'"
+          :aria-pressed="isCurrentSongLiked"
+          @click.stop="handleToggleLike"
+        >
+          <template #icon
+            ><n-icon :color="isCurrentSongLiked ? 'var(--primary-color)' : undefined">
+              <Heart v-if="isCurrentSongLiked" />
+              <HeartOutline v-else /> </n-icon
+          ></template>
+        </n-button>
+        <n-button
+          v-if="!isMiniMode"
+          text
+          size="large"
           :title="playModeTooltip"
           :aria-label="playModeTooltip"
           @click="cyclePlayMode"
@@ -137,16 +137,45 @@
             ><n-icon><DocumentTextOutline /></n-icon
           ></template>
         </n-button>
-        <div v-if="!isMiniMode" class="volume-control">
-          <n-icon size="20" aria-hidden="true"><VolumeHighOutline /></n-icon>
-          <n-slider
-            :value="volume"
-            :tooltip="false"
-            aria-label="音量"
-            style="width: 80px; margin-left: 8px"
-            @update:value="handleVolumeChange"
-          />
-        </div>
+        <n-popover
+          v-if="!isMiniMode"
+          trigger="hover"
+          placement="top"
+          raw
+          :show-arrow="false"
+          :delay="80"
+          :duration="120"
+          :z-index="2600"
+        >
+          <template #trigger>
+            <n-button
+              text
+              size="large"
+              class="volume-btn"
+              :aria-label="isSilent ? '取消静音' : '静音'"
+              :aria-pressed="isSilent"
+              @click="toggleMute"
+            >
+              <template #icon
+                ><n-icon>
+                  <VolumeOffOutline v-if="isSilent" />
+                  <VolumeLowOutline v-else-if="volume < 50" />
+                  <VolumeHighOutline v-else /> </n-icon
+              ></template>
+            </n-button>
+          </template>
+          <div class="volume-popover">
+            <span class="volume-value">{{ displayVolume }}</span>
+            <n-slider
+              :value="displayVolume"
+              vertical
+              :tooltip="false"
+              aria-label="音量"
+              class="volume-slider"
+              @update:value="handleVolumeChange"
+            />
+          </div>
+        </n-popover>
         <n-button
           text
           size="large"
@@ -198,7 +227,9 @@ import {
   ListOutline,
   DownloadOutline,
   DocumentTextOutline,
-  VolumeHighOutline
+  VolumeHighOutline,
+  VolumeLowOutline,
+  VolumeOffOutline
 } from '@vicons/ionicons5'
 import { downloadSong } from '@/utils/downloadUtils'
 import {
@@ -222,6 +253,7 @@ const {
   isPlaying,
   progress,
   volume,
+  muted,
   formattedCurrentTime,
   formattedDuration,
   currentTime,
@@ -238,6 +270,7 @@ const {
   setCurrentTime,
   setDuration,
   setVolume,
+  toggleMute,
   setProgress
 } = songStore
 const { toggleMiniMode } = indexStore
@@ -330,7 +363,9 @@ const handleError = async () => {
 const isCurrentSongLiked = computed(() => {
   const songId = currentSong.value?.id
   if (!songId) return false
-  return Boolean(currentSong.value?.liked) || playlistStore.isSongLiked(songId)
+  // 登录后以云端同步的喜欢列表为准；队列里的 liked 字段可能是旧快照
+  if (isLoggedIn.value) return playlistStore.isSongLiked(songId)
+  return Boolean(currentSong.value?.liked)
 })
 
 const handleToggleLike = async () => {
@@ -435,9 +470,15 @@ watch(
   { immediate: true }
 )
 
-watch(volume, (newVolume) => {
-  if (audioRef.value) audioRef.value.volume = newVolume / 100
-})
+// 静音时滑块与数值显示 0，但保留原音量以便恢复
+const isSilent = computed(() => muted.value || volume.value === 0)
+const displayVolume = computed(() => (muted.value ? 0 : volume.value))
+const applyVolumeToAudio = () => {
+  if (!audioRef.value) return
+  audioRef.value.volume = volume.value / 100
+  audioRef.value.muted = muted.value
+}
+watch([volume, muted], applyVolumeToAudio)
 watch(currentTime, (newTime) => {
   if (!audioRef.value) return
   if (Math.abs(audioRef.value.currentTime - newTime) > 0.5) audioRef.value.currentTime = newTime
@@ -573,12 +614,12 @@ onMounted(() => {
   }
 
   if (audioRef.value) {
-    audioRef.value.volume = volume.value / 100
+    applyVolumeToAudio()
     songStore.audioElement = audioRef.value
   }
 
-  if (isLoggedIn.value && userInfo.value?.userId && playlistStore.likedSongIds.size === 0) {
-    playlistStore.loadLikedSongs(userInfo.value.userId)
+  if (isLoggedIn.value && userInfo.value?.userId) {
+    playlistStore.refreshLikedSongs()
   }
 })
 </script>
@@ -887,33 +928,6 @@ onMounted(() => {
   min-width: 200px;
   gap: 12px;
 
-  .volume-control {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    min-width: 120px;
-    color: rgba(255, 255, 255, 0.7);
-
-    :deep(.ant-btn) {
-      transition: transform 0.3s ease;
-
-      &:hover {
-        transform: scale(1.1);
-      }
-    }
-
-    .volume-slider {
-      flex: 1;
-      min-width: 80px;
-
-      :deep(.ant-slider-btn) {
-        width: 12px;
-        height: 12px;
-        border: 2px solid var(--n-card-color);
-      }
-    }
-  }
-
   :deep(.ant-btn) {
     transition:
       transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
@@ -968,8 +982,33 @@ onMounted(() => {
     min-width: 0;
   }
 
-  .volume-control {
+  .volume-btn {
     display: none;
+  }
+}
+
+// 竖向音量弹层：与底栏一致始终深玻璃（popover 内容随本组件模板渲染，scoped 可命中）
+.volume-popover {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: 44px;
+  padding: 12px 0 14px;
+  border-radius: 12px;
+  background: rgba(24, 26, 32, 0.86);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(20px) saturate(150%);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.24);
+
+  .volume-value {
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+    color: rgba(255, 255, 255, 0.7);
+  }
+
+  .volume-slider {
+    height: 120px;
   }
 }
 

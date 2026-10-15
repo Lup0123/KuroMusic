@@ -423,7 +423,7 @@ const clearPlaylist = async () => {
   right: 0;
   bottom: 0;
   background-color: transparent;
-  z-index: 1000;
+  z-index: 2500;
 }
 
 .playlist-drawer {
@@ -437,7 +437,7 @@ const clearPlaylist = async () => {
   backdrop-filter: blur(28px) saturate(150%);
   border-left: 1px solid var(--glass-panel-border, rgba(255, 255, 255, 0.1));
   box-shadow: -8px 0 32px rgba(0, 0, 0, 0.4);
-  z-index: 1001;
+  z-index: 2501;
   display: flex;
   flex-direction: column;
   min-height: 0;

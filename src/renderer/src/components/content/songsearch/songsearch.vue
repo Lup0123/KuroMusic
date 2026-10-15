@@ -174,7 +174,7 @@
                 >
                   <template #icon>
                     <n-icon size="20">
-                      <Heart v-if="song.liked" class="liked-icon" />
+                      <Heart v-if="playlistStore.isSongLiked(song.id)" class="liked-icon" />
                       <HeartOutline v-else />
                     </n-icon>
                   </template>
@@ -431,6 +431,9 @@ const performSearch = async (keyword, page = 1, targetTab = activeTab.value) => 
   setHasSearched(true)
 
   try {
+    // 后台同步云端喜欢状态（心形直接读 store，刷新完成后自动更新）
+    void playlistStore.refreshLikedSongs()
+
     const offset = (page - 1) * pageSize
     const response = await window.api.search(keyword.trim(), tabType, pageSize, offset)
     console.log('搜索结果:', response)
@@ -621,7 +624,7 @@ const playSong = async (song) => {
 }
 
 const toggleLike = async (song) => {
-  const newLikedState = !song.liked
+  const newLikedState = !playlistStore.isSongLiked(song.id)
 
   try {
     const success = await playlistStore.toggleLikeSong(song.id, newLikedState)
@@ -836,7 +839,11 @@ const handleCreateNewPlaylist = () => {
         color: var(--n-text-color);
         margin: 0 0 4px 0;
         letter-spacing: -1px;
-        background: linear-gradient(135deg, var(--n-text-color) 0%, var(--primary-color, var(--n-primary-color)) 100%);
+        background: linear-gradient(
+          135deg,
+          var(--n-text-color) 0%,
+          var(--primary-color, var(--n-primary-color)) 100%
+        );
         background-clip: text;
       }
 
@@ -851,7 +858,11 @@ const handleCreateNewPlaylist = () => {
           font-weight: 700;
           font-size: 14px;
           padding: 0 6px;
-          background: color-mix(in srgb, var(--primary-color, var(--n-primary-color)) 16%, transparent);
+          background: color-mix(
+            in srgb,
+            var(--primary-color, var(--n-primary-color)) 16%,
+            transparent
+          );
           border-radius: 4px;
           margin: 0 4px;
         }
@@ -988,7 +999,11 @@ const handleCreateNewPlaylist = () => {
           }
 
           .tab-count {
-            background: color-mix(in srgb, var(--primary-color, var(--n-primary-color)) 24%, transparent);
+            background: color-mix(
+              in srgb,
+              var(--primary-color, var(--n-primary-color)) 24%,
+              transparent
+            );
             color: var(--primary-color, var(--n-primary-color));
           }
 
@@ -1134,7 +1149,11 @@ const handleCreateNewPlaylist = () => {
       }
 
       &.active {
-        background: color-mix(in srgb, var(--primary-color, var(--n-primary-color)) 16%, transparent);
+        background: color-mix(
+          in srgb,
+          var(--primary-color, var(--n-primary-color)) 16%,
+          transparent
+        );
         border-color: var(--primary-color, var(--n-primary-color));
 
         .song-name {
@@ -1146,7 +1165,8 @@ const handleCreateNewPlaylist = () => {
       &.playing {
         .song-cover {
           border: 2px solid var(--primary-color, var(--n-primary-color));
-          box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary-color, var(--n-primary-color)) 24%, transparent);
+          box-shadow: 0 0 0 4px
+            color-mix(in srgb, var(--primary-color, var(--n-primary-color)) 24%, transparent);
         }
       }
 
@@ -1360,8 +1380,16 @@ const handleCreateNewPlaylist = () => {
   contain-intrinsic-size: auto 100px;
 
   &:hover {
-    background: color-mix(in srgb, var(--primary-color, var(--n-primary-color)) 8%, var(--n-card-color));
-    border-color: color-mix(in srgb, var(--primary-color, var(--n-primary-color)) 32%, var(--n-border-color));
+    background: color-mix(
+      in srgb,
+      var(--primary-color, var(--n-primary-color)) 8%,
+      var(--n-card-color)
+    );
+    border-color: color-mix(
+      in srgb,
+      var(--primary-color, var(--n-primary-color)) 32%,
+      var(--n-border-color)
+    );
     transform: translateY(-1px);
   }
 }
@@ -1636,7 +1664,11 @@ const handleCreateNewPlaylist = () => {
       }
 
       &.selected {
-        background-color: color-mix(in srgb, var(--primary-color, var(--n-primary-color)) 16%, transparent);
+        background-color: color-mix(
+          in srgb,
+          var(--primary-color, var(--n-primary-color)) 16%,
+          transparent
+        );
         border: 1px solid var(--primary-color, var(--n-primary-color));
       }
 

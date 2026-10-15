@@ -33,6 +33,14 @@ const api = {
     ipcRenderer.on('player-command', listener)
     return () => ipcRenderer.removeListener('player-command', listener)
   },
+  // 界面缩放（主窗口与 AI 窗口共用档位）
+  getUiZoom: () => ipcRenderer.invoke('get-ui-zoom'),
+  setUiZoom: (factor) => ipcRenderer.invoke('set-ui-zoom', factor),
+  onUiZoomChanged: (callback) => {
+    const listener = (_, factor) => callback?.(factor)
+    ipcRenderer.on('ui-zoom-changed', listener)
+    return () => ipcRenderer.removeListener('ui-zoom-changed', listener)
+  },
 
   selectMusicFiles: () => ipcRenderer.invoke('select-music-files'),
   getMusicMetadata: (filePath) => ipcRenderer.invoke('get-music-metadata', filePath),
@@ -66,14 +74,19 @@ const api = {
   // ============ 喜欢音乐相关 API ============
   likeMusic: (songId, isLike) => ipcRenderer.invoke('like-music', songId, isLike),
   getLikedSongs: (userId) => ipcRenderer.invoke('get-liked-songs', userId),
+  subscribePlaylist: (playlistId, subscribe) =>
+    ipcRenderer.invoke('subscribe-playlist', playlistId, subscribe),
+  onLikedSongChanged: (callback) => {
+    const listener = (_, payload) => callback?.(payload)
+    ipcRenderer.on('liked-song-changed', listener)
+    return () => ipcRenderer.removeListener('liked-song-changed', listener)
+  },
 
   // ============ 个性化推荐 API ============
   getRecommendResource: () => ipcRenderer.invoke('get-recommend-resource'),
   getRecommendSongs: () => ipcRenderer.invoke('get-recommend-songs'),
   getPersonalizedPlaylists: (limit) => ipcRenderer.invoke('get-personalized-playlists', limit),
-  getPersonalFM: () => ipcRenderer.invoke('get-personal-fm'),
   getTopSongs: (type) => ipcRenderer.invoke('get-top-songs', type),
-  fmTrash: (songId) => ipcRenderer.invoke('fm-trash', songId),
   getArtistTopSongs: (artistId) => ipcRenderer.invoke('get-artist-top-songs', artistId),
   getArtistAlbums: (artistId, limit, offset) =>
     ipcRenderer.invoke('get-artist-albums', artistId, limit, offset),

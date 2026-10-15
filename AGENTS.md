@@ -39,7 +39,7 @@
 ### Main (`src/main/`)
 - `index.js` — 窗口 + 全部 IPC + 系统能力 + 网易云 API 封装 + 下载 + 迷你模式(380×88) + 自动更新
 - `auth/login.js` — 二维码/手机号/邮箱登录，cookie 持久化（electron-store），重启恢复
-- `getLocalConfig/` — `playlistconfig.js`(本地歌单增删改/收藏/封面)、`aiConfig.js`(AI Provider Key/model/baseUrl)、`behaviorConfig.js`(行为埋点开关)
+- `getLocalConfig/` — `playlistconfig.js`(本地歌单增删改/收藏/封面)、`aiConfig.js`(AI Provider Key/model/baseUrl)、`behaviorConfig.js`(行为埋点开关)、`uiConfig.js`(界面缩放档位 0.9/1/1.1/1.25，主窗口与 AI 窗口共用，迷你模式固定 100%)
 - `ai/` — AI 后端：
   - `embeddingService.js` — 本地 `bge-small-zh-v1.5`（transformers.js），512 维，懒加载+预热，不可用降级 hash 向量
   - `ragService.js` — `better-sqlite3`+`sqlite-vec` 向量库，索引歌词/歌单/偏好，`buildContext` 提供 RAG 上下文
